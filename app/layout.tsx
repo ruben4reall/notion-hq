@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { Chat } from '@/components/Chat'
 import { GlobalTimerBar } from '@/components/GlobalTimerBar'
 import { OnboardingWatcher } from '@/components/OnboardingWatcher'
+import { StreakWatcher } from '@/components/StreakWatcher'
 import { Providers } from '@/components/Providers'
 import { PageTransition } from '@/components/PageTransition'
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BottomNav />
           <Chat />
           <OnboardingWatcher />
+          <StreakWatcher />
         </Providers>
       </body>
     </html>

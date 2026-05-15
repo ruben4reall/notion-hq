@@ -66,20 +66,37 @@ export function useOnboarding() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
+    // Fast path: localStorage cache says done
     try {
-      const done = localStorage.getItem(KEY)
-      if (!done) setShow(true)
+      if (localStorage.getItem(KEY) === '1') return
     } catch {}
+
+    // Authoritative check from DB (works across devices & browsers)
+    fetch('/api/onboarding')
+      .then(r => r.json())
+      .then(({ done }) => {
+        if (done) {
+          try { localStorage.setItem(KEY, '1') } catch {}
+        } else {
+          setShow(true)
+        }
+      })
+      .catch(() => {
+        // Network error: fall back to localStorage (may show on first visit)
+        try { if (!localStorage.getItem(KEY)) setShow(true) } catch {}
+      })
   }, [])
 
   const complete = () => {
     try { localStorage.setItem(KEY, '1') } catch {}
     setShow(false)
+    fetch('/api/onboarding', { method: 'POST' }).catch(() => {})
   }
 
   const reset = () => {
     try { localStorage.removeItem(KEY) } catch {}
     setShow(true)
+    fetch('/api/onboarding', { method: 'DELETE' }).catch(() => {})
   }
 
   return { show, complete, reset }
