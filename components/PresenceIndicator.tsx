@@ -165,11 +165,13 @@ export function PresenceIndicator() {
   const [users, setUsers] = useState<PresenceEntry[]>([])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isTouch, setIsTouch] = useState(false)
   const prevOnline = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640)
+    const check = () => setIsTouch(
+      window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 1024
+    )
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -216,8 +218,8 @@ export function PresenceIndicator() {
 
   if (users.length === 0) return null
 
-  // ── Mobile: avatars → bottom sheet
-  if (isMobile) {
+  // ── Touch: avatars → bottom sheet
+  if (isTouch) {
     return (
       <>
         <button

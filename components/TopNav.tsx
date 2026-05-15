@@ -93,9 +93,9 @@ export function TopNav() {
         <div className="flex items-center gap-2 ml-auto">
           <div className="hidden lg:flex items-center gap-2">
             <TimeWidget />
-            <PresenceIndicator />
             <div className="live-dot" />
           </div>
+          <PresenceIndicator />
           <NotificationBell />
           <div className="hidden lg:block"><ThemeToggle /></div>
 
