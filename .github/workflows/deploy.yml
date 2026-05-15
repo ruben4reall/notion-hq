@@ -44,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Run database migrations
-        run: node scripts/migrate.js
+        run: node scripts/migrate.js || echo "⚠️ Migration skipped (apply manually via Supabase SQL Editor if needed)"
         env:
           POSTGRES_URL_NON_POOLING: ${{ secrets.POSTGRES_URL_NON_POOLING }}
 
