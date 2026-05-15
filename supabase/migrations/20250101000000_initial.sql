@@ -129,11 +129,11 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER tasks_updated_at   BEFORE UPDATE ON tasks   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER crm_updated_at     BEFORE UPDATE ON crm     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER ideas_updated_at   BEFORE UPDATE ON ideas   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER events_updated_at  BEFORE UPDATE ON events  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER notes_updated_at   BEFORE UPDATE ON notes   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER tasks_updated_at   BEFORE UPDATE ON tasks   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER crm_updated_at     BEFORE UPDATE ON crm     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER ideas_updated_at   BEFORE UPDATE ON ideas   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER events_updated_at  BEFORE UPDATE ON events  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER notes_updated_at   BEFORE UPDATE ON notes   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── Disable RLS (server-side only access via service_role) ──
 ALTER TABLE tasks          DISABLE ROW LEVEL SECURITY;
