@@ -30,7 +30,6 @@ function AuthForm() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [celebrating, setCelebrating] = useState(false)
   const [celebText, setCelebText] = useState('Bienvenue !')
 
@@ -78,13 +77,11 @@ function AuthForm() {
       setLoading(false)
       return
     }
+    playLoginSound()
     setLoading(false)
     setCelebText('Compte créé !')
     setCelebrating(true)
-    setTimeout(() => {
-      setCelebrating(false)
-      setSuccess('Vérifiez votre email pour confirmer votre compte.')
-    }, 1300)
+    setTimeout(() => router.push(redirect), 1300)
   }
 
   return (
@@ -156,7 +153,7 @@ function AuthForm() {
           {(['login', 'register'] as const).map(t => (
             <button
               key={t}
-              onClick={() => { setTab(t); setError(''); setSuccess('') }}
+              onClick={() => { setTab(t); setError('') }}
               style={{
                 flex: 1, padding: '8px 0', borderRadius: 9, border: 'none',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
@@ -168,17 +165,6 @@ function AuthForm() {
             </button>
           ))}
         </div>
-
-        {/* Success message */}
-        {success && (
-          <div style={{
-            padding: '12px 14px', borderRadius: 10, marginBottom: 16,
-            background: 'rgba(14,201,140,0.08)', border: '1px solid rgba(14,201,140,0.2)',
-            fontSize: 13, color: 'var(--green)', textAlign: 'center',
-          }}>
-            {success}
-          </div>
-        )}
 
         {/* Login form */}
         {tab === 'login' && (
@@ -242,7 +228,7 @@ function AuthForm() {
         )}
 
         {/* Register form */}
-        {tab === 'register' && !success && (
+        {tab === 'register' && (
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
