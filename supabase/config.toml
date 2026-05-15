@@ -1,3 +1,5 @@
+project_id = "yehrlfuonctonjsneawh"
+
 [api]
 enabled = true
 port = 54321
@@ -30,6 +32,3 @@ enable_signup = true
 
 [analytics]
 enabled = false
-
-# Your Supabase project reference
-project_id = "yehrlfuonctonjsneawh"
