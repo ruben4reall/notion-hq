@@ -2,7 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import type { KPIData, Task } from '@/lib/types'
+
+const QUOTES = [
+  { text: "Le succès n'est pas final, l'échec n'est pas fatal. C'est le courage de continuer qui compte.", author: "Winston Churchill" },
+  { text: "Votre temps est limité, ne le gâchez pas en vivant la vie de quelqu'un d'autre.", author: "Steve Jobs" },
+  { text: "La seule façon de faire du bon travail est d'aimer ce que vous faites.", author: "Steve Jobs" },
+  { text: "Les opportunités ne se créent pas toutes seules. C'est vous qui les créez.", author: "Chris Grosser" },
+  { text: "Ne comptez pas les jours, faites que les jours comptent.", author: "Muhammad Ali" },
+  { text: "Le risque le plus grand, c'est de ne prendre aucun risque.", author: "Mark Zuckerberg" },
+  { text: "Chaque matin tu as deux options : continuer à dormir avec tes rêves, ou te lever et les réaliser.", author: "Fabrice Luchini" },
+  { text: "Un entrepreneur voit des opportunités là où les autres ne voient que des problèmes.", author: "Michael Gerber" },
+  { text: "Ce n'est pas parce que les choses sont difficiles qu'on n'ose pas. C'est parce qu'on n'ose pas qu'elles sont difficiles.", author: "Sénèque" },
+  { text: "Le succès appartient à ceux qui se lèvent tôt et restent tard.", author: "Proverbe entrepreneur" },
+  { text: "Construis quelque chose dont tu es fier, ou ne le construis pas du tout.", author: "Stewart Butterfield" },
+  { text: "Arrêtez de rêver à votre business. Démarrez-le.", author: "Evan Carmichael" },
+  { text: "La différence entre l'ordinaire et l'extraordinaire, c'est ce petit extra.", author: "Jimmy Johnson" },
+  { text: "Si tu travailles sur quelque chose d'excitant, tu n'as pas besoin de motivation.", author: "Elon Musk" },
+  { text: "Les gagnants ne sont pas ceux qui ne tombent jamais, mais ceux qui se relèvent toujours.", author: "Vince Lombardi" },
+  { text: "Fais de ta passion ton métier et tu ne travailleras pas un seul jour de ta vie.", author: "Confucius" },
+  { text: "L'action est la clé fondamentale de tout succès.", author: "Pablo Picasso" },
+  { text: "Le meilleur moment pour planter un arbre était il y a 20 ans. Le deuxième meilleur moment, c'est maintenant.", author: "Proverbe chinois" },
+  { text: "Dans les périodes de difficultés, certains baissent les bras, d'autres construisent des empires.", author: "Anonyme" },
+  { text: "L'excellence est un art qu'on n'atteint que par l'exercice constant.", author: "Aristote" },
+  { text: "Soyez le changement que vous souhaitez voir dans le monde.", author: "Gandhi" },
+  { text: "Si vous ne construisez pas votre rêve, quelqu'un vous embauchera pour construire le sien.", author: "Tony Gaskins" },
+  { text: "Les gens qui sont assez fous pour penser qu'ils peuvent changer le monde sont ceux qui le font.", author: "Steve Jobs" },
+  { text: "Décide. Engage-toi. Réussit.", author: "Mindset entrepreneur" },
+]
 
 const STATUS_COLORS: Record<string, string> = {
   Backlog:  '#6b7280',
@@ -115,12 +143,17 @@ function Skeleton() {
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession()
   const [data, setData] = useState<KPIData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const firstName = session?.user?.name?.split(' ')[0] ?? ''
 
   const today = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).format(new Date())
+
+  const quote = QUOTES[new Date().getHours() % QUOTES.length]
 
   useEffect(() => {
     fetch('/api/kpis')
@@ -138,8 +171,24 @@ export default function DashboardPage() {
     <div className="page-container animate-in">
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 className="page-title">Bonjour 👋</h1>
-        <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{today}</p>
+        <h1 className="page-title">
+          Bonjour{firstName ? `, ${firstName}` : ''} 👋
+        </h1>
+        <p className="page-subtitle" style={{ textTransform: 'capitalize', marginBottom: 14 }}>{today}</p>
+        <div style={{
+          padding: '14px 18px',
+          background: 'var(--accent-bg)',
+          border: '1px solid rgba(124,106,245,0.2)',
+          borderLeft: '3px solid var(--accent)',
+          borderRadius: 10,
+        }}>
+          <p style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--t0)', lineHeight: 1.6, margin: 0 }}>
+            "{quote.text}"
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--accent)', marginTop: 6, fontWeight: 600 }}>
+            — {quote.author}
+          </p>
+        </div>
       </div>
 
       {/* KPIs */}
