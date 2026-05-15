@@ -23,11 +23,13 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 520 }: Prop
 
   return (
     <div
+      className="modal-overlay"
       style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
       onClick={onClose}
     >
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(4,4,12,0.75)', backdropFilter: 'blur(10px)' }} />
       <div
+        className="modal-sheet"
         onClick={e => e.stopPropagation()}
         style={{
           position: 'relative', width: '100%', maxWidth,

@@ -15,6 +15,14 @@ export async function POST(request: Request) {
     const body = await request.json()
     await createTask(body)
     createNotification({ message: `Nouvelle tâche : "${body.title}"`, type: 'info', de: body.modifiedBy || '' }).catch(() => {})
+    if (body.assignedTo && body.assignedTo !== body.modifiedBy) {
+      createNotification({
+        message: `📌 Tu as été assigné(e) à : "${body.title}"`,
+        type: 'info',
+        de: body.modifiedBy || '',
+        pour: body.assignedTo,
+      }).catch(() => {})
+    }
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

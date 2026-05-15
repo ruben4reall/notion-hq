@@ -40,19 +40,28 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
   const p = P_COLOR[task.priority] || null
   const mc = M_COLOR[task.module] || '#6b7280'
   const assignee = users.find(u => u.name === task.assignedTo)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const isOverdue = !!(task.dateEnd && task.status !== 'Done' && task.dateEnd < todayStr)
+  const isDueToday = !!(task.dateEnd && task.dateEnd === todayStr && task.status !== 'Done')
 
   return (
     <div style={{
       background: isDragging ? 'var(--bg-3)' : 'var(--bg-1)',
-      border: `1px solid ${isDragging ? 'rgba(124,106,245,0.5)' : 'var(--border-s)'}`,
+      border: `1px solid ${isDragging ? 'rgba(124,106,245,0.5)' : isOverdue ? 'rgba(244,63,94,0.3)' : 'var(--border-s)'}`,
       borderRadius: 10, padding: '11px 12px',
       boxShadow: isDragging ? '0 12px 32px rgba(0,0,0,0.5)' : 'none',
       cursor: 'grab', userSelect: 'none', position: 'relative',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          {(task.priority || task.module) && (
+          {(task.priority || task.module || isOverdue || isDueToday) && (
             <div style={{ display: 'flex', gap: 5, marginBottom: 6, flexWrap: 'wrap' }}>
+              {isOverdue && (
+                <span className="badge" style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.12)' }}>En retard</span>
+              )}
+              {isDueToday && (
+                <span className="badge" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}>Aujourd'hui</span>
+              )}
               {task.priority && p && (
                 <span className="badge" style={{ color: p.c, background: p.bg }}>{task.priority}</span>
               )}
@@ -92,7 +101,9 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
       {/* Footer */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--t2)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-s)' }}>
         {task.dateEnd && (
-          <span>📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}</span>
+          <span style={{ color: isOverdue ? 'var(--red)' : isDueToday ? 'var(--amber)' : 'var(--t2)' }}>
+            📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}
+          </span>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
           {assignee && <UserAvatar name={assignee.name} color={assignee.color} size={18} />}
@@ -198,11 +209,11 @@ export default function KanbanBoard() {
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
+        <div className="kanban-scroll" style={{ minHeight: '60vh' }}>
           {COLUMNS.map(col => {
             const colTasks = visibleTasks.filter(t => t.status === col.id)
             return (
-              <div key={col.id} style={{ minWidth: 262, flex: '0 0 262px' }}>
+              <div key={col.id} className="kanban-col" style={{ minWidth: 262, flex: '0 0 262px' }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, padding: '0 2px' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />

@@ -336,3 +336,67 @@ button:active:not(:disabled) {
   background: var(--accent-bg);
   box-shadow: inset 0 0 0 1px rgba(124,106,245,0.15);
 }
+
+/* ── Mobile ─────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* Modal slides up from bottom on mobile */
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .modal-sheet {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92dvh !important;
+    width: 100% !important;
+  }
+
+  /* Grid adapts to single column */
+  .grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Kanban column width on mobile */
+  .kanban-col {
+    min-width: 240px !important;
+    flex: 0 0 240px !important;
+  }
+
+  /* Tighter page padding on mobile */
+  .page-container {
+    padding: 16px 14px 90px;
+  }
+
+  /* Touch-friendly tap targets */
+  button, a {
+    min-height: 36px;
+  }
+
+  /* Reduce card padding on mobile */
+  .card-compact {
+    padding: 14px !important;
+  }
+
+  /* Input font size prevents iOS zoom */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Kanban scroll snap ─────────────────────────────────── */
+
+.kanban-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.kanban-col {
+  scroll-snap-align: start;
+  min-width: 260px;
+  flex: 0 0 260px;
+}

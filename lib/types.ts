@@ -67,6 +67,8 @@ export interface KPIData {
   totalIdeas: number
   tasksByStatus: Record<string, number>
   recentTasks: Task[]
+  urgentTasks: Task[]
+  overdueCount: number
   topIdeas: Idea[]
   // métriques 24h
   tasksLast24h: number

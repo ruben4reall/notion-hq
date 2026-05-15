@@ -36,6 +36,13 @@ export async function GET() {
     ).length
     const taskVelocity = Math.round((doneLastWeek / 7) * 10) / 10
 
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const urgentTasks = tasks
+      .filter(t => t.status !== 'Done' && t.dateEnd && t.dateEnd <= todayStr)
+      .sort((a, b) => (a.dateEnd > b.dateEnd ? 1 : -1))
+      .slice(0, 10)
+    const overdueCount = tasks.filter(t => t.status !== 'Done' && t.dateEnd && t.dateEnd < todayStr).length
+
     const kpis = {
       tasksInProgress: tasks.filter(t => t.status === 'En cours').length,
       activeProspects: crm.filter(c =>
@@ -54,6 +61,8 @@ export async function GET() {
         Done:       doneTasks,
       },
       recentTasks: tasks.slice(0, 6),
+      urgentTasks,
+      overdueCount,
       topIdeas: ideas.slice(0, 5),
       tasksLast24h,
       tasksPrev24h,

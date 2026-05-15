@@ -28,6 +28,8 @@ jobs:
           }
           add_env "NEXTAUTH_URL"  "https://manager-thenextbigthing.vercel.app"
           add_env "TENOR_API_KEY" "LIVDSRZULELA"
+          add_env "USER1_NAME"    "Ruben Catalao"
+          add_env "USER2_NAME"    "Alexandre Thomas"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

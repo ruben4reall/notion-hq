@@ -67,29 +67,30 @@ function KPICard({
   )
 }
 
-function TaskRow({ task }: { task: Task }) {
+function TaskRow({ task, highlight }: { task: Task; highlight?: 'overdue' | 'today' }) {
   const sc = STATUS_COLORS[task.status] || '#6b7280'
   const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
+  const dateColor = highlight === 'overdue' ? '#f43f5e' : highlight === 'today' ? '#f59e0b' : 'var(--t2)'
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
       borderBottom: '1px solid var(--border-s)',
     }}>
-      <div style={{ width: 6, height: 6, borderRadius: '50%', background: sc, flexShrink: 0 }} />
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: highlight === 'overdue' ? '#f43f5e' : sc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {task.title || 'Sans titre'}
         </p>
-        {task.module && (
-          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>{task.module}</p>
-        )}
+        <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
+          {task.module}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
+        </p>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {task.priority && (
           <span style={{ fontSize: 10, fontWeight: 600, color: pc }}>{task.priority}</span>
         )}
         {task.dateEnd && (
-          <span style={{ fontSize: 11, color: 'var(--t2)' }}>{fmtDate(task.dateEnd)}</span>
+          <span style={{ fontSize: 11, color: dateColor, fontWeight: highlight ? 600 : 400 }}>{fmtDate(task.dateEnd)}</span>
         )}
       </div>
     </div>
@@ -160,6 +161,23 @@ export default function DashboardPage() {
         <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{today}</p>
       </div>
 
+      {/* Urgent tasks banner */}
+      {data.overdueCount > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
+          borderRadius: 10, padding: '10px 14px', marginBottom: 20,
+        }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <p style={{ fontSize: 13, color: '#f43f5e', fontWeight: 500 }}>
+            {data.overdueCount} tâche{data.overdueCount > 1 ? 's' : ''} en retard
+          </p>
+          <a href="/kanban" style={{ marginLeft: 'auto', fontSize: 12, color: '#f43f5e', textDecoration: 'none', opacity: 0.8 }}>
+            Voir Kanban →
+          </a>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
         <KPICard
@@ -215,6 +233,24 @@ export default function DashboardPage() {
           }
         />
       </div>
+
+      {/* My urgent tasks */}
+      {(() => {
+        const myUrgent = data.urgentTasks.filter(t => !session?.user?.name || t.assignedTo === session.user.name || t.assignedTo === '')
+        if (myUrgent.length === 0) return null
+        const todayStr = new Date().toISOString().slice(0, 10)
+        return (
+          <div className="card" style={{ padding: '20px', marginBottom: 20, borderColor: 'rgba(244,63,94,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <p className="section-title" style={{ margin: 0, color: '#f43f5e' }}>Urgentes / Aujourd'hui</p>
+              <a href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>Kanban →</a>
+            </div>
+            {myUrgent.map(t => (
+              <TaskRow key={t.id} task={t} highlight={t.dateEnd < todayStr ? 'overdue' : 'today'} />
+            ))}
+          </div>
+        )
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Recent Tasks */}
