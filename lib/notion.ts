@@ -1,12 +1,13 @@
 import { Client } from '@notionhq/client'
-import type { Task, CRMEntry, Idea } from './types'
+import type { Task, CRMEntry, Idea, CalendarEvent } from './types'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN! })
 
 const DB = {
-  TASKS: process.env.NOTION_TASKS_DB!,
-  CRM:   process.env.NOTION_CRM_DB!,
-  IDEAS: process.env.NOTION_IDEAS_DB!,
+  TASKS:  process.env.NOTION_TASKS_DB!,
+  CRM:    process.env.NOTION_CRM_DB!,
+  IDEAS:  process.env.NOTION_IDEAS_DB!,
+  EVENTS: process.env.NOTION_EVENTS_DB!,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,6 +191,52 @@ export async function updateIdea(pageId: string, data: Partial<Idea> & { modifie
 }
 
 export async function deleteIdea(pageId: string): Promise<void> {
+  await notion.pages.update({ page_id: pageId, archived: true })
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────────────────
+
+export async function getEvents(): Promise<CalendarEvent[]> {
+  const res = await notion.databases.query({ database_id: DB.EVENTS, page_size: 200 })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return res.results.map((p: any) => ({
+    id: p.id,
+    title: t(p.properties['Titre']),
+    dateStart: d(p.properties['Date début']),
+    dateEnd: d(p.properties['Date fin']),
+    type: (s(p.properties['Type']) || 'Autre') as CalendarEvent['type'],
+    description: r(p.properties['Description']),
+    modifiedBy: r(p.properties['Modifié par']),
+    source: 'notion' as const,
+  }))
+}
+
+export async function createEvent(data: Partial<CalendarEvent> & { modifiedBy?: string }): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: any = {
+    'Titre': { title: [{ text: { content: data.title || '' } }] },
+    'Type': { select: { name: data.type || 'Autre' } },
+  }
+  if (data.dateStart)    props['Date début']  = { date: { start: data.dateStart } }
+  if (data.dateEnd)      props['Date fin']    = { date: { start: data.dateEnd } }
+  if (data.description)  props['Description'] = { rich_text: [{ text: { content: data.description } }] }
+  if (data.modifiedBy)   props['Modifié par'] = { rich_text: [{ text: { content: data.modifiedBy } }] }
+  await notion.pages.create({ parent: { database_id: DB.EVENTS }, properties: props })
+}
+
+export async function updateEvent(pageId: string, data: Partial<CalendarEvent> & { modifiedBy?: string }): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: any = {}
+  if (data.title !== undefined)       props['Titre']       = { title: [{ text: { content: data.title } }] }
+  if (data.type !== undefined)        props['Type']        = { select: { name: data.type } }
+  if (data.dateStart !== undefined)   props['Date début']  = data.dateStart ? { date: { start: data.dateStart } } : { date: null }
+  if (data.dateEnd !== undefined)     props['Date fin']    = data.dateEnd   ? { date: { start: data.dateEnd } }   : { date: null }
+  if (data.description !== undefined) props['Description'] = { rich_text: data.description ? [{ text: { content: data.description } }] : [] }
+  if (data.modifiedBy !== undefined)  props['Modifié par'] = { rich_text: [{ text: { content: data.modifiedBy } }] }
+  await notion.pages.update({ page_id: pageId, properties: props })
+}
+
+export async function deleteEvent(pageId: string): Promise<void> {
   await notion.pages.update({ page_id: pageId, archived: true })
 }
 

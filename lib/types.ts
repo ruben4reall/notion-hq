@@ -42,6 +42,18 @@ export interface Idea {
   lastEdited: string
 }
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  dateStart: string
+  dateEnd: string
+  type: 'RDV' | 'Réunion' | 'Appel' | 'Deadline' | 'Autre'
+  description: string
+  modifiedBy: string
+  source: 'notion' | 'google'
+  color?: string
+}
+
 export interface KPIData {
   tasksInProgress: number
   activeProspects: number

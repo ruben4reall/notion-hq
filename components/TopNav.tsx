@@ -9,6 +9,7 @@ const links = [
   { href: '/', label: 'Dashboard' },
   { href: '/kanban', label: 'Kanban' },
   { href: '/roadmap', label: 'Roadmap' },
+  { href: '/calendar', label: 'Calendrier' },
   { href: '/crm', label: 'CRM' },
   { href: '/ideas', label: 'Idées' },
 ]
