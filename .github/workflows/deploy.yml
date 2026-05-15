@@ -15,12 +15,12 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Rename Vercel project
+      - name: Configure Vercel project
         run: |
           curl -s -X PATCH "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"name":"mgr-hq"}' > /dev/null || true
+            -d '{"name":"mgr-hq","ssoProtection":null,"passwordProtection":null}' > /dev/null || true
 
       - name: Sync env vars to Vercel
         run: |
