@@ -49,7 +49,7 @@ export function TopNav() {
               <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
             </svg>
           </div>
-          <span style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--t0)' }}>
+          <span className="hidden sm:inline" style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--t0)' }}>
             Manager Dashboard
           </span>
         </div>

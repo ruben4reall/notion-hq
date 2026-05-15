@@ -1,6 +1,6 @@
 import type { AuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { getUserSettings } from './notion'
+import { getUserSettings } from './db'
 
 const USERS = [
   { id: '1', name: process.env.USER1_NAME!, username: process.env.USER1_USERNAME!, password: process.env.USER1_PASSWORD! },
