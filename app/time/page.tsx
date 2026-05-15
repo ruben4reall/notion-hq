@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Leaderboard } from '@/components/Leaderboard'
 
 interface TimeSession {
   id: string
@@ -332,6 +333,11 @@ export default function TimePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Leaderboard */}
+      <div style={{ marginTop: 24 }}>
+        <Leaderboard />
       </div>
     </div>
   )

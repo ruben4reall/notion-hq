@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Task, CRMEntry, Idea, CalendarEvent } from './types'
 
-function getClient() {
+export function getClient() {
   return createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

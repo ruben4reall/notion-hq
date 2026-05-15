@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { useTimer } from '@/lib/timer-context'
+import { useSession } from 'next-auth/react'
 
 const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
@@ -13,39 +13,13 @@ function fmtShort(sec: number) {
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = sec % 60
-  if (h > 0) return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
-  return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
-
-interface ActiveSession { id: string; categorie: string; debut: string }
 
 export function TimeWidget() {
   const { data: session } = useSession()
-  const [active, setActive] = useState<ActiveSession | null>(null)
-  const [elapsed, setElapsed] = useState(0)
-  const tickRef = useRef<ReturnType<typeof setInterval>>()
-
-  const load = useCallback(async () => {
-    if (!session?.user) return
-    try {
-      const res = await fetch('/api/time?days=1')
-      if (res.ok) { const { active: a } = await res.json(); setActive(a || null) }
-    } catch {}
-  }, [session?.user])
-
-  useEffect(() => { load() }, [load])
-
-  useEffect(() => {
-    clearInterval(tickRef.current)
-    if (active) {
-      const tick = () => setElapsed(Math.floor((Date.now() - new Date(active.debut).getTime()) / 1000))
-      tick()
-      tickRef.current = setInterval(tick, 1000)
-    } else {
-      setElapsed(0)
-    }
-    return () => clearInterval(tickRef.current)
-  }, [active])
+  const { active, elapsed, setActive } = useTimer()
 
   const stop = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -70,16 +44,13 @@ export function TimeWidget() {
       }}
       title={`Session en cours : ${active.categorie}`}
     >
-      {/* Pulsing dot */}
       <div style={{
         width: 6, height: 6, borderRadius: '50%', background: color,
-        animation: 'pulse-dot 1.5s ease-in-out infinite',
-        flexShrink: 0,
+        animation: 'pulse-dot 1.5s ease-in-out infinite', flexShrink: 0,
       }} />
       <span style={{ fontSize: 12, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em' }}>
         {fmtShort(elapsed)}
       </span>
-      {/* Stop button */}
       <button
         onClick={stop}
         style={{

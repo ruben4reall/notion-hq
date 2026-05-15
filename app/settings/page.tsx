@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useOnboarding, OnboardingModal } from '@/components/Onboarding'
 
 interface UserSettings {
   name: string
@@ -302,6 +303,9 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      {/* Guide */}
+      <OnboardingSettings />
+
       {/* Session */}
       <Section title="Session">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -319,5 +323,34 @@ export default function SettingsPage() {
         </div>
       </Section>
     </div>
+  )
+}
+
+function OnboardingSettings() {
+  const { show, reset, complete } = useOnboarding()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <Section title="Guide de l'application">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--t1)' }}>Revoir le guide de démarrage</p>
+            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>S'affiche automatiquement à la première connexion</p>
+          </div>
+          <button
+            onClick={() => { reset(); setOpen(true) }}
+            style={{
+              padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: 'var(--accent-bg)', color: 'var(--accent)',
+              border: '1px solid rgba(124,106,245,0.2)', cursor: 'pointer',
+            }}
+          >
+            Revoir le guide
+          </button>
+        </div>
+      </Section>
+      {open && <OnboardingModal onClose={() => { complete(); setOpen(false) }} />}
+    </>
   )
 }

@@ -5,6 +5,8 @@ import './globals.css'
 import { TopNav } from '@/components/TopNav'
 import { BottomNav } from '@/components/BottomNav'
 import { Chat } from '@/components/Chat'
+import { GlobalTimerBar } from '@/components/GlobalTimerBar'
+import { OnboardingWatcher } from '@/components/OnboardingWatcher'
 import { Providers } from '@/components/Providers'
 import { PageTransition } from '@/components/PageTransition'
 
@@ -35,11 +37,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <TopNav />
+          <GlobalTimerBar />
           <main>
             <PageTransition>{children}</PageTransition>
           </main>
           <BottomNav />
           <Chat />
+          <OnboardingWatcher />
         </Providers>
       </body>
     </html>
