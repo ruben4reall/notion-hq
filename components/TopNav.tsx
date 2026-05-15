@@ -40,7 +40,7 @@ export function TopNav() {
             </svg>
           </div>
           <span style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--t0)' }}>
-            Notion HQ
+            Manager Dashboard
           </span>
         </div>
 

@@ -7,7 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { Providers } from '@/components/Providers'
 
 export const metadata: Metadata = {
-  title: 'Notion HQ',
+  title: 'Manager Dashboard',
   description: 'Dashboard connecté à Notion — Tâches, CRM & Idées',
   manifest: '/manifest.json',
 }

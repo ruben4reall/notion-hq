@@ -75,10 +75,10 @@ function LoginForm() {
             </svg>
           </div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.03em' }}>
-            Notion HQ
+            Manager Dashboard
           </h1>
           <p style={{ fontSize: 13, color: 'var(--t1)', marginTop: 6 }}>
-            Connectez-vous à votre espace de travail
+            Connectez-vous à votre dashboard
           </p>
         </div>
 
