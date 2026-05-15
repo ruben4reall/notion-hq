@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { updateIdea, deleteIdea } from '@/lib/notion'
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body = await request.json()
-    await updateIdea(params.id, body)
+    await updateIdea(id, body)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
@@ -12,9 +13,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await deleteIdea(params.id)
+    const { id } = await params
+    await deleteIdea(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

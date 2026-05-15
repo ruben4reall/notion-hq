@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const tokens = await res.json()
     if (!tokens.access_token) throw new Error('No token received')
 
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     cookieStore.set('gcal_token', tokens.access_token, {
       httpOnly: true, secure: true, maxAge: tokens.expires_in ?? 3600, path: '/',
     })

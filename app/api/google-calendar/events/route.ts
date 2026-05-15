@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ events: [], connected: false })
   }
 
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   let token = cookieStore.get('gcal_token')?.value
   const refresh = cookieStore.get('gcal_refresh')?.value
 
@@ -75,7 +75,7 @@ export async function GET(_req: NextRequest) {
 }
 
 export async function DELETE() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   cookieStore.delete('gcal_token')
   cookieStore.delete('gcal_refresh')
   return NextResponse.json({ ok: true })

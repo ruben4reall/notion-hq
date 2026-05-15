@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { updateTask, deleteTask, createNotification } from '@/lib/notion'
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body = await request.json()
-    await updateTask(params.id, body)
+    await updateTask(id, body)
     if (body.status === 'Done' && body.title) {
       createNotification({ message: `✅ Tâche terminée : "${body.title}"`, type: 'success', de: body.modifiedBy || '' }).catch(() => {})
     }
@@ -15,9 +16,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await deleteTask(params.id)
+    const { id } = await params
+    await deleteTask(id)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
