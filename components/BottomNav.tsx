@@ -81,11 +81,11 @@ export function BottomNav() {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
       style={{
-        background: 'rgba(7, 7, 16, 0.9)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
+        borderTop: '1px solid var(--border-s)',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        backgroundColor: 'color-mix(in srgb, var(--bg-0) 90%, transparent)',
       }}
     >
       <div className="flex items-center justify-around h-16">

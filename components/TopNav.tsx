@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
+import { ThemeToggle } from './ThemeToggle'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -24,10 +25,11 @@ export function TopNav() {
     <header
       className="fixed top-0 left-0 right-0 z-50 h-14"
       style={{
-        background: 'rgba(7, 7, 16, 0.9)',
+        background: 'rgba(var(--nav-bg, 7, 7, 16), 0.9)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid var(--border-s)',
+        backgroundColor: 'color-mix(in srgb, var(--bg-0) 90%, transparent)',
       }}
     >
       <div className="flex items-center h-full px-5 max-w-[1280px] mx-auto">
@@ -65,6 +67,7 @@ export function TopNav() {
         </nav>
 
         <div className="flex items-center gap-3 ml-auto">
+          <ThemeToggle />
           <div className="live-dot hidden lg:block" />
 
           {/* User menu */}

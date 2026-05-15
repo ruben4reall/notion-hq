@@ -33,6 +33,41 @@
   --purple-bg: rgba(168, 85, 247, 0.1);
 }
 
+html.light {
+  --bg-0: #f2f2f7;
+  --bg-1: #ffffff;
+  --bg-2: #f0f0f5;
+  --bg-3: #e8e8f0;
+  --bg-4: #dcdcea;
+
+  --border-s: rgba(0, 0, 0, 0.07);
+  --border-m: rgba(0, 0, 0, 0.11);
+  --border-l: rgba(0, 0, 0, 0.18);
+
+  --t0: #0f0f1e;
+  --t1: #52527a;
+  --t2: #9898b8;
+
+  --accent-bg: rgba(124, 106, 245, 0.1);
+  --accent-glow: rgba(124, 106, 245, 0.2);
+  --green-bg: rgba(14, 201, 140, 0.1);
+  --amber-bg: rgba(245, 158, 11, 0.1);
+  --red-bg: rgba(244, 63, 94, 0.1);
+  --blue-bg: rgba(79, 142, 247, 0.1);
+}
+
+html.light body { background: var(--bg-0); }
+
+html.light .card {
+  background: var(--bg-1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+html.light .skeleton {
+  background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%);
+  background-size: 200% 100%;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
