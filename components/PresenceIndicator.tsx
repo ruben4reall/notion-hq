@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { playPresenceSound } from '@/lib/sounds'
 
 interface PresenceEntry {
   id: string
@@ -17,6 +18,7 @@ function initials(name: string) {
 export function PresenceIndicator() {
   const { data: session } = useSession()
   const [users, setUsers] = useState<PresenceEntry[]>([])
+  const prevOnline = useRef<Set<string>>(new Set())
 
   const ping = useCallback(async () => {
     if (!session?.user?.name) return
@@ -32,7 +34,13 @@ export function PresenceIndicator() {
   const loadPresence = useCallback(async () => {
     try {
       const res = await fetch('/api/presence')
-      if (res.ok) setUsers(await res.json())
+      if (!res.ok) return
+      const data: PresenceEntry[] = await res.json()
+      const currentOnline = new Set(data.filter(u => u.online).map(u => u.id))
+      const hasNew = [...currentOnline].some(id => !prevOnline.current.has(id))
+      if (hasNew && prevOnline.current.size > 0) playPresenceSound()
+      prevOnline.current = currentOnline
+      setUsers(data)
     } catch {}
   }, [])
 

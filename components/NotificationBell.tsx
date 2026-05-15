@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Notification } from '@/lib/notion'
+import { playNotifSound } from '@/lib/sounds'
 
 const TYPE_COLOR: Record<string, string> = {
   info:    '#4f8ef7',
@@ -29,11 +30,17 @@ export function NotificationBell() {
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const prevUnread = useRef(0)
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications')
-      if (res.ok) setNotifs(await res.json())
+      if (!res.ok) return
+      const data: Notification[] = await res.json()
+      const newUnread = data.filter(n => !n.lu).length
+      if (newUnread > prevUnread.current) playNotifSound()
+      prevUnread.current = newUnread
+      setNotifs(data)
     } catch {}
   }, [])
 

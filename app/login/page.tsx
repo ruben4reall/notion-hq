@@ -4,6 +4,7 @@ import { signIn, useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { playLoginSound } from '@/lib/sounds'
 
 function LoginForm() {
   const { status } = useSession()
@@ -43,7 +44,7 @@ function LoginForm() {
     })
 
     if (result?.ok) {
-      // Hard redirect pour que le cookie de session soit bien lu
+      playLoginSound()
       window.location.href = callbackUrl
     } else {
       setError('Identifiant ou mot de passe incorrect')
