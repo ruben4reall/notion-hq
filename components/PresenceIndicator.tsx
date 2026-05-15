@@ -61,6 +61,10 @@ function DesktopTooltip({ user }: { user: PresenceEntry }) {
 // ── Mobile bottom sheet ───────────────────────────────────────────────────────
 
 function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () => void }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
   return (
     <div
       style={{
@@ -201,7 +205,13 @@ export function PresenceIndicator() {
     loadPresence()
     const pingInterval = setInterval(ping, 30000)
     const loadInterval = setInterval(loadPresence, 15000)
-    return () => { clearInterval(pingInterval); clearInterval(loadInterval) }
+    const onVisible = () => { if (!document.hidden) { ping(); loadPresence() } }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(pingInterval)
+      clearInterval(loadInterval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [ping, loadPresence])
 
   if (users.length === 0) return null

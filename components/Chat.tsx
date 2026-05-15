@@ -486,12 +486,14 @@ export function Chat() {
         onClick={() => { setOpen(v => !v); if (!open) setView('list') }}
         aria-label="Messages"
         style={{
-          position: 'fixed', bottom: 92, right: 16, zIndex: 100,
+          position: 'fixed',
+          bottom: 'calc(64px + env(safe-area-inset-bottom) + 12px)',
+          right: 16, zIndex: 100,
           width: 50, height: 50, borderRadius: '50%',
           background: 'var(--accent)', color: 'white',
           border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 24px rgba(124,106,245,0.45)',
+          boxShadow: '0 4px 24px rgba(var(--accent-rgb),0.45)',
           transition: 'transform 0.2s, box-shadow 0.2s',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)' }}
@@ -515,15 +517,31 @@ export function Chat() {
         )}
       </button>
 
-      {/* Chat window */}
+      {/* Chat window — full-screen on mobile, floating on desktop */}
       {open && (
         <div className="float-enter" style={{
-          position: 'fixed', bottom: 152, right: 16, zIndex: 99,
-          width: 340, height: 460,
+          position: 'fixed', zIndex: 99,
+          // Mobile: occupy space between TopNav and BottomNav
+          top: 56, left: 0, right: 0,
+          bottom: 'calc(64px + env(safe-area-inset-bottom))',
+          // Desktop override via media query (applied via inline style below)
           background: 'var(--bg-1)', border: '1px solid var(--border-m)',
-          borderRadius: 16, display: 'flex', flexDirection: 'column',
+          borderRadius: 0, display: 'flex', flexDirection: 'column',
           boxShadow: '0 24px 64px rgba(0,0,0,0.55)', overflow: 'hidden',
-        }}>
+        }}
+          ref={(el) => {
+            if (!el) return
+            if (window.innerWidth >= 640) {
+              el.style.top = 'auto'
+              el.style.left = 'auto'
+              el.style.bottom = 'calc(64px + env(safe-area-inset-bottom) + 68px)'
+              el.style.right = '16px'
+              el.style.width = '340px'
+              el.style.height = '460px'
+              el.style.borderRadius = '16px'
+            }
+          }}
+        >
 
           {/* Header */}
           <div style={{

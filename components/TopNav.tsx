@@ -90,12 +90,14 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2.5 ml-auto">
-          <TimeWidget />
-          <PresenceIndicator />
-          <div className="live-dot hidden lg:block" />
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="hidden lg:flex items-center gap-2">
+            <TimeWidget />
+            <PresenceIndicator />
+            <div className="live-dot" />
+          </div>
           <NotificationBell />
-          <ThemeToggle />
+          <div className="hidden lg:block"><ThemeToggle /></div>
 
           {/* User menu */}
           {session && (
@@ -103,24 +105,24 @@ export function TopNav() {
               <button
                 onClick={() => setShowMenu(v => !v)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex', alignItems: 'center', gap: 6,
                   background: 'var(--bg-2)', border: '1px solid var(--border-s)',
-                  borderRadius: 100, padding: '4px 10px 4px 4px',
+                  borderRadius: 100, padding: '4px 6px',
                   cursor: 'pointer', transition: 'border-color 0.15s',
                 }}
               >
                 <div style={{
-                  width: 24, height: 24, borderRadius: '50%',
+                  width: 28, height: 28, borderRadius: '50%',
                   background: 'var(--accent)', color: 'white',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 700, flexShrink: 0,
                 }}>
                   {initials}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--t0)' }}>
+                <span className="hidden lg:inline" style={{ fontSize: 12, fontWeight: 500, color: 'var(--t0)' }}>
                   {session.name}
                 </span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--t2)' }}>
+                <svg className="hidden lg:block" width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--t2)' }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>

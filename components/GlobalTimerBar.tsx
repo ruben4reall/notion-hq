@@ -21,7 +21,7 @@ export function GlobalTimerBar() {
   const path = usePathname()
   const router = useRouter()
 
-  if (!active || path === '/time' || path === '/login') return null
+  if (!active || path === '/time' || path === '/login' || path.startsWith('/auth') || path.startsWith('/org')) return null
 
   const color = CAT_COLORS[active.categorie] || '#7c6af5'
 

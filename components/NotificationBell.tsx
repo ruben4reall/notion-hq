@@ -52,11 +52,15 @@ export function NotificationBell() {
   }, [load])
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('touchstart', handler, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('touchstart', handler)
+    }
   }, [])
 
   const unread = notifs.filter(n => !n.lu).length
@@ -104,8 +108,8 @@ export function NotificationBell() {
 
       {open && (
         <div className="dropdown-enter" style={{
-          position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 200,
-          width: 320, background: 'var(--bg-1)',
+          position: 'fixed', top: 58, right: 12, zIndex: 200,
+          width: 'min(320px, calc(100vw - 24px))', background: 'var(--bg-1)',
           border: '1px solid var(--border-m)', borderRadius: 12,
           boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
           overflow: 'hidden',
