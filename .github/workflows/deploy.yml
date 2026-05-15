@@ -15,13 +15,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Configure Vercel project
-        run: |
-          curl -s -X PATCH "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}" \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{"name":"mgr-hq","ssoProtection":null,"passwordProtection":null}' > /dev/null || true
-
       - name: Sync env vars to Vercel
         run: |
           PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}
@@ -36,7 +29,7 @@ jobs:
           add_env "NOTION_EVENTS_DB"   "3610eda0-95b9-8123-91e2-d27ad879ff4b"
           add_env "NOTION_NOTIFS_DB"   "3610eda0-95b9-81c4-83b3-fb37bfe6598b"
           add_env "NOTION_PRESENCE_DB" "3610eda0-95b9-813a-b66c-ff3459b6e2c7"
-          add_env "NEXTAUTH_URL"        "https://mgr-hq.vercel.app"
+          add_env "NEXTAUTH_URL"       "https://manager-thenextbigthing.vercel.app"
 
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
@@ -59,8 +52,8 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Alias to mgr-hq.vercel.app
-        run: vercel alias set ${{ steps.deploy.outputs.url }} mgr-hq.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Alias to manager-thenextbigthing.vercel.app
+        run: vercel alias set ${{ steps.deploy.outputs.url }} manager-thenextbigthing.vercel.app --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
