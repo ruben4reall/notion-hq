@@ -25,7 +25,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const { user: session } = useAuth()
   const [active, setActive] = useState<ActiveSession | null>(null)
   const [elapsed, setElapsed] = useState(0)
-  const tickRef = useRef<ReturnType<typeof setInterval>>()
+  const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   const refresh = useCallback(async () => {
     if (!session) return

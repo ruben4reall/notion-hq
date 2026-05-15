@@ -61,7 +61,7 @@ export default function TimePage() {
   const [loading, setLoading] = useState(true)
   const [selectedCat, setSelectedCat] = useState('Travail')
   const [days, setDays] = useState(7)
-  const tickRef = useRef<ReturnType<typeof setInterval>>()
+  const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/time?days=${days}`)

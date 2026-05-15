@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import type { KPIData, Task } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -129,11 +129,11 @@ function Skeleton() {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [data, setData] = useState<KPIData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const firstName = session?.user?.name?.split(' ')[0] ?? ''
+  const firstName = session?.name?.split(' ')[0] ?? ''
 
   const today = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -236,7 +236,7 @@ export default function DashboardPage() {
 
       {/* My urgent tasks */}
       {(() => {
-        const myUrgent = data.urgentTasks.filter(t => !session?.user?.name || t.assignedTo === session.user.name || t.assignedTo === '')
+        const myUrgent = data.urgentTasks.filter(t => !session?.name || t.assignedTo === session.name || t.assignedTo === '')
         if (myUrgent.length === 0) return null
         const todayStr = new Date().toISOString().slice(0, 10)
         return (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { Suspense } from 'react'
 import type { Task, CalendarEvent } from '@/lib/types'
 
@@ -168,7 +168,7 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
 }
 
 function CalendarContent() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -480,7 +480,7 @@ function CalendarContent() {
         state={modal}
         onClose={() => setModal({ open: false })}
         onSaved={load}
-        currentUser={session?.user?.name ?? ''}
+        currentUser={session?.name ?? ''}
       />
     </div>
   )

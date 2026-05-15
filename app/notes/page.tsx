@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { useUsers, UserAvatar } from '@/components/UserPicker'
 
 interface Note {
@@ -44,16 +44,16 @@ function relTime(iso: string) {
 }
 
 export default function NotesPage() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const users = useUsers()
-  const myName = (session?.user as { name?: string })?.name || ''
+  const myName = session?.name || ''
   const [notes, setNotes] = useState<Note[]>([])
   const [active, setActive] = useState<Note | null>(null)
   const [preview, setPreview] = useState(false)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [showSharePicker, setShowSharePicker] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/notes')

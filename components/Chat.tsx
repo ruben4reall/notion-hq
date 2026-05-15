@@ -59,7 +59,7 @@ function GifPicker({ onSelect, onClose }: { onSelect: (url: string) => void; onC
   const [query, setQuery] = useState('')
   const [gifs, setGifs] = useState<Gif[]>([])
   const [loading, setLoading] = useState(true)
-  const debounce = useRef<ReturnType<typeof setTimeout>>()
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const fetchGifs = useCallback(async (q: string) => {
     setLoading(true)
