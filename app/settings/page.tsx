@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useOnboarding, OnboardingModal } from '@/components/Onboarding'
+import { ACCENTS, saveAccent, getCurrentAccentId } from '@/lib/accent-color'
 
 interface UserSettings {
   name: string
@@ -285,13 +286,14 @@ export default function SettingsPage() {
 
       {/* Preferences */}
       <Section title="Préférences">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border-s)' }}>
           <div>
             <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>Thème de l&apos;interface</p>
             <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>Sombre ou clair selon votre préférence</p>
           </div>
           <ThemeToggle />
         </div>
+        <AccentPicker />
       </Section>
 
       {/* Guide */}
@@ -313,6 +315,51 @@ export default function SettingsPage() {
           </button>
         </div>
       </Section>
+    </div>
+  )
+}
+
+function AccentPicker() {
+  const [activeId, setActiveId] = useState('violet')
+
+  useEffect(() => { setActiveId(getCurrentAccentId()) }, [])
+
+  const pick = (id: string) => {
+    setActiveId(id)
+    saveAccent(id)
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', marginBottom: 4 }}>Couleur d&apos;accentuation</p>
+      <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 12 }}>Couleur des boutons, liens et éléments actifs</p>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {ACCENTS.map(a => (
+          <button
+            key={a.id}
+            onClick={() => pick(a.id)}
+            title={a.label}
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: a.color,
+              border: activeId === a.id
+                ? `3px solid var(--t0)`
+                : '3px solid transparent',
+              cursor: 'pointer',
+              outline: activeId === a.id ? `2px solid ${a.color}` : 'none',
+              outlineOffset: 2,
+              transition: 'transform 0.15s, outline 0.15s',
+              transform: activeId === a.id ? 'scale(1.15)' : 'scale(1)',
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 10 }}>
+        Couleur active : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+          {ACCENTS.find(a => a.id === activeId)?.label}
+        </span>
+      </p>
     </div>
   )
 }
