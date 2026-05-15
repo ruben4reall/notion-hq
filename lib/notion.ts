@@ -330,10 +330,11 @@ export interface ChatMessage {
   id: string
   author: string
   message: string
+  destinataire: string
   createdAt: string
 }
 
-export async function getChatMessages(limit = 50): Promise<ChatMessage[]> {
+export async function getChatMessages(limit = 100): Promise<ChatMessage[]> {
   if (!process.env.NOTION_CHAT_DB) return []
   const res = await notion.databases.query({
     database_id: DB.CHAT,
@@ -345,21 +346,24 @@ export async function getChatMessages(limit = 50): Promise<ChatMessage[]> {
     id: p.id,
     author: t(p.properties['Auteur']),
     message: r(p.properties['Message']),
+    destinataire: r(p.properties['Destinataire']) || '',
     createdAt: p.created_time,
   }))
 }
 
-export async function sendChatMessage(author: string, message: string): Promise<void> {
+export async function sendChatMessage(author: string, message: string, destinataire = ''): Promise<void> {
   if (!process.env.NOTION_CHAT_DB) return
   const trimmed = message.trim().slice(0, 2000)
   if (!trimmed) return
-  await notion.pages.create({
-    parent: { database_id: DB.CHAT },
-    properties: {
-      'Auteur':  { title: [{ text: { content: author } }] },
-      'Message': { rich_text: [{ text: { content: trimmed } }] },
-    },
-  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: Record<string, any> = {
+    'Auteur':  { title: [{ text: { content: author } }] },
+    'Message': { rich_text: [{ text: { content: trimmed } }] },
+  }
+  if (destinataire) {
+    props['Destinataire'] = { rich_text: [{ text: { content: destinataire } }] }
+  }
+  await notion.pages.create({ parent: { database_id: DB.CHAT }, properties: props })
 }
 
 // ── USER SETTINGS (stored in presence DB) ────────────────────────────────────
