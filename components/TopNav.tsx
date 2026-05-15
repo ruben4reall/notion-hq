@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
+import { NotificationBell } from './NotificationBell'
+import { PresenceIndicator } from './PresenceIndicator'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -66,9 +68,11 @@ export function TopNav() {
           })}
         </nav>
 
-        <div className="flex items-center gap-3 ml-auto">
-          <ThemeToggle />
+        <div className="flex items-center gap-2.5 ml-auto">
+          <PresenceIndicator />
           <div className="live-dot hidden lg:block" />
+          <NotificationBell />
+          <ThemeToggle />
 
           {/* User menu */}
           {session?.user && (

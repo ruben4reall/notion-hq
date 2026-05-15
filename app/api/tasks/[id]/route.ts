@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
-import { updateTask, deleteTask } from '@/lib/notion'
+import { updateTask, deleteTask, createNotification } from '@/lib/notion'
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
     await updateTask(params.id, body)
+    if (body.status === 'Done' && body.title) {
+      createNotification({ message: `✅ Tâche terminée : "${body.title}"`, type: 'success', de: body.modifiedBy || '' }).catch(() => {})
+    }
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

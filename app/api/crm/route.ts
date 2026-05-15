@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCRM, createCRM } from '@/lib/notion'
+import { getCRM, createCRM, createNotification } from '@/lib/notion'
 
 export async function GET() {
   try {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     await createCRM(body)
+    createNotification({ message: `Nouveau prospect : "${body.enseigne}"`, type: 'info', de: body.modifiedBy || '' }).catch(() => {})
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

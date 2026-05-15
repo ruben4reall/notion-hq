@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getIdeas, createIdea } from '@/lib/notion'
+import { getIdeas, createIdea, createNotification } from '@/lib/notion'
 
 export async function GET() {
   try {
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     await createIdea(body)
+    createNotification({ message: `💡 Nouvelle idée : "${body.title}"`, type: 'info', de: body.modifiedBy || '' }).catch(() => {})
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

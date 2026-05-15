@@ -4,10 +4,12 @@ import type { Task, CRMEntry, Idea, CalendarEvent } from './types'
 const notion = new Client({ auth: process.env.NOTION_TOKEN! })
 
 const DB = {
-  TASKS:  process.env.NOTION_TASKS_DB!,
-  CRM:    process.env.NOTION_CRM_DB!,
-  IDEAS:  process.env.NOTION_IDEAS_DB!,
-  EVENTS: process.env.NOTION_EVENTS_DB!,
+  TASKS:    process.env.NOTION_TASKS_DB!,
+  CRM:      process.env.NOTION_CRM_DB!,
+  IDEAS:    process.env.NOTION_IDEAS_DB!,
+  EVENTS:   process.env.NOTION_EVENTS_DB!,
+  NOTIFS:   process.env.NOTION_NOTIFS_DB!,
+  PRESENCE: process.env.NOTION_PRESENCE_DB!,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,6 +240,87 @@ export async function updateEvent(pageId: string, data: Partial<CalendarEvent> &
 
 export async function deleteEvent(pageId: string): Promise<void> {
   await notion.pages.update({ page_id: pageId, archived: true })
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error'
+  lu: boolean
+  de: string
+  pour: string
+  createdAt: string
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+  const res = await notion.databases.query({
+    database_id: DB.NOTIFS,
+    sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+    page_size: 30,
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return res.results.map((p: any) => ({
+    id: p.id,
+    message: t(p.properties['Message']),
+    type: (s(p.properties['Type']) || 'info') as Notification['type'],
+    lu: p.properties['Lu']?.checkbox ?? false,
+    de: r(p.properties['De']),
+    pour: s(p.properties['Pour']) || 'Tous',
+    createdAt: p.created_time ?? '',
+  }))
+}
+
+export async function createNotification(data: { message: string; type: Notification['type']; de: string; pour?: string }): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: any = {
+    'Message': { title: [{ text: { content: data.message } }] },
+    'Type': { select: { name: data.type } },
+    'Lu': { checkbox: false },
+    'De': { rich_text: [{ text: { content: data.de } }] },
+    'Pour': { select: { name: data.pour || 'Tous' } },
+  }
+  await notion.pages.create({ parent: { database_id: DB.NOTIFS }, properties: props })
+}
+
+export async function markNotificationsRead(ids: string[]): Promise<void> {
+  await Promise.all(ids.map(id => notion.pages.update({ page_id: id, properties: { 'Lu': { checkbox: true } } })))
+}
+
+// ── PRESENCE ─────────────────────────────────────────────────────────────────
+
+export interface PresenceEntry {
+  id: string
+  username: string
+  lastSeen: string
+  online: boolean
+}
+
+export async function getPresence(): Promise<PresenceEntry[]> {
+  const res = await notion.databases.query({ database_id: DB.PRESENCE, page_size: 10 })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return res.results.map((p: any) => {
+    const lastSeen = r(p.properties['Dernière vue'])
+    const online = lastSeen ? Date.now() - new Date(lastSeen).getTime() < 2 * 60 * 1000 : false
+    return { id: p.id, username: t(p.properties['Utilisateur']), lastSeen, online }
+  })
+}
+
+export async function upsertPresence(username: string): Promise<void> {
+  const res = await notion.databases.query({ database_id: DB.PRESENCE, page_size: 10 })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existing = res.results.find((p: any) => t(p.properties['Utilisateur']) === username)
+  const now = new Date().toISOString()
+  if (existing) {
+    await notion.pages.update({ page_id: existing.id, properties: { 'Dernière vue': { rich_text: [{ text: { content: now } }] }, 'En ligne': { checkbox: true } } })
+  } else {
+    await notion.pages.create({ parent: { database_id: DB.PRESENCE }, properties: {
+      'Utilisateur': { title: [{ text: { content: username } }] },
+      'Dernière vue': { rich_text: [{ text: { content: now } }] },
+      'En ligne': { checkbox: true },
+    }})
+  }
 }
 
 // legacy aliases used by existing routes
