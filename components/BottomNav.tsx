@@ -67,6 +67,8 @@ export function BottomNav() {
   const path = usePathname()
   const isMoreActive = MORE_PAGES.includes(path)
 
+  if (path === '/login') return null
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"

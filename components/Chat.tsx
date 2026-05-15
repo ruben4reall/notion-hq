@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { playNotifSound } from '@/lib/sounds'
+import { useUsers } from './UserPicker'
 
 interface ChatMessage {
   id: string
@@ -16,6 +17,7 @@ interface PresenceEntry {
   id: string
   username: string
   lastSeen: string
+  connectedAt: string
   online: boolean
 }
 
@@ -153,13 +155,27 @@ function ConvList({
   lastRead: React.MutableRefObject<Record<string, number>>
   onSelect: (type: 'group' | 'dm', withUser?: string) => void
 }) {
+  const appUsers = useUsers()
   const groupMsgs = allMessages.filter(m => !m.destinataire)
   const lastGroup = groupMsgs[groupMsgs.length - 1]
   const groupUnread = groupMsgs.filter(m =>
     m.author !== myName && new Date(m.createdAt).getTime() > (lastRead.current[convKey('group')] || 0)
   ).length
 
-  const others = presence.filter(u => u.username !== myName)
+  // Merge app users (source of truth) with presence data for online status
+  const others = appUsers
+    .filter(u => u.name !== myName)
+    .map(u => {
+      const p = presence.find(pr => pr.username === u.name)
+      return {
+        id: u.name,
+        username: u.name,
+        color: u.color,
+        lastSeen: p?.lastSeen || '',
+        connectedAt: p?.connectedAt || '',
+        online: p?.online || false,
+      }
+    })
 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -231,7 +247,7 @@ function ConvList({
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div style={{
                 width: 38, height: 38, borderRadius: '50%',
-                background: authorColor(user.username), color: 'white',
+                background: user.color || authorColor(user.username), color: 'white',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 700,
               }}>
@@ -335,7 +351,7 @@ function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; show
 // ── Main Chat Component ───────────────────────────────────────────────────────
 
 export function Chat() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const myName = session?.user?.name || ''
 
   const [open, setOpen] = useState(false)
@@ -460,6 +476,8 @@ export function Chat() {
   const activeUser = activeConv?.type === 'dm'
     ? presence.find(u => u.username === activeConv.with)
     : null
+
+  if (status === 'unauthenticated' || !myName) return null
 
   return (
     <>

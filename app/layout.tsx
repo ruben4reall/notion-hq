@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <TopNav />
-          <main style={{ paddingTop: '56px' }}>
+          <main>
             <PageTransition>{children}</PageTransition>
           </main>
           <BottomNav />

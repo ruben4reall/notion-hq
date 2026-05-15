@@ -312,25 +312,42 @@ export interface PresenceEntry {
   id: string
   username: string
   lastSeen: string
+  connectedAt: string
   online: boolean
 }
 
 export async function getPresence(): Promise<PresenceEntry[]> {
   const { data, error } = await getClient()
     .from('presence')
-    .select('id, username, last_seen')
+    .select('id, username, last_seen, connected_at')
     .limit(10)
   if (error) throw error
   return (data || []).map(r => {
     const online = Date.now() - new Date(r.last_seen).getTime() < 2 * 60 * 1000
-    return { id: r.id, username: r.username, lastSeen: r.last_seen, online }
+    return {
+      id: r.id,
+      username: r.username,
+      lastSeen: r.last_seen,
+      connectedAt: r.connected_at || r.last_seen,
+      online,
+    }
   })
 }
 
 export async function upsertPresence(username: string): Promise<void> {
+  const now = new Date().toISOString()
+  const { data: existing } = await getClient()
+    .from('presence')
+    .select('last_seen, connected_at')
+    .eq('username', username)
+    .maybeSingle()
+
+  const wasOffline = !existing || Date.now() - new Date(existing.last_seen).getTime() > 2 * 60 * 1000
+  const connectedAt = wasOffline ? now : (existing?.connected_at ?? now)
+
   const { error } = await getClient()
     .from('presence')
-    .upsert({ username, last_seen: new Date().toISOString() }, { onConflict: 'username' })
+    .upsert({ username, last_seen: now, connected_at: connectedAt }, { onConflict: 'username' })
   if (error) throw error
 }
 
