@@ -67,7 +67,7 @@ export function BottomNav() {
   const path = usePathname()
   const isMoreActive = MORE_PAGES.includes(path)
 
-  if (path === '/login') return null
+  if (path === '/login' || path.startsWith('/auth') || path.startsWith('/org')) return null
 
   return (
     <nav

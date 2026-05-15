@@ -44,7 +44,7 @@ export function TopNav() {
   const streak = useStreak()
   const initials = session?.name?.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) ?? '?'
 
-  if (path === '/login' || path === '/auth') return null
+  if (path === '/login' || path.startsWith('/auth') || path.startsWith('/org')) return null
 
   return (
     <header

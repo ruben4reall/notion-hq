@@ -31,6 +31,8 @@ function AuthForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [celebrating, setCelebrating] = useState(false)
+  const [celebText, setCelebText] = useState('Bienvenue !')
 
   useEffect(() => {
     supabase.auth.getSession().then((res: Awaited<ReturnType<typeof supabase.auth.getSession>>) => {
@@ -49,7 +51,10 @@ function AuthForm() {
       return
     }
     playLoginSound()
-    router.push(redirect)
+    setLoading(false)
+    setCelebText('Bienvenue !')
+    setCelebrating(true)
+    setTimeout(() => router.push(redirect), 1300)
   }
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -73,11 +78,55 @@ function AuthForm() {
       setLoading(false)
       return
     }
-    setSuccess('Vérifiez votre email pour confirmer votre compte.')
     setLoading(false)
+    setCelebText('Compte créé !')
+    setCelebrating(true)
+    setTimeout(() => {
+      setCelebrating(false)
+      setSuccess('Vérifiez votre email pour confirmer votre compte.')
+    }, 1300)
   }
 
   return (
+    <>
+    {celebrating && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', pointerEvents: 'none',
+      }}>
+        {/* Ripple expanding circle */}
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'var(--accent)', flexShrink: 0,
+          animation: 'auth-ripple 1.3s var(--ease-out) forwards',
+        }} />
+        {/* Logo + text on top */}
+        <div style={{
+          position: 'absolute',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18,
+        }}>
+          <div style={{
+            width: 68, height: 68, borderRadius: 22,
+            background: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+            animation: 'auth-logo-bounce 0.7s var(--ease-spring) 0.2s both',
+          }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="var(--accent)">
+              <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+            </svg>
+          </div>
+          <p style={{
+            fontSize: 22, fontWeight: 800, color: 'white',
+            letterSpacing: '-0.02em',
+            animation: 'auth-text-in 0.5s var(--ease-spring) 0.45s both',
+          }}>
+            {celebText}
+          </p>
+        </div>
+      </div>
+    )}
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center',
       justifyContent: 'center', background: 'var(--bg-0)', padding: 20,
@@ -274,6 +323,7 @@ function AuthForm() {
         )}
       </div>
     </div>
+    </>
   )
 }
 
