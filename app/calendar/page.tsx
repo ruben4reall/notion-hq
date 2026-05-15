@@ -191,15 +191,15 @@ function CalendarContent() {
   const load = useCallback(async () => {
     setLoading(true)
     const [taskRes, eventRes, gcalRes] = await Promise.all([
-      fetch('/api/tasks').then(r => r.json()).catch(() => []),
-      fetch('/api/events').then(r => r.json()).catch(() => []),
-      fetch('/api/google-calendar/events').then(r => r.json()).catch(() => ({ events: [], connected: false })),
+      fetch('/api/tasks').then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch('/api/events').then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch('/api/google-calendar/events').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false })),
     ])
-    setTasks(taskRes)
-    setEvents(eventRes)
-    setGoogleEvents(gcalRes.events || [])
-    setGcalConnected(gcalRes.connected || false)
-    setGcalConfigured(gcalRes.connected !== undefined)
+    setTasks(Array.isArray(taskRes) ? taskRes : [])
+    setEvents(Array.isArray(eventRes) ? eventRes : [])
+    setGoogleEvents(Array.isArray(gcalRes?.events) ? gcalRes.events : [])
+    setGcalConnected(gcalRes?.connected || false)
+    setGcalConfigured(gcalRes?.connected !== undefined)
     setLoading(false)
   }, [])
 

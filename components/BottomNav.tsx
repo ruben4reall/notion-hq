@@ -85,7 +85,7 @@ export function BottomNav() {
         WebkitBackdropFilter: 'blur(24px)',
         borderTop: '1px solid var(--border-s)',
         paddingBottom: 'env(safe-area-inset-bottom)',
-        backgroundColor: 'color-mix(in srgb, var(--bg-0) 90%, transparent)',
+        background: 'var(--nav-bg, rgba(7,7,16,0.88))',
       }}
     >
       <div className="flex items-center justify-around h-16">

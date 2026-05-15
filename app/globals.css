@@ -17,6 +17,7 @@
   --t1: #8888b0;
   --t2: #50507a;
 
+  --nav-bg: rgba(7,7,16,0.88);
   --accent: #7c6af5;
   --accent-bg: rgba(124, 106, 245, 0.12);
   --accent-glow: rgba(124, 106, 245, 0.25);
@@ -34,6 +35,7 @@
 }
 
 html.light {
+  --nav-bg: rgba(242,242,247,0.88);
   --bg-0: #f2f2f7;
   --bg-1: #ffffff;
   --bg-2: #f0f0f5;

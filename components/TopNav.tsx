@@ -27,11 +27,10 @@ export function TopNav() {
     <header
       className="fixed top-0 left-0 right-0 z-50 h-14"
       style={{
-        background: 'rgba(var(--nav-bg, 7, 7, 16), 0.9)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderBottom: '1px solid var(--border-s)',
-        backgroundColor: 'color-mix(in srgb, var(--bg-0) 90%, transparent)',
+        background: 'var(--nav-bg, rgba(7,7,16,0.88))',
       }}
     >
       <div className="flex items-center h-full px-5 max-w-[1280px] mx-auto">
