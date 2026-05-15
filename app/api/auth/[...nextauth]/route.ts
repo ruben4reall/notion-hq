@@ -2,8 +2,8 @@ import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
 const USERS = [
-  { id: '1', name: process.env.USER1_NAME!, email: process.env.USER1_EMAIL!, password: process.env.USER1_PASSWORD! },
-  { id: '2', name: process.env.USER2_NAME!, email: process.env.USER2_EMAIL!, password: process.env.USER2_PASSWORD! },
+  { id: '1', name: process.env.USER1_NAME!, username: process.env.USER1_USERNAME!, password: process.env.USER1_PASSWORD! },
+  { id: '2', name: process.env.USER2_NAME!, username: process.env.USER2_USERNAME!, password: process.env.USER2_PASSWORD! },
 ]
 
 const handler = NextAuth({
@@ -11,14 +11,15 @@ const handler = NextAuth({
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        username: { label: 'Identifiant', type: 'text' },
         password: { label: 'Mot de passe', type: 'password' },
       },
       async authorize(credentials) {
         const user = USERS.find(
-          u => u.email === credentials?.email && u.password === credentials?.password
+          u => u.username === credentials?.username && u.password === credentials?.password
         )
-        return user ?? null
+        if (!user) return null
+        return { id: user.id, name: user.name }
       },
     }),
   ],
@@ -31,7 +32,7 @@ const handler = NextAuth({
       return token
     },
     session({ session, token }) {
-      if (session.user) { session.user.name = token.name as string }
+      if (session.user) session.user.name = token.name as string
       return session
     },
   },

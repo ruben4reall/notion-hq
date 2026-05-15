@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,12 +15,12 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const result = await signIn('credentials', { email, password, redirect: false })
+    const result = await signIn('credentials', { username, password, redirect: false })
     if (result?.ok) {
       router.push('/')
       router.refresh()
     } else {
-      setError('Email ou mot de passe incorrect')
+      setError('Identifiant ou mot de passe incorrect')
       setLoading(false)
     }
   }
@@ -38,7 +38,6 @@ export default function LoginPage() {
       justifyContent: 'center', background: 'var(--bg-0)', padding: 20,
     }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{
             width: 52, height: 52, borderRadius: 16, background: 'var(--accent)',
@@ -61,11 +60,11 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', display: 'block', marginBottom: 7, letterSpacing: '0.02em' }}>
-              EMAIL
+              IDENTIFIANT
             </label>
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              required placeholder="vous@exemple.com" style={inputStyle}
+              type="text" value={username} onChange={e => setUsername(e.target.value)}
+              required placeholder="Prénom.Nom" style={inputStyle} autoComplete="username"
               onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
             />
@@ -76,7 +75,7 @@ export default function LoginPage() {
             </label>
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required placeholder="••••••••" style={inputStyle}
+              required placeholder="••••••••••••••••" style={inputStyle} autoComplete="current-password"
               onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
             />
