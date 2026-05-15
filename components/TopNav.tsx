@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
-import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 import { PresenceIndicator } from './PresenceIndicator'
 import { TimeWidget } from './TimeWidget'
+import { useEffect, useState } from 'react'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -20,11 +20,29 @@ const links = [
   { href: '/notes', label: 'Notes' },
 ]
 
+function useStreak() {
+  const [streak, setStreak] = useState(0)
+  useEffect(() => {
+    fetch('/api/streak').then(r => r.json()).then(d => setStreak(d.streak ?? 0)).catch(() => {})
+  }, [])
+  return streak
+}
+
+function streakEmoji(n: number) {
+  if (n >= 30) return '👑'
+  if (n >= 14) return '🔥'
+  if (n >= 7)  return '💪'
+  if (n >= 4)  return '🌟'
+  if (n >= 1)  return '⚡'
+  return null
+}
+
 export function TopNav() {
   const path = usePathname()
   const { data: session } = useSession()
   const [showMenu, setShowMenu] = useState(false)
-  const initials = session?.user?.name?.charAt(0).toUpperCase() ?? '?'
+  const streak = useStreak()
+  const initials = session?.user?.name?.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) ?? '?'
 
   if (path === '/login') return null
 
@@ -116,9 +134,27 @@ export function TopNav() {
                   <div className="dropdown-enter" style={{
                     position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
                     background: 'var(--bg-2)', border: '1px solid var(--border-m)',
-                    borderRadius: 10, padding: 4, minWidth: 160,
+                    borderRadius: 10, padding: 4, minWidth: 180,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
                   }}>
+
+                    {/* Streak badge */}
+                    {streak > 0 && (
+                      <div style={{
+                        padding: '8px 12px 10px', marginBottom: 2,
+                        borderBottom: '1px solid var(--border-s)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}>
+                        <span style={{ fontSize: 18 }}>{streakEmoji(streak)}</span>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', lineHeight: 1.2 }}>
+                            {streak} jour{streak > 1 ? 's' : ''} de streak
+                          </p>
+                          <p style={{ fontSize: 11, color: 'var(--t2)' }}>Connecté {streak} jour{streak > 1 ? 's' : ''} d'affilée</p>
+                        </div>
+                      </div>
+                    )}
+
                     <Link
                       href="/settings"
                       onClick={() => setShowMenu(false)}

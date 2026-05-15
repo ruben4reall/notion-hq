@@ -3,6 +3,19 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { getClient } from '@/lib/db'
 
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.name) return NextResponse.json({ streak: 0, longest: 0 })
+
+  const { data } = await getClient()
+    .from('presence')
+    .select('current_streak, longest_streak')
+    .eq('username', session.user.name)
+    .maybeSingle()
+
+  return NextResponse.json({ streak: data?.current_streak ?? 0, longest: data?.longest_streak ?? 0 })
+}
+
 export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.name) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
