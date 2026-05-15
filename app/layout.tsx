@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { TopNav } from '@/components/TopNav'
 import { BottomNav } from '@/components/BottomNav'
+import { Chat } from '@/components/Chat'
 import { Providers } from '@/components/Providers'
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           <BottomNav />
+          <Chat />
         </Providers>
       </body>
     </html>

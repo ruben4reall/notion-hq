@@ -10,6 +10,7 @@ const DB = {
   EVENTS:   process.env.NOTION_EVENTS_DB!,
   NOTIFS:   process.env.NOTION_NOTIFS_DB!,
   PRESENCE: process.env.NOTION_PRESENCE_DB!,
+  CHAT:     process.env.NOTION_CHAT_DB!,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -321,6 +322,44 @@ export async function upsertPresence(username: string): Promise<void> {
       'En ligne': { checkbox: true },
     }})
   }
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string
+  author: string
+  message: string
+  createdAt: string
+}
+
+export async function getChatMessages(limit = 50): Promise<ChatMessage[]> {
+  if (!process.env.NOTION_CHAT_DB) return []
+  const res = await notion.databases.query({
+    database_id: DB.CHAT,
+    sorts: [{ timestamp: 'created_time', direction: 'ascending' }],
+    page_size: limit,
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return res.results.map((p: any) => ({
+    id: p.id,
+    author: t(p.properties['Auteur']),
+    message: r(p.properties['Message']),
+    createdAt: p.created_time,
+  }))
+}
+
+export async function sendChatMessage(author: string, message: string): Promise<void> {
+  if (!process.env.NOTION_CHAT_DB) return
+  const trimmed = message.trim().slice(0, 2000)
+  if (!trimmed) return
+  await notion.pages.create({
+    parent: { database_id: DB.CHAT },
+    properties: {
+      'Auteur':  { title: [{ text: { content: author } }] },
+      'Message': { rich_text: [{ text: { content: trimmed } }] },
+    },
+  })
 }
 
 // ── USER SETTINGS (stored in presence DB) ────────────────────────────────────
