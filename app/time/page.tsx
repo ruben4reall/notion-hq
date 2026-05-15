@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
+import { useTimer } from '@/lib/timer-context'
 
 interface TimeSession {
   id: string
@@ -53,6 +54,7 @@ function getCatEmoji(cat: string) {
 }
 
 export default function TimePage() {
+  const { setActive: setTimerCtx } = useTimer()
   const [sessions, setSessions] = useState<TimeSession[]>([])
   const [active, setActive] = useState<TimeSession | null>(null)
   const [elapsed, setElapsed] = useState(0)
@@ -92,7 +94,11 @@ export default function TimePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ categorie: selectedCat }),
     })
-    if (res.ok) { const s = await res.json(); setActive(s) }
+    if (res.ok) {
+      const s = await res.json()
+      setActive(s)
+      setTimerCtx({ id: s.id, categorie: s.categorie, debut: s.debut })
+    }
   }
 
   const stop = async () => {
@@ -100,6 +106,7 @@ export default function TimePage() {
     await fetch(`/api/time/${active.id}`, { method: 'PATCH' })
     setActive(null)
     setElapsed(0)
+    setTimerCtx(null)
     await load()
   }
 
