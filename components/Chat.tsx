@@ -360,6 +360,7 @@ export function Chat() {
   isOpen.current = open
 
   const loadMessages = useCallback(async () => {
+    if (document.hidden) return
     try {
       const res = await fetch('/api/chat')
       if (!res.ok) return
@@ -379,6 +380,7 @@ export function Chat() {
   }, [myName])
 
   const loadPresence = useCallback(async () => {
+    if (document.hidden) return
     try {
       const res = await fetch('/api/presence')
       if (res.ok) setPresence(await res.json())
@@ -414,6 +416,20 @@ export function Chat() {
     setSending(true)
     if (!msgOverride) setInput('')
     setShowGif(false)
+
+    // Optimistic update — show message immediately
+    const optimisticId = `opt-${Date.now()}`
+    const optimistic: ChatMessage = {
+      id: optimisticId,
+      author: myName,
+      message: msg,
+      destinataire: activeConv?.type === 'dm' ? (activeConv.with || '') : '',
+      createdAt: new Date().toISOString(),
+    }
+    setAllMessages(prev => [...prev, optimistic])
+    prevCount.current += 1
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 40)
+
     try {
       await fetch('/api/chat', {
         method: 'POST',
@@ -421,9 +437,11 @@ export function Chat() {
         body: JSON.stringify({ message: msg, destinataire: activeConv?.type === 'dm' ? activeConv.with : '' }),
       })
       await loadMessages()
-    } catch {}
+    } catch {
+      setAllMessages(prev => prev.filter(m => m.id !== optimisticId))
+      prevCount.current -= 1
+    }
     setSending(false)
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
   }
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -481,7 +499,7 @@ export function Chat() {
 
       {/* Chat window */}
       {open && (
-        <div style={{
+        <div className="float-enter" style={{
           position: 'fixed', bottom: 152, right: 16, zIndex: 99,
           width: 340, height: 460,
           background: 'var(--bg-1)', border: '1px solid var(--border-m)',
@@ -582,7 +600,12 @@ export function Chat() {
                   currentMessages.map((msg, i) => {
                     const isMe = msg.author === myName
                     const showMeta = i === 0 || currentMessages[i - 1].author !== msg.author
-                    return <Bubble key={msg.id} msg={msg} isMe={isMe} showMeta={showMeta} />
+                    const isRecent = Date.now() - new Date(msg.createdAt).getTime() < 3000
+                    return (
+                      <div key={msg.id} className={isRecent ? 'bubble-enter' : undefined}>
+                        <Bubble msg={msg} isMe={isMe} showMeta={showMeta} />
+                      </div>
+                    )
                   })
                 )}
                 <div ref={bottomRef} />

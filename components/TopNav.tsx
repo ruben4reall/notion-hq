@@ -107,7 +107,7 @@ export function TopNav() {
                     style={{ position: 'fixed', inset: 0, zIndex: 40 }}
                     onClick={() => setShowMenu(false)}
                   />
-                  <div style={{
+                  <div className="dropdown-enter" style={{
                     position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
                     background: 'var(--bg-2)', border: '1px solid var(--border-m)',
                     borderRadius: 10, padding: 4, minWidth: 160,

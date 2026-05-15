@@ -32,6 +32,7 @@ export function PresenceIndicator() {
   }, [session?.user?.name])
 
   const loadPresence = useCallback(async () => {
+    if (document.hidden) return
     try {
       const res = await fetch('/api/presence')
       if (!res.ok) return

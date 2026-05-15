@@ -6,6 +6,7 @@ import { TopNav } from '@/components/TopNav'
 import { BottomNav } from '@/components/BottomNav'
 import { Chat } from '@/components/Chat'
 import { Providers } from '@/components/Providers'
+import { PageTransition } from '@/components/PageTransition'
 
 export const metadata: Metadata = {
   title: 'Manager Dashboard',
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <TopNav />
           <main style={{ paddingTop: '56px' }}>
-            {children}
+            <PageTransition>{children}</PageTransition>
           </main>
           <BottomNav />
           <Chat />

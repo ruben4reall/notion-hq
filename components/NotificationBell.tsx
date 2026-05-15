@@ -33,6 +33,7 @@ export function NotificationBell() {
   const prevUnread = useRef(0)
 
   const load = useCallback(async () => {
+    if (document.hidden) return
     try {
       const res = await fetch('/api/notifications')
       if (!res.ok) return
@@ -102,7 +103,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div style={{
+        <div className="dropdown-enter" style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 200,
           width: 320, background: 'var(--bg-1)',
           border: '1px solid var(--border-m)', borderRadius: 12,
