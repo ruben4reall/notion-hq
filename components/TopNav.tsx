@@ -158,6 +158,22 @@ export function TopNav() {
                     )}
 
                     <Link
+                      href="/org"
+                      onClick={() => setShowMenu(false)}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 7,
+                        color: 'var(--t1)', fontSize: 13, fontWeight: 500,
+                        textDecoration: 'none',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M16 3H8a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.8"/>
+                        <path d="M12 3v4M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      </svg>
+                      Changer de projet
+                    </Link>
+                    <Link
                       href="/settings"
                       onClick={() => setShowMenu(false)}
                       style={{
