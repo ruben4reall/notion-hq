@@ -1,24 +1,50 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { signIn, useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
+  const { status } = useSession()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/'
+
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+
+  // Déjà connecté → on envoie direct au dashboard
+  useEffect(() => {
+    if (status === 'authenticated') {
+      window.location.href = '/'
+    }
+  }, [status])
+
+  if (status === 'authenticated' || status === 'loading') {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-0)' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--border-m)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const result = await signIn('credentials', { username, password, redirect: false })
+
+    const result = await signIn('credentials', {
+      username,
+      password,
+      redirect: false,
+    })
+
     if (result?.ok) {
-      router.push('/')
-      router.refresh()
+      // Hard redirect pour que le cookie de session soit bien lu
+      window.location.href = callbackUrl
     } else {
       setError('Identifiant ou mot de passe incorrect')
       setLoading(false)
@@ -42,8 +68,7 @@ export default function LoginPage() {
           <div style={{
             width: 52, height: 52, borderRadius: 16, background: 'var(--accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 32px var(--accent-glow)',
+            margin: '0 auto 16px', boxShadow: '0 8px 32px var(--accent-glow)',
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
               <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
@@ -64,7 +89,8 @@ export default function LoginPage() {
             </label>
             <input
               type="text" value={username} onChange={e => setUsername(e.target.value)}
-              required placeholder="Prénom.Nom" style={inputStyle} autoComplete="username"
+              required placeholder="Prénom.Nom" style={inputStyle}
+              autoComplete="username" autoFocus
               onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
             />
@@ -75,7 +101,8 @@ export default function LoginPage() {
             </label>
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required placeholder="••••••••••••••••" style={inputStyle} autoComplete="current-password"
+              required placeholder="••••••••••••••••" style={inputStyle}
+              autoComplete="current-password"
               onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
               onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
             />
@@ -97,14 +124,30 @@ export default function LoginPage() {
               marginTop: 4, height: 44, width: '100%',
               background: loading ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
               color: 'white', border: 'none', borderRadius: 10,
-              fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: 14, fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'opacity 0.15s', letterSpacing: '0.01em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            {loading ? 'Connexion…' : 'Se connecter'}
+            {loading ? (
+              <>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
+                Connexion…
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </>
+            ) : 'Se connecter'}
           </button>
         </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
