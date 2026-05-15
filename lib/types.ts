@@ -9,6 +9,7 @@ export interface Task {
   dateEnd: string
   modifiedBy: string
   lastEdited: string
+  createdAt: string
 }
 
 export interface CRMEntry {
@@ -52,4 +53,12 @@ export interface KPIData {
   tasksByStatus: Record<string, number>
   recentTasks: Task[]
   topIdeas: Idea[]
+  // métriques 24h
+  tasksLast24h: number
+  tasksPrev24h: number
+  tasksDelta: number
+  completedLast24h: number
+  completionRate: number
+  crmConversionRate: number
+  taskVelocity: number
 }

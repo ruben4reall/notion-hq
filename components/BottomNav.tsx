@@ -40,6 +40,16 @@ const items = [
     ),
   },
   {
+    href: '/roadmap',
+    label: 'Roadmap',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M3 6h18M3 12h12M3 18h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="19" cy="18" r="2" stroke="currentColor" strokeWidth="1.5"/>
+      </svg>
+    ),
+  },
+  {
     href: '/ideas',
     label: 'Idées',
     icon: (

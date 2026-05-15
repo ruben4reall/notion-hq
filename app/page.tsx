@@ -82,6 +82,35 @@ function KPICard({
   )
 }
 
+function MetricCard({ label, value, delta, sub, color }: {
+  label: string; value: number | string; delta?: number; sub?: string; color: string
+}) {
+  const hasDelta = delta !== undefined
+  const isUp = delta !== undefined && delta >= 0
+  return (
+    <div className="card animate-in" style={{ padding: '16px 20px' }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em', marginBottom: 8 }}>
+        {label.toUpperCase()}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <p style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: '-0.03em', lineHeight: 1 }}>
+          {value}
+        </p>
+        {hasDelta && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+            background: isUp ? 'rgba(14,201,140,0.12)' : 'rgba(244,63,94,0.12)',
+            color: isUp ? '#0ec98c' : '#f43f5e',
+          }}>
+            {isUp ? '▲' : '▼'} {Math.abs(delta)}%
+          </span>
+        )}
+      </div>
+      {sub && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 5 }}>{sub}</p>}
+    </div>
+  )
+}
+
 function TaskRow({ task }: { task: Task }) {
   const sc = STATUS_COLORS[task.status] || '#6b7280'
   const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
@@ -191,8 +220,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+      {/* KPIs principaux */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <KPICard
           label="Tâches en cours"
           value={data.tasksInProgress}
@@ -240,6 +269,35 @@ export default function DashboardPage() {
               <path d="M10 19h4M9.5 22h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           }
+        />
+      </div>
+
+      {/* Métriques 24h */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+        <MetricCard
+          label="Ajoutées 24h"
+          value={data.tasksLast24h}
+          delta={data.tasksDelta}
+          sub={`vs ${data.tasksPrev24h} hier`}
+          color="#7c6af5"
+        />
+        <MetricCard
+          label="Terminées 24h"
+          value={data.completedLast24h}
+          color="#0ec98c"
+          sub="tâches finies"
+        />
+        <MetricCard
+          label="Taux complétion"
+          value={`${data.completionRate}%`}
+          color="#4f8ef7"
+          sub={`${data.tasksByStatus['Done'] ?? 0} / ${data.totalTasks} tâches`}
+        />
+        <MetricCard
+          label="Conversion CRM"
+          value={`${data.crmConversionRate}%`}
+          color="#f59e0b"
+          sub={`vélocité ${data.taskVelocity} tâche/j`}
         />
       </div>
 

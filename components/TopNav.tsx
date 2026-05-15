@@ -8,6 +8,7 @@ import { useState } from 'react'
 const links = [
   { href: '/', label: 'Dashboard' },
   { href: '/kanban', label: 'Kanban' },
+  { href: '/roadmap', label: 'Roadmap' },
   { href: '/crm', label: 'CRM' },
   { href: '/ideas', label: 'Idées' },
 ]

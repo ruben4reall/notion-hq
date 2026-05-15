@@ -5,6 +5,37 @@ export async function GET() {
   try {
     const [tasks, crm, ideas] = await Promise.all([getTasks(), getCRM(), getIdeas()])
 
+    const now = Date.now()
+    const h24  = 24 * 60 * 60 * 1000
+    const h48  = 48 * 60 * 60 * 1000
+    const h168 = 7  * 24 * 60 * 60 * 1000
+
+    const tasksLast24h = tasks.filter(t => now - new Date(t.createdAt).getTime() < h24).length
+    const tasksPrev24h = tasks.filter(t => {
+      const age = now - new Date(t.createdAt).getTime()
+      return age >= h24 && age < h48
+    }).length
+    const tasksDelta = tasksPrev24h === 0
+      ? (tasksLast24h > 0 ? 100 : 0)
+      : Math.round(((tasksLast24h - tasksPrev24h) / tasksPrev24h) * 100)
+
+    const completedLast24h = tasks.filter(
+      t => t.status === 'Done' && now - new Date(t.lastEdited).getTime() < h24
+    ).length
+
+    const doneTasks = tasks.filter(t => t.status === 'Done').length
+    const completionRate = tasks.length > 0 ? Math.round((doneTasks / tasks.length) * 100) : 0
+
+    const crmTotal = crm.filter(c => c.status !== 'Refus').length
+    const crmConversionRate = crmTotal > 0
+      ? Math.round((crm.filter(c => c.status === 'Client').length / crmTotal) * 100)
+      : 0
+
+    const doneLastWeek = tasks.filter(
+      t => t.status === 'Done' && now - new Date(t.lastEdited).getTime() < h168
+    ).length
+    const taskVelocity = Math.round((doneLastWeek / 7) * 10) / 10
+
     const kpis = {
       tasksInProgress: tasks.filter(t => t.status === 'En cours').length,
       activeProspects: crm.filter(c =>
@@ -16,14 +47,21 @@ export async function GET() {
       totalCRM: crm.length,
       totalIdeas: ideas.length,
       tasksByStatus: {
-        Backlog: tasks.filter(t => t.status === 'Backlog').length,
-        'À faire': tasks.filter(t => t.status === 'À faire').length,
+        Backlog:    tasks.filter(t => t.status === 'Backlog').length,
+        'À faire':  tasks.filter(t => t.status === 'À faire').length,
         'En cours': tasks.filter(t => t.status === 'En cours').length,
-        Review: tasks.filter(t => t.status === 'Review').length,
-        Done: tasks.filter(t => t.status === 'Done').length,
+        Review:     tasks.filter(t => t.status === 'Review').length,
+        Done:       doneTasks,
       },
       recentTasks: tasks.slice(0, 6),
       topIdeas: ideas.slice(0, 5),
+      tasksLast24h,
+      tasksPrev24h,
+      tasksDelta,
+      completedLast24h,
+      completionRate,
+      crmConversionRate,
+      taskVelocity,
     }
 
     return NextResponse.json(kpis)

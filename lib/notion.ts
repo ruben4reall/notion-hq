@@ -36,6 +36,7 @@ export async function getTasks(): Promise<Task[]> {
     dateEnd: d(p.properties['Date de fin']),
     modifiedBy: r(p.properties['Modifié par']),
     lastEdited: p.last_edited_time ?? '',
+    createdAt: p.created_time ?? '',
   }))
 }
 
