@@ -4,8 +4,16 @@
 // and only runs new ones. Safe to run multiple times.
 
 const { Client } = require('pg')
+const dns = require('dns').promises
 const fs = require('fs')
 const path = require('path')
+
+// GitHub Actions runners have no IPv6 routing. Supabase's direct host resolves
+// to an IPv6 address, so we resolve explicitly to IPv4 before connecting.
+async function resolveIPv4(hostname) {
+  const { address } = await dns.lookup(hostname, { family: 4 })
+  return address
+}
 
 async function migrate() {
   const connectionString = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL
@@ -14,10 +22,18 @@ async function migrate() {
     process.exit(1)
   }
 
+  // Parse the connection string and force IPv4
+  const parsed = new URL(connectionString)
+  const ipv4 = await resolveIPv4(parsed.hostname)
+  console.log(`🔍  ${parsed.hostname} → ${ipv4}`)
+  const ipv4ConnString = connectionString.replace(parsed.hostname, ipv4)
+
   const client = new Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    family: 4, // GitHub Actions runners don't support IPv6
+    connectionString: ipv4ConnString,
+    ssl: {
+      rejectUnauthorized: false,
+      servername: parsed.hostname, // keep original hostname for SNI/SSL
+    },
   })
 
   await client.connect()
