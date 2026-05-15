@@ -1,0 +1,259 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import type { KPIData, Task } from '@/lib/types'
+
+const STATUS_COLORS: Record<string, string> = {
+  Backlog:  '#6b7280',
+  'À faire':'#4f8ef7',
+  'En cours':'#7c6af5',
+  Review:   '#f59e0b',
+  Done:     '#0ec98c',
+}
+
+const PRIORITY_COLOR: Record<string, string> = {
+  P0: '#f43f5e', P1: '#f59e0b', P2: '#6b7280',
+}
+
+function fmtDate(d: string) {
+  if (!d) return ''
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(d))
+}
+
+function KPICard({
+  label, value, sub, color, icon,
+}: {
+  label: string
+  value: number | string
+  sub?: string
+  color: string
+  icon: React.ReactNode
+}) {
+  return (
+    <div className="card animate-in" style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute', top: -20, right: -20,
+        width: 80, height: 80, borderRadius: '50%',
+        background: `${color}0d`,
+      }} />
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: `${color}18`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 14, color,
+      }}>
+        {icon}
+      </div>
+      <p style={{ fontSize: 32, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+        {value}
+      </p>
+      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--t1)', marginTop: 6 }}>{label}</p>
+      {sub && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>{sub}</p>}
+    </div>
+  )
+}
+
+function TaskRow({ task }: { task: Task }) {
+  const sc = STATUS_COLORS[task.status] || '#6b7280'
+  const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+      borderBottom: '1px solid var(--border-s)',
+    }}>
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: sc, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {task.title || 'Sans titre'}
+        </p>
+        {task.module && (
+          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>{task.module}</p>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {task.priority && (
+          <span style={{ fontSize: 10, fontWeight: 600, color: pc }}>{task.priority}</span>
+        )}
+        {task.dateEnd && (
+          <span style={{ fontSize: 11, color: 'var(--t2)' }}>{fmtDate(task.dateEnd)}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProgressBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? (value / total) * 100 : 0
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 12, color: 'var(--t1)' }}>{label}</span>
+        <span style={{ fontSize: 12, color: 'var(--t2)' }}>{value}</span>
+      </div>
+      <div style={{ height: 4, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 100, transition: 'width 0.6s ease' }} />
+      </div>
+    </div>
+  )
+}
+
+function Skeleton() {
+  return (
+    <div style={{ padding: '0' }}>
+      <div className="skeleton" style={{ height: 32, width: 200, borderRadius: 8, marginBottom: 6 }} />
+      <div className="skeleton" style={{ height: 14, width: 160, borderRadius: 6, marginBottom: 28 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 28 }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="skeleton" style={{ height: 110, borderRadius: 12 }} />
+        ))}
+      </div>
+      <div className="skeleton" style={{ height: 200, borderRadius: 12, marginBottom: 12 }} />
+      <div className="skeleton" style={{ height: 180, borderRadius: 12 }} />
+    </div>
+  )
+}
+
+export default function DashboardPage() {
+  const [data, setData] = useState<KPIData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const today = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date())
+
+  useEffect(() => {
+    fetch('/api/kpis')
+      .then(r => r.json())
+      .then(setData)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="page-container"><Skeleton /></div>
+  if (!data) return null
+
+  const tasksByStatus = data.tasksByStatus as Record<string, number>
+
+  return (
+    <div className="page-container animate-in">
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 className="page-title">Bonjour 👋</h1>
+        <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{today}</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+        <KPICard
+          label="Tâches en cours"
+          value={data.tasksInProgress}
+          sub={`sur ${data.totalTasks} total`}
+          color="#7c6af5"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          }
+        />
+        <KPICard
+          label="Prospects actifs"
+          value={data.activeProspects}
+          sub="Contacté → Offre"
+          color="#4f8ef7"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          }
+        />
+        <KPICard
+          label="Clients signés"
+          value={data.signedClients}
+          sub={`sur ${data.totalCRM} prospects`}
+          color="#0ec98c"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          }
+        />
+        <KPICard
+          label="Idées validées"
+          value={data.validatedIdeas}
+          sub={`sur ${data.totalIdeas} idées`}
+          color="#f59e0b"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C8.686 2 6 4.686 6 8c0 2.21 1.118 4.156 2.83 5.315C9.517 13.867 10 14.612 10 15.5V16h4v-.5c0-.888.483-1.633 1.17-2.185C16.882 12.156 18 10.21 18 8c0-3.314-2.686-6-6-6z" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M10 19h4M9.5 22h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          }
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Recent Tasks */}
+        <div className="card lg:col-span-2" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <p className="section-title" style={{ margin: 0 }}>Tâches récentes</p>
+            <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>
+              Voir Kanban →
+            </Link>
+          </div>
+          {data.recentTasks.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>Aucune tâche</p>
+          ) : (
+            data.recentTasks.map(t => <TaskRow key={t.id} task={t} />)
+          )}
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Pipeline summary */}
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p className="section-title" style={{ margin: 0 }}>Pipeline tâches</p>
+              <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>→</Link>
+            </div>
+            <ProgressBar label="Backlog"  value={tasksByStatus['Backlog'] || 0}  total={data.totalTasks} color="#6b7280" />
+            <ProgressBar label="À faire"  value={tasksByStatus['À faire'] || 0}  total={data.totalTasks} color="#4f8ef7" />
+            <ProgressBar label="En cours" value={tasksByStatus['En cours'] || 0} total={data.totalTasks} color="#7c6af5" />
+            <ProgressBar label="Review"   value={tasksByStatus['Review'] || 0}   total={data.totalTasks} color="#f59e0b" />
+            <ProgressBar label="Done"     value={tasksByStatus['Done'] || 0}     total={data.totalTasks} color="#0ec98c" />
+          </div>
+
+          {/* Top ideas */}
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <p className="section-title" style={{ margin: 0 }}>Top idées</p>
+              <Link href="/ideas" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>→</Link>
+            </div>
+            {data.topIdeas.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '10px 0' }}>Aucune idée</p>
+            ) : (
+              data.topIdeas.map(idea => (
+                <div key={idea.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                  borderBottom: '1px solid var(--border-s)',
+                }}>
+                  <span style={{
+                    fontSize: 13, fontWeight: 700, color: 'var(--accent)',
+                    minWidth: 24, textAlign: 'center',
+                  }}>
+                    {idea.votes}
+                  </span>
+                  <p style={{ fontSize: 12, color: 'var(--t0)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {idea.title || 'Sans titre'}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
