@@ -37,7 +37,7 @@ export function PresenceIndicator() {
       if (!res.ok) return
       const data: PresenceEntry[] = await res.json()
       const currentOnline = new Set(data.filter(u => u.online).map(u => u.id))
-      const hasNew = [...currentOnline].some(id => !prevOnline.current.has(id))
+      const hasNew = Array.from(currentOnline).some(id => !prevOnline.current.has(id))
       if (hasNew && prevOnline.current.size > 0) playPresenceSound()
       prevOnline.current = currentOnline
       setUsers(data)
