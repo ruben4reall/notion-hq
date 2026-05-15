@@ -17,6 +17,7 @@ async function migrate() {
   const client = new Client({
     connectionString,
     ssl: { rejectUnauthorized: false },
+    family: 4, // GitHub Actions runners don't support IPv6
   })
 
   await client.connect()
