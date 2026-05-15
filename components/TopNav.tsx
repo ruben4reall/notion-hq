@@ -12,10 +12,12 @@ import { TimeWidget } from './TimeWidget'
 const links = [
   { href: '/', label: 'Dashboard' },
   { href: '/kanban', label: 'Kanban' },
-  { href: '/roadmap', label: 'Roadmap' },
-  { href: '/calendar', label: 'Calendrier' },
   { href: '/crm', label: 'CRM' },
+  { href: '/calendar', label: 'Calendrier' },
+  { href: '/roadmap', label: 'Roadmap' },
   { href: '/ideas', label: 'Idées' },
+  { href: '/time', label: 'Temps' },
+  { href: '/notes', label: 'Notes' },
 ]
 
 export function TopNav() {
