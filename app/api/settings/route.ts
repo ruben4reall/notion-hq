@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { getUserSettings, updateUserSettings } from '@/lib/notion'
+import { getUserSettings, updateUserSettings } from '@/lib/db'
 
 const USERS = [
   { name: process.env.USER1_NAME!, username: process.env.USER1_USERNAME!, password: process.env.USER1_PASSWORD! },

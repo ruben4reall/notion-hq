@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getEvents, createEvent } from '@/lib/notion'
+import { getEvents, createEvent } from '@/lib/db'
 
 export async function GET() {
   if (!process.env.NOTION_EVENTS_DB) return NextResponse.json([])

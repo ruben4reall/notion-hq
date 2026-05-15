@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { updateIdea, deleteIdea } from '@/lib/notion'
+import { updateIdea, deleteIdea } from '@/lib/db'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

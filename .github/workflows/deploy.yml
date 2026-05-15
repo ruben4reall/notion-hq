@@ -26,12 +26,8 @@ jobs:
               -H "Content-Type: application/json" \
               -d "{\"key\":\"$key\",\"value\":\"$val\",\"type\":\"plain\",\"target\":[\"production\",\"preview\"]}" > /dev/null || true
           }
-          add_env "NOTION_EVENTS_DB"   "3610eda0-95b9-8123-91e2-d27ad879ff4b"
-          add_env "NOTION_NOTIFS_DB"   "3610eda0-95b9-81c4-83b3-fb37bfe6598b"
-          add_env "NOTION_PRESENCE_DB" "3610eda0-95b9-813a-b66c-ff3459b6e2c7"
-          add_env "NOTION_CHAT_DB"     "3610eda0-95b9-8106-b3f0-ed1b70e33a97"
-          add_env "NEXTAUTH_URL"       "https://manager-thenextbigthing.vercel.app"
-          add_env "TENOR_API_KEY"      "LIVDSRZULELA"
+          add_env "NEXTAUTH_URL"  "https://manager-thenextbigthing.vercel.app"
+          add_env "TENOR_API_KEY" "LIVDSRZULELA"
 
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}

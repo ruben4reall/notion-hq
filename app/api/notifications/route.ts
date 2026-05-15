@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getNotifications } from '@/lib/notion'
+import { getNotifications } from '@/lib/db'
 
 export async function GET() {
   if (!process.env.NOTION_NOTIFS_DB) return NextResponse.json([])

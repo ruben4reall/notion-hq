@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { getChatMessages, sendChatMessage, createNotification } from '@/lib/notion'
+import { getChatMessages, sendChatMessage, createNotification } from '@/lib/db'
 
 export async function GET() {
   if (!process.env.NOTION_CHAT_DB) return NextResponse.json([])

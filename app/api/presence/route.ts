@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPresence, upsertPresence } from '@/lib/notion'
+import { getPresence, upsertPresence } from '@/lib/db'
 
 export async function GET() {
   if (!process.env.NOTION_PRESENCE_DB) return NextResponse.json([])

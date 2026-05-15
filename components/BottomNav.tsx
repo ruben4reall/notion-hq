@@ -73,6 +73,26 @@ const items = [
     ),
   },
   {
+    href: '/time',
+    label: 'Temps',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+        <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/notes',
+    label: 'Notes',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     href: '/settings',
     label: 'Réglages',
     icon: (active: boolean) => (

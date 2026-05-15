@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 import { PresenceIndicator } from './PresenceIndicator'
+import { TimeWidget } from './TimeWidget'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -68,6 +69,7 @@ export function TopNav() {
         </nav>
 
         <div className="flex items-center gap-2.5 ml-auto">
+          <TimeWidget />
           <PresenceIndicator />
           <div className="live-dot hidden lg:block" />
           <NotificationBell />

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { markNotificationsRead } from '@/lib/notion'
+import { markNotificationsRead } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {

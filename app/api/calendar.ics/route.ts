@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTasks, getEvents } from '@/lib/notion'
+import { getTasks, getEvents } from '@/lib/db'
 
 function icalDate(iso: string) {
   if (!iso) return ''

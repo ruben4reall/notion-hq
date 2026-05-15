@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { updateTask, deleteTask, createNotification } from '@/lib/notion'
+import { updateTask, deleteTask, createNotification } from '@/lib/db'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

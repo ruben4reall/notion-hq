@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTasks, createTask, createNotification } from '@/lib/notion'
+import { getTasks, createTask, createNotification } from '@/lib/db'
 
 export async function GET() {
   try {
