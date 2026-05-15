@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
+import { useState } from 'react'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -12,12 +14,15 @@ const links = [
 
 export function TopNav() {
   const path = usePathname()
+  const { data: session } = useSession()
+  const [showMenu, setShowMenu] = useState(false)
+  const initials = session?.user?.name?.charAt(0).toUpperCase() ?? '?'
 
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 h-14"
       style={{
-        background: 'rgba(7, 7, 16, 0.85)',
+        background: 'rgba(7, 7, 16, 0.9)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -27,13 +32,8 @@ export function TopNav() {
         {/* Brand */}
         <div className="flex items-center gap-2.5 mr-8">
           <div style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            background: 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            width: 28, height: 28, borderRadius: 8, background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
               <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
@@ -49,30 +49,82 @@ export function TopNav() {
           {links.map(link => {
             const active = path === link.href
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: active ? 600 : 400,
-                  color: active ? 'var(--t0)' : 'var(--t1)',
-                  background: active ? 'var(--bg-2)' : 'transparent',
-                  transition: 'all 0.15s',
-                  textDecoration: 'none',
-                }}
-              >
+              <Link key={link.href} href={link.href} style={{
+                padding: '5px 12px', borderRadius: '8px', fontSize: '13px',
+                fontWeight: active ? 600 : 400,
+                color: active ? 'var(--t0)' : 'var(--t1)',
+                background: active ? 'var(--bg-2)' : 'transparent',
+                transition: 'all 0.15s', textDecoration: 'none',
+              }}>
                 {link.label}
               </Link>
             )
           })}
         </nav>
 
-        {/* Live indicator */}
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="live-dot" />
-          <span style={{ fontSize: '11px', color: 'var(--t2)' }}>Live</span>
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="live-dot hidden lg:block" />
+
+          {/* User menu */}
+          {session?.user && (
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowMenu(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'var(--bg-2)', border: '1px solid var(--border-s)',
+                  borderRadius: 100, padding: '4px 10px 4px 4px',
+                  cursor: 'pointer', transition: 'border-color 0.15s',
+                }}
+              >
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: 'var(--accent)', color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {initials}
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--t0)' }}>
+                  {session.user.name}
+                </span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--t2)' }}>
+                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {showMenu && (
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                    onClick={() => setShowMenu(false)}
+                  />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
+                    background: 'var(--bg-2)', border: '1px solid var(--border-m)',
+                    borderRadius: 10, padding: 4, minWidth: 160,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                  }}>
+                    <button
+                      onClick={() => signOut({ callbackUrl: '/login' })}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 7,
+                        background: 'none', border: 'none',
+                        color: 'var(--red)', fontSize: 13, fontWeight: 500,
+                        cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Déconnexion
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
