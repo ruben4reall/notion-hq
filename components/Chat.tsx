@@ -135,7 +135,7 @@ function GifPicker({ onSelect, onClose }: { onSelect: (url: string) => void; onC
           </div>
         )}
         {!loading && (
-          <p style={{ textAlign: 'center', fontSize: 9, color: 'var(--t2)', marginTop: 6 }}>Powered by GIPHY</p>
+          <p style={{ textAlign: 'center', fontSize: 9, color: 'var(--t2)', marginTop: 6 }}>Powered by Tenor</p>
         )}
       </div>
     </div>
@@ -283,7 +283,7 @@ function ConvList({
 
 function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; showMeta: boolean }) {
   const isGif = msg.message.startsWith('gif::')
-  const gifUrl = isGif ? msg.message.slice(4) : null
+  const gifUrl = isGif ? msg.message.slice(5) : null
   const color = authorColor(msg.author)
 
   return (
