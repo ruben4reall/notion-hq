@@ -100,14 +100,10 @@ export function BottomNav() {
                 transition: 'color 0.2s',
               }}
             >
-              {/* Active background pill */}
+              {/* Active background pill — spans full item width */}
               <div style={{
                 position: 'absolute',
-                top: 4,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 44,
-                height: 38,
+                top: 4, left: 6, right: 6, height: 42,
                 borderRadius: 12,
                 background: active ? 'var(--accent-bg)' : 'transparent',
                 transition: 'background 0.25s var(--ease-spring)',
