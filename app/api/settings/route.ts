@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     username: envUser?.username ?? (token.username as string) ?? '',
     displayName: settings?.displayName ?? null,
     hasPasswordOverride: !!settings?.passwordOverride,
+    icalFeedUrl: settings?.icalFeedUrl ?? null,
   })
 }
 

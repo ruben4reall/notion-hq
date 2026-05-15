@@ -38,6 +38,7 @@ export async function getTasks(): Promise<Task[]> {
     description: r(p.properties['Description']),
     dateStart: d(p.properties['Date de début']),
     dateEnd: d(p.properties['Date de fin']),
+    assignedTo: r(p.properties['Assigné à']) || '',
     modifiedBy: r(p.properties['Modifié par']),
     lastEdited: p.last_edited_time ?? '',
     createdAt: p.created_time ?? '',
@@ -96,6 +97,7 @@ export async function getCRM(): Promise<CRMEntry[]> {
     notes: r(p.properties['Notes']),
     lastContact: d(p.properties['Dernier contact']),
     nextFollowup: d(p.properties['Prochain suivi']),
+    assignedTo: r(p.properties['Assigné à']) || '',
     modifiedBy: r(p.properties['Modifié par']),
     lastEdited: p.last_edited_time ?? '',
   }))
@@ -161,6 +163,7 @@ export async function getIdeas(): Promise<Idea[]> {
     category: s(p.properties['Catégorie']),
     effort: s(p.properties['Effort']) as Idea['effort'],
     votes: n(p.properties['Votes']),
+    assignedTo: r(p.properties['Assigné à']) || '',
     modifiedBy: r(p.properties['Modifié par']),
     lastEdited: p.last_edited_time ?? '',
   }))

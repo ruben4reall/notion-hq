@@ -7,6 +7,7 @@ export interface Task {
   description: string
   dateStart: string
   dateEnd: string
+  assignedTo: string
   modifiedBy: string
   lastEdited: string
   createdAt: string
@@ -26,6 +27,7 @@ export interface CRMEntry {
   notes: string
   lastContact: string
   nextFollowup: string
+  assignedTo: string
   modifiedBy: string
   lastEdited: string
 }
@@ -38,6 +40,7 @@ export interface Idea {
   category: string
   effort: 'Faible' | 'Moyen' | 'Élevé' | ''
   votes: number
+  assignedTo: string
   modifiedBy: string
   lastEdited: string
 }

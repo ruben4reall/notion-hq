@@ -3,27 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --bg-0: #070710;
-  --bg-1: #0c0c1a;
-  --bg-2: #111124;
-  --bg-3: #181830;
-  --bg-4: #1e1e38;
+  /* Slightly warmer dark — less electric blue, easier on the eyes */
+  --bg-0: #08080f;
+  --bg-1: #0d0d18;
+  --bg-2: #121220;
+  --bg-3: #181828;
+  --bg-4: #1d1d30;
 
-  --border-s: rgba(255, 255, 255, 0.05);
+  --border-s: rgba(255, 255, 255, 0.055);
   --border-m: rgba(255, 255, 255, 0.09);
-  --border-l: rgba(255, 255, 255, 0.18);
+  --border-l: rgba(255, 255, 255, 0.16);
 
-  --t0: #f0f0f8;
-  --t1: #8888b0;
-  --t2: #50507a;
+  /* Softer text — less blue-saturated, easier to read long-form */
+  --t0: #ebebf5;
+  --t1: #8080a8;
+  --t2: #4e4e6e;
 
-  --nav-bg: rgba(7,7,16,0.88);
+  --nav-bg: rgba(8,8,15,0.9);
   --accent: #7c6af5;
-  --accent-bg: rgba(124, 106, 245, 0.12);
-  --accent-glow: rgba(124, 106, 245, 0.25);
+  --accent-bg: rgba(124, 106, 245, 0.11);
+  --accent-glow: rgba(124, 106, 245, 0.22);
 
-  --green: #0ec98c;
-  --green-bg: rgba(14, 201, 140, 0.1);
+  --green: #12c98a;
+  --green-bg: rgba(18, 201, 138, 0.1);
   --amber: #f59e0b;
   --amber-bg: rgba(245, 158, 11, 0.1);
   --red: #f43f5e;
@@ -36,27 +38,31 @@
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 16px;
 }
 
 html.light {
-  --nav-bg: rgba(242,242,247,0.88);
-  --bg-0: #f2f2f7;
+  --nav-bg: rgba(245,245,250,0.9);
+  --bg-0: #f4f4f8;
   --bg-1: #ffffff;
-  --bg-2: #f0f0f5;
-  --bg-3: #e8e8f0;
-  --bg-4: #dcdcea;
+  --bg-2: #eeeef4;
+  --bg-3: #e6e6ee;
+  --bg-4: #dcdce8;
 
   --border-s: rgba(0, 0, 0, 0.07);
-  --border-m: rgba(0, 0, 0, 0.11);
-  --border-l: rgba(0, 0, 0, 0.18);
+  --border-m: rgba(0, 0, 0, 0.1);
+  --border-l: rgba(0, 0, 0, 0.16);
 
-  --t0: #0f0f1e;
-  --t1: #52527a;
-  --t2: #9898b8;
+  --t0: #10101e;
+  --t1: #505078;
+  --t2: #9090b0;
 
   --accent-bg: rgba(124, 106, 245, 0.1);
   --accent-glow: rgba(124, 106, 245, 0.2);
-  --green-bg: rgba(14, 201, 140, 0.1);
+  --green-bg: rgba(18, 201, 138, 0.1);
   --amber-bg: rgba(245, 158, 11, 0.1);
   --red-bg: rgba(244, 63, 94, 0.1);
   --blue-bg: rgba(79, 142, 247, 0.1);
@@ -76,16 +82,22 @@ html.light .skeleton {
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02','cv03','cv04','cv11';
+}
 
 body {
   background: var(--bg-0);
   color: var(--t0);
   min-height: 100dvh;
-  font-family: -apple-system, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-m); border-radius: 100px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-l); }
@@ -154,18 +166,18 @@ body {
 .card {
   background: var(--bg-1);
   border: 1px solid var(--border-s);
-  border-radius: 12px;
+  border-radius: var(--radius-m);
   transition:
     border-color 0.2s,
-    transform    0.28s var(--ease-spring),
-    box-shadow   0.28s var(--ease-spring);
+    transform    0.3s var(--ease-spring),
+    box-shadow   0.3s var(--ease-spring);
   will-change: transform;
 }
 
 .card:hover {
   border-color: var(--border-m);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
 }
 
 /* ── Buttons ────────────────────────────────────────────── */
@@ -269,24 +281,26 @@ button:active:not(:disabled) {
 }
 
 .page-title {
-  font-size: clamp(20px, 4vw, 28px);
+  font-size: clamp(19px, 3.5vw, 26px);
   font-weight: 700;
   color: var(--t0);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
 }
 
 .page-subtitle {
   font-size: 13px;
-  color: var(--t1);
-  margin-top: 4px;
+  color: var(--t2);
+  margin-top: 5px;
+  font-weight: 400;
 }
 
 .section-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--t1);
+  color: var(--t2);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   margin-bottom: 12px;
 }
 

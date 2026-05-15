@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
+import { UserPicker, useUsers } from './UserPicker'
 import type { Idea } from '@/lib/types'
 
 const STATUSES    = ['Brute', 'À explorer', 'Validée', 'Rejetée']
 const CATEGORIES  = ['', 'Produit', 'Marketing', 'Prospection', 'Ops']
 const EFFORTS     = ['', 'Faible', 'Moyen', 'Élevé']
 
-const empty = (): Partial<Idea> => ({ title: '', description: '', status: 'Brute', category: '', effort: '', votes: 0 })
+const empty = (): Partial<Idea> => ({ title: '', description: '', status: 'Brute', category: '', effort: '', votes: 0, assignedTo: '' })
 
 interface Props {
   isOpen: boolean
@@ -22,6 +23,7 @@ export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
   const { data: session } = useSession()
   const [form, setForm] = useState<Partial<Idea>>(empty())
   const [loading, setLoading] = useState(false)
+  const users = useUsers()
 
   useEffect(() => {
     setForm(idea ? { ...idea } : empty())
@@ -73,6 +75,14 @@ export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
         </Field>
         <Field label="Description">
           <Textarea value={form.description ?? ''} onChange={set('description')} placeholder="Contexte, bénéfices attendus…" rows={4} />
+        </Field>
+        <Field label="Assigné à">
+          <UserPicker
+            value={form.assignedTo ?? ''}
+            onChange={name => setForm(p => ({ ...p, assignedTo: name }))}
+            users={users}
+            placeholder="Personne"
+          />
         </Field>
         <FormActions onCancel={onClose} loading={loading} label={idea ? 'Mettre à jour' : 'Créer'} />
       </form>

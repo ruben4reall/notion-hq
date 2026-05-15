@@ -10,8 +10,13 @@ import { PageTransition } from '@/components/PageTransition'
 
 export const metadata: Metadata = {
   title: 'Manager Dashboard',
-  description: 'Dashboard connecté à Notion — Tâches, CRM & Idées',
+  description: 'Dashboard — Tâches, CRM & Idées',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export const viewport: Viewport = {

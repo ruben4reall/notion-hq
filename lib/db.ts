@@ -27,6 +27,7 @@ export async function getTasks(): Promise<Task[]> {
     description: r.description,
     dateStart: r.date_start || '',
     dateEnd: r.date_end || '',
+    assignedTo: r.assigned_to || '',
     modifiedBy: r.modified_by,
     lastEdited: r.updated_at,
     createdAt: r.created_at,
@@ -42,6 +43,7 @@ export async function createTask(data: Partial<Task> & { modifiedBy?: string }):
     description: data.description || '',
     date_start: data.dateStart || null,
     date_end: data.dateEnd || null,
+    assigned_to: data.assignedTo || '',
     modified_by: data.modifiedBy || '',
   })
   if (error) throw error
@@ -56,6 +58,7 @@ export async function updateTask(id: string, data: Partial<Task> & { modifiedBy?
   if (data.description !== undefined) u.description = data.description
   if (data.dateStart !== undefined)   u.date_start = data.dateStart || null
   if (data.dateEnd !== undefined)     u.date_end = data.dateEnd || null
+  if (data.assignedTo !== undefined)  u.assigned_to = data.assignedTo
   if (data.modifiedBy !== undefined)  u.modified_by = data.modifiedBy
   const { error } = await getClient().from('tasks').update(u).eq('id', id)
   if (error) throw error
@@ -92,6 +95,7 @@ export async function getCRM(): Promise<CRMEntry[]> {
     notes: r.notes,
     lastContact: r.last_contact || '',
     nextFollowup: r.next_followup || '',
+    assignedTo: r.assigned_to || '',
     modifiedBy: r.modified_by,
     lastEdited: r.updated_at,
   }))
@@ -111,6 +115,7 @@ export async function createCRM(data: Partial<CRMEntry> & { modifiedBy?: string 
     notes: data.notes || '',
     last_contact: data.lastContact || null,
     next_followup: data.nextFollowup || null,
+    assigned_to: data.assignedTo || '',
     modified_by: data.modifiedBy || '',
   })
   if (error) throw error
@@ -130,6 +135,7 @@ export async function updateCRM(id: string, data: Partial<CRMEntry> & { modified
   if (data.notes !== undefined)        u.notes = data.notes
   if (data.lastContact !== undefined)  u.last_contact = data.lastContact || null
   if (data.nextFollowup !== undefined) u.next_followup = data.nextFollowup || null
+  if (data.assignedTo !== undefined)   u.assigned_to = data.assignedTo
   if (data.modifiedBy !== undefined)   u.modified_by = data.modifiedBy
   const { error } = await getClient().from('crm').update(u).eq('id', id)
   if (error) throw error
@@ -160,6 +166,7 @@ export async function getIdeas(): Promise<Idea[]> {
     category: r.category,
     effort: r.effort,
     votes: r.votes,
+    assignedTo: r.assigned_to || '',
     modifiedBy: r.modified_by,
     lastEdited: r.updated_at,
   }))
@@ -173,6 +180,7 @@ export async function createIdea(data: Partial<Idea> & { modifiedBy?: string }):
     category: data.category || '',
     effort: data.effort || '',
     votes: data.votes ?? 0,
+    assigned_to: data.assignedTo || '',
     modified_by: data.modifiedBy || '',
   })
   if (error) throw error
@@ -186,6 +194,7 @@ export async function updateIdea(id: string, data: Partial<Idea> & { modifiedBy?
   if (data.category !== undefined)    u.category = data.category
   if (data.effort !== undefined)      u.effort = data.effort
   if (data.votes !== undefined)       u.votes = data.votes
+  if (data.assignedTo !== undefined)  u.assigned_to = data.assignedTo
   if (data.modifiedBy !== undefined)  u.modified_by = data.modifiedBy
   const { error } = await getClient().from('ideas').update(u).eq('id', id)
   if (error) throw error
@@ -330,18 +339,20 @@ export async function upsertPresence(username: string): Promise<void> {
 export interface UserSettings {
   displayName: string | null
   passwordOverride: string | null
+  icalFeedUrl: string | null
 }
 
 export async function getUserSettings(name: string): Promise<UserSettings | null> {
   const { data } = await getClient()
     .from('presence')
-    .select('display_name, password_override')
+    .select('display_name, password_override, ical_feed_url')
     .eq('username', name)
     .maybeSingle()
   if (!data) return null
   return {
     displayName: data.display_name ?? null,
     passwordOverride: data.password_override ?? null,
+    icalFeedUrl: data.ical_feed_url ?? null,
   }
 }
 
@@ -349,6 +360,7 @@ export async function updateUserSettings(name: string, settings: Partial<UserSet
   const u: Record<string, unknown> = {}
   if (settings.displayName !== undefined)      u.display_name = settings.displayName
   if (settings.passwordOverride !== undefined) u.password_override = settings.passwordOverride
+  if (settings.icalFeedUrl !== undefined)      u.ical_feed_url = settings.icalFeedUrl
   const { error } = await getClient()
     .from('presence')
     .upsert({ username: name, last_seen: new Date().toISOString(), ...u }, { onConflict: 'username' })

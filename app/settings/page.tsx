@@ -9,6 +9,7 @@ interface UserSettings {
   username: string
   displayName: string | null
   hasPasswordOverride: boolean
+  icalFeedUrl: string | null
 }
 
 const inputStyle: React.CSSProperties = {
@@ -67,12 +68,18 @@ export default function SettingsPage() {
   const [savingPwd, setSavingPwd] = useState(false)
   const [pwdMsg, setPwdMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
+  const [icalUrl, setIcalUrl] = useState('')
+  const [savingIcal, setSavingIcal] = useState(false)
+  const [icalMsg, setIcalMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const exportUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/calendar.ics` : '/api/calendar.ics'
+
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
       .then((data: UserSettings) => {
         setSettings(data)
         setDisplayName(data.displayName || '')
+        setIcalUrl(data.icalFeedUrl || '')
       })
   }, [])
 
@@ -112,6 +119,24 @@ export default function SettingsPage() {
       setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
     }
     setSavingPwd(false)
+  }
+
+  const saveIcal = async () => {
+    setSavingIcal(true)
+    setIcalMsg(null)
+    try {
+      await fetch('/api/calendar/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: icalUrl || null }),
+      })
+      setSettings(prev => prev ? { ...prev, icalFeedUrl: icalUrl || null } : prev)
+      setIcalMsg({ type: 'success', text: icalUrl ? 'Calendrier connecté !' : 'Calendrier déconnecté' })
+    } catch {
+      setIcalMsg({ type: 'error', text: 'Erreur lors de la sauvegarde' })
+    }
+    setSavingIcal(false)
+    setTimeout(() => setIcalMsg(null), 4000)
   }
 
   const name = session?.user?.name || ''
@@ -200,6 +225,70 @@ export default function SettingsPage() {
         >
           {savingPwd ? 'Modification…' : 'Changer le mot de passe'}
         </button>
+      </Section>
+
+      {/* Calendar */}
+      <Section title="Calendrier">
+        <Field
+          label="Importer un calendrier externe"
+          hint="Collez l'URL iCal de votre Apple Calendar ou Google Calendar. Vos évènements apparaîtront dans l'app."
+        >
+          <input
+            type="text"
+            value={icalUrl}
+            onChange={e => setIcalUrl(e.target.value)}
+            placeholder="https://calendar.google.com/calendar/ical/... ou webcal://..."
+            style={inputStyle}
+            onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+            onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
+          />
+        </Field>
+        <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 14, lineHeight: 1.6 }}>
+          <strong style={{ color: 'var(--t1)' }}>Apple Calendar :</strong> Faites un clic droit sur un calendrier → &quot;Partager le calendrier&quot; → copiez le lien<br />
+          <strong style={{ color: 'var(--t1)' }}>Google Calendar :</strong> Paramètres → votre agenda → &quot;URL au format iCal&quot;
+        </div>
+
+        {icalMsg && <Alert type={icalMsg.type} message={icalMsg.text} />}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={saveIcal} disabled={savingIcal}>
+            {savingIcal ? 'Enregistrement…' : 'Connecter'}
+          </button>
+          {settings?.icalFeedUrl && (
+            <button
+              onClick={async () => {
+                setIcalUrl('')
+                await fetch('/api/calendar/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: null }) })
+                setSettings(prev => prev ? { ...prev, icalFeedUrl: null } : prev)
+                setIcalMsg({ type: 'success', text: 'Calendrier déconnecté' })
+                setTimeout(() => setIcalMsg(null), 3000)
+              }}
+              style={{ padding: '8px 14px', borderRadius: 8, fontSize: 13, background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}
+            >
+              Déconnecter
+            </button>
+          )}
+        </div>
+
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-s)' }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>
+            Abonnez-vous depuis Apple/Google Calendar
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.6 }}>
+            Copiez cette URL dans Google Calendar → &quot;Autres agendas&quot; → &quot;Via une URL&quot; ou Apple Calendar → Fichier → Nouvel abonnement. Vos tâches et évènements de l&apos;app apparaîtront dans votre calendrier.
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-3)', borderRadius: 8, padding: '8px 12px', border: '1px solid var(--border-s)' }}>
+            <code style={{ fontSize: 11, color: 'var(--accent)', flex: 1, wordBreak: 'break-all' }}>
+              {exportUrl}
+            </code>
+            <button
+              onClick={() => navigator.clipboard.writeText(exportUrl)}
+              style={{ padding: '4px 10px', borderRadius: 6, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid rgba(124,106,245,0.2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
+            >
+              Copier
+            </button>
+          </div>
+        </div>
       </Section>
 
       {/* Preferences */}

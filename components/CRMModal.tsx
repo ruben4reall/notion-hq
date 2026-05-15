@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
+import { UserPicker, useUsers } from './UserPicker'
 import type { CRMEntry } from '@/lib/types'
 
 const STATUSES = ['À contacter', 'Contacté', 'RDV pris', 'Offre envoyée', 'Client', 'Refus']
@@ -13,7 +14,7 @@ const PRIORITIES = ['', 'Haute', 'Moyenne', 'Basse']
 const empty = (): Partial<CRMEntry> => ({
   enseigne: '', contact: '', email: '', phone: '', ville: '',
   status: 'À contacter', canal: '', type: '', priority: '',
-  notes: '', nextFollowup: '', lastContact: '',
+  notes: '', nextFollowup: '', lastContact: '', assignedTo: '',
 })
 
 interface Props {
@@ -28,6 +29,7 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
   const { data: session } = useSession()
   const [form, setForm] = useState<Partial<CRMEntry>>(empty())
   const [loading, setLoading] = useState(false)
+  const users = useUsers()
 
   useEffect(() => {
     setForm(entry ? { ...entry } : { ...empty(), status: defaultStatus ?? 'À contacter' })
@@ -110,6 +112,14 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
         </div>
         <Field label="Notes">
           <Textarea value={form.notes ?? ''} onChange={set('notes')} placeholder="Notes libres…" />
+        </Field>
+        <Field label="Assigné à">
+          <UserPicker
+            value={form.assignedTo ?? ''}
+            onChange={name => setForm(p => ({ ...p, assignedTo: name }))}
+            users={users}
+            placeholder="Personne"
+          />
         </Field>
         <FormActions onCancel={onClose} loading={loading} label={entry ? 'Mettre à jour' : 'Créer'} />
       </form>

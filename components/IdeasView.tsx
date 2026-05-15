@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { IdeaModal } from './IdeaModal'
+import { UserAvatar, useUsers } from './UserPicker'
 import type { Idea } from '@/lib/types'
 
 const STATUS_TABS = ['Toutes', 'Brute', 'À explorer', 'Validée', 'Rejetée'] as const
@@ -26,11 +27,15 @@ function relTime(iso: string) {
   return `il y a ${Math.floor(d/1440)}j`
 }
 
-function IdeaCard({ idea, onEdit, onDelete, onVote }: { idea: Idea; onEdit: () => void; onDelete: () => void; onVote: (delta: number) => void }) {
+function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
+  idea: Idea; onEdit: () => void; onDelete: () => void; onVote: (delta: number) => void
+  users: { name: string; color: string }[]
+}) {
   const [menu, setMenu] = useState(false)
   const sc = STATUS_CFG[idea.status] || STATUS_CFG.Brute
   const ec = EFFORT_CFG[idea.effort]
   const cc = CAT_COLOR[idea.category] || '#6b7280'
+  const assignee = users.find(u => u.name === idea.assignedTo)
 
   return (
     <div className="card animate-in" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -64,9 +69,14 @@ function IdeaCard({ idea, onEdit, onDelete, onVote }: { idea: Idea; onEdit: () =
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--border-s)' }}>
-        {idea.modifiedBy ? (
-          <span style={{ fontSize: 10, color: 'var(--t2)' }}>par {idea.modifiedBy} · {relTime(idea.lastEdited)}</span>
-        ) : <span />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          {assignee
+            ? <UserAvatar name={assignee.name} color={assignee.color} size={20} />
+            : idea.modifiedBy
+              ? <span style={{ fontSize: 10, color: 'var(--t2)' }}>{idea.modifiedBy.split(' ')[0]}</span>
+              : null
+          }
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => onVote(-1)} style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
@@ -83,7 +93,9 @@ export default function IdeasView() {
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('Toutes')
+  const [filterUser, setFilterUser] = useState('')
   const [modal, setModal] = useState<{ open: boolean; idea?: Idea | null }>({ open: false })
+  const users = useUsers()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -111,7 +123,9 @@ export default function IdeasView() {
     await fetch(`/api/ideas/${id}`, { method: 'DELETE' })
   }
 
-  const filtered = filter === 'Toutes' ? ideas : ideas.filter(i => i.status === filter)
+  const filtered = ideas
+    .filter(i => filter === 'Toutes' || i.status === filter)
+    .filter(i => !filterUser || i.assignedTo === filterUser)
 
   if (loading) return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
@@ -135,6 +149,15 @@ export default function IdeasView() {
             )
           })}
         </div>
+        {users.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {users.map(u => (
+              <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} title={u.name} style={{ width: 28, height: 28, borderRadius: '50%', background: filterUser === u.name ? u.color : `${u.color}30`, color: filterUser === u.name ? 'white' : u.color, border: `2px solid ${filterUser === u.name ? u.color : 'transparent'}`, cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           onClick={() => setModal({ open: true, idea: null })}
           className="btn btn-primary"
@@ -154,6 +177,7 @@ export default function IdeasView() {
               onEdit={() => setModal({ open: true, idea })}
               onDelete={() => handleDelete(idea.id)}
               onVote={delta => handleVote(idea.id, delta)}
+              users={users}
             />
           ))}
         </div>

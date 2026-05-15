@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
+import { UserPicker, useUsers } from './UserPicker'
 import type { Task } from '@/lib/types'
 
 const STATUSES = ['Backlog', 'À faire', 'En cours', 'Review', 'Done']
 const PRIORITIES = ['', 'P0', 'P1', 'P2']
 const MODULES = ['', 'Produit', 'Marketing', 'Prospection', 'Ops']
 
-const empty = (): Partial<Task> => ({ title: '', status: 'Backlog', priority: '', module: '', description: '', dateStart: '', dateEnd: '' })
+const empty = (): Partial<Task> => ({ title: '', status: 'Backlog', priority: '', module: '', description: '', dateStart: '', dateEnd: '', assignedTo: '' })
 
 interface Props {
   isOpen: boolean
@@ -23,6 +24,7 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
   const { data: session } = useSession()
   const [form, setForm] = useState<Partial<Task>>(empty())
   const [loading, setLoading] = useState(false)
+  const users = useUsers()
 
   useEffect(() => {
     setForm(task ? { ...task } : { ...empty(), status: defaultStatus ?? 'Backlog' })
@@ -71,6 +73,14 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
           <Select value={form.module ?? ''} onChange={set('module')}>
             {MODULES.map(m => <option key={m} value={m}>{m || '— aucun —'}</option>)}
           </Select>
+        </Field>
+        <Field label="Assigné à">
+          <UserPicker
+            value={form.assignedTo ?? ''}
+            onChange={name => setForm(p => ({ ...p, assignedTo: name }))}
+            users={users}
+            placeholder="Personne"
+          />
         </Field>
         <Field label="Description">
           <Textarea value={form.description ?? ''} onChange={set('description')} placeholder="Détails optionnels…" />

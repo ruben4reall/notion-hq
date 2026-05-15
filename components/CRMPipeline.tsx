@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { CRMModal } from './CRMModal'
+import { UserAvatar, useUsers } from './UserPicker'
 import type { CRMEntry } from '@/lib/types'
 
 const STAGES: { id: CRMEntry['status']; color: string }[] = [
@@ -26,9 +27,13 @@ function relTime(iso: string) {
   return `il y a ${Math.floor(d/1440)}j`
 }
 
-function CRMCard({ entry, onEdit, onDelete, isDragging }: { entry: CRMEntry; onEdit: () => void; onDelete: () => void; isDragging: boolean }) {
+function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
+  entry: CRMEntry; onEdit: () => void; onDelete: () => void; isDragging: boolean
+  users: { name: string; color: string }[]
+}) {
   const [menu, setMenu] = useState(false)
   const pc = P_COLOR[entry.priority] || null
+  const assignee = users.find(u => u.name === entry.assignedTo)
 
   return (
     <div style={{ background: isDragging ? 'var(--bg-3)' : 'var(--bg-1)', border: `1px solid ${isDragging ? 'rgba(124,106,245,0.5)' : 'var(--border-s)'}`, borderRadius: 10, padding: '11px 12px', boxShadow: isDragging ? '0 12px 32px rgba(0,0,0,0.5)' : 'none', cursor: 'grab', userSelect: 'none' }}>
@@ -46,17 +51,19 @@ function CRMCard({ entry, onEdit, onDelete, isDragging }: { entry: CRMEntry; onE
             </div>
           )}
           {entry.contact && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>👤 {entry.contact}</p>}
-          {entry.nextFollowup && (
-            <p style={{ fontSize: 10, color: 'var(--t2)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-s)' }}>
-              📅 Suivi : {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(entry.nextFollowup))}
-              {entry.modifiedBy && <span> · par {entry.modifiedBy} · {relTime(entry.lastEdited)}</span>}
-            </p>
-          )}
-          {!entry.nextFollowup && entry.modifiedBy && (
-            <p style={{ fontSize: 10, color: 'var(--t2)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-s)' }}>
-              par {entry.modifiedBy} · {relTime(entry.lastEdited)}
-            </p>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-s)' }}>
+            {entry.nextFollowup && (
+              <span style={{ fontSize: 10, color: 'var(--t2)' }}>
+                📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(entry.nextFollowup))}
+              </span>
+            )}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+              {assignee && <UserAvatar name={assignee.name} color={assignee.color} size={18} />}
+              {!assignee && entry.modifiedBy && (
+                <span style={{ fontSize: 10, color: 'var(--t2)' }}>{entry.modifiedBy.split(' ')[0]}</span>
+              )}
+            </div>
+          </div>
         </div>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button onClick={e => { e.stopPropagation(); setMenu(v => !v) }} style={{ width: 24, height: 24, borderRadius: 6, background: 'transparent', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⋯</button>
@@ -79,6 +86,8 @@ export default function CRMPipeline() {
   const [entries, setEntries] = useState<CRMEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ open: boolean; entry?: CRMEntry | null; defaultStatus?: CRMEntry['status'] }>({ open: false })
+  const [filterUser, setFilterUser] = useState('')
+  const users = useUsers()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -119,12 +128,30 @@ export default function CRMPipeline() {
     </div>
   )
 
+  const visibleEntries = filterUser ? entries.filter(e => e.assignedTo === filterUser) : entries
+
   return (
     <>
+      {users.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>FILTRER :</span>
+          <button onClick={() => setFilterUser('')} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: !filterUser ? 700 : 400, background: !filterUser ? 'var(--accent-bg)' : 'var(--bg-2)', color: !filterUser ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${!filterUser ? 'rgba(124,106,245,0.3)' : 'var(--border-s)'}`, cursor: 'pointer' }}>
+            Tous
+          </button>
+          {users.map(u => (
+            <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px 3px 4px', borderRadius: 100, fontSize: 11, fontWeight: filterUser === u.name ? 700 : 400, background: filterUser === u.name ? `${u.color}18` : 'var(--bg-2)', color: filterUser === u.name ? u.color : 'var(--t2)', border: `1px solid ${filterUser === u.name ? `${u.color}40` : 'var(--border-s)'}`, cursor: 'pointer' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+              </div>
+              {u.name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      )}
       <DragDropContext onDragEnd={onDragEnd}>
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
           {STAGES.map(stage => {
-            const stageEntries = entries.filter(e => e.status === stage.id)
+            const stageEntries = visibleEntries.filter(e => e.status === stage.id)
             return (
               <div key={stage.id} style={{ minWidth: 232, flex: '0 0 232px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, padding: '0 2px' }}>
@@ -144,7 +171,7 @@ export default function CRMPipeline() {
                         <Draggable key={entry.id} draggableId={entry.id} index={idx}>
                           {(prov, snap) => (
                             <div ref={prov.innerRef} {...prov.draggableProps} {...prov.dragHandleProps} style={{ ...prov.draggableProps.style, marginBottom: 8 }}>
-                              <CRMCard entry={entry} isDragging={snap.isDragging} onEdit={() => setModal({ open: true, entry })} onDelete={() => handleDelete(entry.id)} />
+                              <CRMCard entry={entry} isDragging={snap.isDragging} onEdit={() => setModal({ open: true, entry })} onDelete={() => handleDelete(entry.id)} users={users} />
                             </div>
                           )}
                         </Draggable>

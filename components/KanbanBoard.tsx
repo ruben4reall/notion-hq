@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { TaskModal } from './TaskModal'
+import { UserAvatar, useUsers } from './UserPicker'
 import type { Task } from '@/lib/types'
 
 const COLUMNS: { id: Task['status']; color: string }[] = [
@@ -31,10 +32,14 @@ function relTime(iso: string) {
   return `il y a ${Math.floor(d/1440)}j`
 }
 
-function TaskCard({ task, onEdit, onDelete, isDragging }: { task: Task; onEdit: () => void; onDelete: () => void; isDragging: boolean }) {
+function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
+  task: Task; onEdit: () => void; onDelete: () => void; isDragging: boolean
+  users: { name: string; color: string }[]
+}) {
   const [menu, setMenu] = useState(false)
   const p = P_COLOR[task.priority] || null
   const mc = M_COLOR[task.module] || '#6b7280'
+  const assignee = users.find(u => u.name === task.assignedTo)
 
   return (
     <div style={{
@@ -85,16 +90,17 @@ function TaskCard({ task, onEdit, onDelete, isDragging }: { task: Task; onEdit: 
       </div>
 
       {/* Footer */}
-      {(task.dateEnd || task.modifiedBy) && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, fontSize: 10, color: 'var(--t2)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-s)' }}>
-          {task.dateEnd && (
-            <span>📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}</span>
-          )}
-          {task.modifiedBy && (
-            <span style={{ marginLeft: 'auto' }}>par {task.modifiedBy} · {relTime(task.lastEdited)}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--t2)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-s)' }}>
+        {task.dateEnd && (
+          <span>📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}</span>
+        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
+          {assignee && <UserAvatar name={assignee.name} color={assignee.color} size={18} />}
+          {!assignee && task.modifiedBy && (
+            <span style={{ fontSize: 10, color: 'var(--t2)' }}>par {task.modifiedBy.split(' ')[0]}</span>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -116,6 +122,8 @@ export default function KanbanBoard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<{ open: boolean; task?: Task | null; defaultStatus?: Task['status'] }>({ open: false })
+  const [filterUser, setFilterUser] = useState('')
+  const users = useUsers()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -147,12 +155,52 @@ export default function KanbanBoard() {
 
   if (loading) return <Skeleton />
 
+  const visibleTasks = filterUser ? tasks.filter(t => t.assignedTo === filterUser) : tasks
+
   return (
     <>
+      {/* Filter bar */}
+      {users.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>FILTRER :</span>
+          <button
+            onClick={() => setFilterUser('')}
+            style={{
+              padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: !filterUser ? 700 : 400,
+              background: !filterUser ? 'var(--accent-bg)' : 'var(--bg-2)',
+              color: !filterUser ? 'var(--accent)' : 'var(--t2)',
+              border: `1px solid ${!filterUser ? 'rgba(124,106,245,0.3)' : 'var(--border-s)'}`,
+              cursor: 'pointer',
+            }}
+          >
+            Tous
+          </button>
+          {users.map(u => (
+            <button
+              key={u.name}
+              onClick={() => setFilterUser(v => v === u.name ? '' : u.name)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '3px 10px 3px 4px', borderRadius: 100, fontSize: 11, fontWeight: filterUser === u.name ? 700 : 400,
+                background: filterUser === u.name ? `${u.color}18` : 'var(--bg-2)',
+                color: filterUser === u.name ? u.color : 'var(--t2)',
+                border: `1px solid ${filterUser === u.name ? `${u.color}40` : 'var(--border-s)'}`,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
+                {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+              </div>
+              {u.name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      )}
+
       <DragDropContext onDragEnd={onDragEnd}>
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
           {COLUMNS.map(col => {
-            const colTasks = tasks.filter(t => t.status === col.id)
+            const colTasks = visibleTasks.filter(t => t.status === col.id)
             return (
               <div key={col.id} style={{ minWidth: 262, flex: '0 0 262px' }}>
                 {/* Header */}
@@ -182,6 +230,7 @@ export default function KanbanBoard() {
                                 isDragging={snap.isDragging}
                                 onEdit={() => setModal({ open: true, task })}
                                 onDelete={() => handleDelete(task.id)}
+                                users={users}
                               />
                             </div>
                           )}

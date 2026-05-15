@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { Notification } from '@/lib/notion'
+import type { Notification } from '@/lib/db'
 import { playNotifSound } from '@/lib/sounds'
 
 const TYPE_COLOR: Record<string, string> = {

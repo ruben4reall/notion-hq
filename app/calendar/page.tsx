@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Task, CalendarEvent } from '@/lib/types'
 
@@ -170,36 +169,31 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
 
 function CalendarContent() {
   const { data: session } = useSession()
-  const searchParams = useSearchParams()
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([])
-  const [gcalConnected, setGcalConnected] = useState(false)
-  const [gcalConfigured, setGcalConfigured] = useState(false)
+  const [externalEvents, setExternalEvents] = useState<CalendarEvent[]>([])
+  const [externalConnected, setExternalConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false })
-  const [showGoogle, setShowGoogle] = useState(true)
+  const [showExternal, setShowExternal] = useState(true)
   const [showTasks, setShowTasks] = useState(true)
 
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
 
-  const gcalSuccess = searchParams.get('gcal') === 'connected'
-
   const load = useCallback(async () => {
     setLoading(true)
-    const [taskRes, eventRes, gcalRes] = await Promise.all([
+    const [taskRes, eventRes, extRes] = await Promise.all([
       fetch('/api/tasks').then(r => r.ok ? r.json() : []).catch(() => []),
       fetch('/api/events').then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch('/api/google-calendar/events').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false })),
+      fetch('/api/calendar/import').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false })),
     ])
     setTasks(Array.isArray(taskRes) ? taskRes : [])
     setEvents(Array.isArray(eventRes) ? eventRes : [])
-    setGoogleEvents(Array.isArray(gcalRes?.events) ? gcalRes.events : [])
-    setGcalConnected(gcalRes?.connected || false)
-    setGcalConfigured(gcalRes?.connected !== undefined)
+    setExternalEvents(Array.isArray(extRes?.events) ? extRes.events : [])
+    setExternalConnected(extRes?.connected || false)
     setLoading(false)
   }, [])
 
@@ -239,8 +233,8 @@ function CalendarContent() {
       return dateStr >= start && dateStr <= end
     })
 
-    const dayGoogle = (showGoogle && gcalConnected)
-      ? googleEvents.filter(e => {
+    const dayExternal = showExternal
+      ? externalEvents.filter(e => {
           if (!e.dateStart) return false
           const start = e.dateStart
           const end = e.dateEnd || e.dateStart
@@ -248,16 +242,10 @@ function CalendarContent() {
         })
       : []
 
-    return { dayTasks, dayEvents, dayGoogle }
+    return { dayTasks, dayEvents, dayExternal }
   }
 
   const todayStr = isoDate(today)
-
-  const disconnectGoogle = async () => {
-    await fetch('/api/google-calendar/events', { method: 'DELETE' })
-    setGcalConnected(false)
-    setGoogleEvents([])
-  }
 
   const icalUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/api/calendar.ics`
@@ -292,30 +280,31 @@ function CalendarContent() {
             Export iCal
           </a>
 
-          {/* Google Calendar */}
-          {gcalConnected ? (
-            <button onClick={disconnectGoogle} style={{
+          {/* External calendar status */}
+          {externalConnected ? (
+            <div style={{
               padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              background: 'rgba(66,133,244,0.12)', color: '#4285f4',
-              border: '1px solid rgba(66,133,244,0.3)', cursor: 'pointer',
+              background: 'rgba(14,201,140,0.1)', color: '#0ec98c',
+              border: '1px solid rgba(14,201,140,0.3)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#4285f4"><circle cx="12" cy="12" r="10"/></svg>
-              Google connecté
-            </button>
-          ) : process.env.NEXT_PUBLIC_GCAL === 'enabled' || gcalConfigured ? (
-            <a href="/api/google-calendar/auth" style={{
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ec98c', display: 'inline-block' }} />
+              iCal connecté
+            </div>
+          ) : (
+            <a href="/settings" style={{
               padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              background: 'rgba(66,133,244,0.12)', color: '#4285f4',
-              border: '1px solid rgba(66,133,244,0.3)', textDecoration: 'none',
+              background: 'var(--bg-2)', color: 'var(--t1)',
+              border: '1px solid var(--border-m)', textDecoration: 'none',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M20.283 10.356h-8.327v3.451h4.792c-.446 2.193-2.313 3.453-4.792 3.453a5.27 5.27 0 0 1-5.279-5.28 5.27 5.27 0 0 1 5.279-5.279c1.259 0 2.397.447 3.29 1.178l2.6-2.599c-1.584-1.381-3.615-2.233-5.89-2.233a8.908 8.908 0 0 0-8.934 8.934 8.908 8.908 0 0 0 8.934 8.934c4.467 0 8.529-3.249 8.529-8.934 0-.528-.081-1.097-.202-1.625z" fill="#4285f4"/>
+                <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
-              Connecter Google
+              Connecter un calendrier
             </a>
-          ) : null}
+          )}
 
           <button onClick={() => setModal({ open: true, date: todayStr })} style={{
             padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
@@ -325,12 +314,6 @@ function CalendarContent() {
           </button>
         </div>
       </div>
-
-      {gcalSuccess && (
-        <div style={{ padding: '10px 16px', background: 'rgba(14,201,140,0.1)', border: '1px solid rgba(14,201,140,0.3)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: '#0ec98c' }}>
-          Google Calendar connecté avec succès !
-        </div>
-      )}
 
       {/* Filtres légende */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -343,18 +326,20 @@ function CalendarContent() {
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
-          Tâches Notion
+          Tâches
         </button>
-        <button onClick={() => setShowGoogle(v => !v)} style={{
-          padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showGoogle ? 700 : 400,
-          background: showGoogle ? 'rgba(66,133,244,0.12)' : 'var(--bg-2)',
-          color: showGoogle ? '#4285f4' : 'var(--t2)',
-          border: `1px solid ${showGoogle ? 'rgba(66,133,244,0.3)' : 'var(--border-s)'}`,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-        }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4285f4', display: 'inline-block' }} />
-          Google Calendar
-        </button>
+        {externalConnected && (
+          <button onClick={() => setShowExternal(v => !v)} style={{
+            padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showExternal ? 700 : 400,
+            background: showExternal ? 'rgba(14,201,140,0.12)' : 'var(--bg-2)',
+            color: showExternal ? '#0ec98c' : 'var(--t2)',
+            border: `1px solid ${showExternal ? 'rgba(14,201,140,0.3)' : 'var(--border-s)'}`,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ec98c', display: 'inline-block' }} />
+            Calendrier externe
+          </button>
+        )}
         {Object.entries(TYPE_COLOR).slice(0,4).map(([type, color]) => (
           <span key={type} style={{ fontSize: 11, color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
@@ -397,8 +382,8 @@ function CalendarContent() {
             const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`
             const isToday = dateStr === todayStr
             const isWeekend = (idx % 7) >= 5
-            const { dayTasks, dayEvents, dayGoogle } = getItemsForDay(dayNum)
-            const allItems = [...dayEvents, ...dayTasks.map(t => ({ ...t, source: 'task' })), ...dayGoogle.map(g => ({ ...g, source: 'google' as const }))]
+            const { dayTasks, dayEvents, dayExternal } = getItemsForDay(dayNum)
+            const allItems = [...dayEvents, ...dayTasks.map(t => ({ ...t, source: 'task' })), ...dayExternal.map(g => ({ ...g, source: 'external' as const }))]
 
             return (
               <div
@@ -430,10 +415,10 @@ function CalendarContent() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', maxHeight: 60 }}>
                   {allItems.slice(0, 3).map((item, i) => {
-                    const isGoogleItem = item.source === 'google'
-                    const isTaskItem = 'status' in item && item.source !== 'google'
+                    const isGoogleItem = item.source === 'external'
+                    const isTaskItem = 'status' in item && item.source !== 'external'
                     const color = isGoogleItem
-                      ? '#4285f4'
+                      ? '#0ec98c'
                       : isTaskItem
                         ? STATUS_COLOR[(item as Task).status] || '#6b7280'
                         : TYPE_COLOR[(item as CalendarEvent).type] || '#6b7280'
@@ -455,8 +440,7 @@ function CalendarContent() {
                           cursor: isTaskItem || isGoogleItem ? 'default' : 'pointer',
                         }}
                       >
-                        {isGoogleItem && '◆ '}
-                        {(item as { title?: string }).title || 'Sans titre'}
+                        {isGoogleItem ? '◆ ' : ''}{(item as { title?: string }).title || 'Sans titre'}
                       </div>
                     )
                   })}
