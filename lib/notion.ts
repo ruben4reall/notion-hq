@@ -323,6 +323,74 @@ export async function upsertPresence(username: string): Promise<void> {
   }
 }
 
+// ── USER SETTINGS (stored in presence DB) ────────────────────────────────────
+
+export interface UserSettings {
+  displayName: string | null
+  passwordOverride: string | null
+}
+
+async function ensurePresenceProperties() {
+  if (!process.env.NOTION_PRESENCE_DB) return
+  await notion.databases.update({
+    database_id: DB.PRESENCE,
+    properties: {
+      'Nom affiché': { rich_text: {} },
+      'Mot de passe': { rich_text: {} },
+    },
+  })
+}
+
+export async function getUserSettings(name: string): Promise<UserSettings | null> {
+  if (!process.env.NOTION_PRESENCE_DB) return null
+  const res = await notion.databases.query({
+    database_id: DB.PRESENCE,
+    filter: { property: 'Utilisateur', title: { equals: name } },
+    page_size: 1,
+  })
+  if (!res.results.length) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const p = res.results[0] as any
+  return {
+    displayName: r(p.properties['Nom affiché']) || null,
+    passwordOverride: r(p.properties['Mot de passe']) || null,
+  }
+}
+
+export async function updateUserSettings(name: string, settings: Partial<UserSettings>): Promise<void> {
+  if (!process.env.NOTION_PRESENCE_DB) return
+  await ensurePresenceProperties()
+
+  const res = await notion.databases.query({
+    database_id: DB.PRESENCE,
+    filter: { property: 'Utilisateur', title: { equals: name } },
+    page_size: 1,
+  })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props: Record<string, any> = {}
+  if (settings.displayName !== undefined) {
+    props['Nom affiché'] = { rich_text: [{ text: { content: settings.displayName ?? '' } }] }
+  }
+  if (settings.passwordOverride !== undefined) {
+    props['Mot de passe'] = { rich_text: [{ text: { content: settings.passwordOverride ?? '' } }] }
+  }
+
+  if (res.results.length > 0) {
+    await notion.pages.update({ page_id: res.results[0].id, properties: props })
+  } else {
+    await notion.pages.create({
+      parent: { database_id: DB.PRESENCE },
+      properties: {
+        'Utilisateur': { title: [{ text: { content: name } }] },
+        'Dernière vue': { rich_text: [{ text: { content: new Date().toISOString() } }] },
+        'En ligne': { checkbox: false },
+        ...props,
+      },
+    })
+  }
+}
+
 // legacy aliases used by existing routes
 export const updateTaskStatus = (id: string, status: string) => updateTask(id, { status: status as Task['status'] })
 export const updateCRMStatus  = (id: string, status: string) => updateCRM(id, { status: status as CRMEntry['status'] })
