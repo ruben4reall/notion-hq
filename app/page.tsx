@@ -50,13 +50,14 @@ function fmtDate(d: string) {
 }
 
 function KPICard({
-  label, value, sub, color, icon,
+  label, value, sub, color, icon, badge,
 }: {
   label: string
   value: number | string
   sub?: string
   color: string
   icon: React.ReactNode
+  badge?: { text: string; positive: boolean }
 }) {
   return (
     <div className="card animate-in" style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
@@ -65,6 +66,17 @@ function KPICard({
         width: 80, height: 80, borderRadius: '50%',
         background: `${color}0d`,
       }} />
+      {badge && (
+        <span style={{
+          position: 'absolute', top: 12, right: 12,
+          fontSize: 10, fontWeight: 700,
+          color: badge.positive ? '#0ec98c' : '#f43f5e',
+          background: badge.positive ? 'rgba(14,201,140,0.1)' : 'rgba(244,63,94,0.1)',
+          padding: '2px 6px', borderRadius: 6,
+        }}>
+          {badge.positive ? '▲' : '▼'} {badge.text}
+        </span>
+      )}
       <div style={{
         width: 36, height: 36, borderRadius: 10,
         background: `${color}18`,
@@ -78,35 +90,6 @@ function KPICard({
       </p>
       <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--t1)', marginTop: 6 }}>{label}</p>
       {sub && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>{sub}</p>}
-    </div>
-  )
-}
-
-function MetricCard({ label, value, delta, sub, color }: {
-  label: string; value: number | string; delta?: number; sub?: string; color: string
-}) {
-  const hasDelta = delta !== undefined
-  const isUp = delta !== undefined && delta >= 0
-  return (
-    <div className="card animate-in" style={{ padding: '16px 20px' }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em', marginBottom: 8 }}>
-        {label.toUpperCase()}
-      </p>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <p style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: '-0.03em', lineHeight: 1 }}>
-          {value}
-        </p>
-        {hasDelta && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
-            background: isUp ? 'rgba(14,201,140,0.12)' : 'rgba(244,63,94,0.12)',
-            color: isUp ? '#0ec98c' : '#f43f5e',
-          }}>
-            {isUp ? '▲' : '▼'} {Math.abs(delta)}%
-          </span>
-        )}
-      </div>
-      {sub && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 5 }}>{sub}</p>}
     </div>
   )
 }
@@ -220,13 +203,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs principaux */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
         <KPICard
           label="Tâches en cours"
           value={data.tasksInProgress}
-          sub={`sur ${data.totalTasks} total`}
+          sub={`${data.completionRate}% complétées · ${data.tasksLast24h > 0 ? `+${data.tasksLast24h} aujourd'hui` : `sur ${data.totalTasks} total`}`}
           color="#7c6af5"
+          badge={data.tasksDelta !== 0 ? { text: `${Math.abs(data.tasksDelta)}%`, positive: data.tasksDelta > 0 } : undefined}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/>
@@ -237,8 +221,9 @@ export default function DashboardPage() {
         <KPICard
           label="Prospects actifs"
           value={data.activeProspects}
-          sub="Contacté → Offre"
+          sub="Contacté → Offre envoyée"
           color="#4f8ef7"
+          badge={data.crmConversionRate > 0 ? { text: `${data.crmConversionRate}% conv.`, positive: data.crmConversionRate >= 20 } : undefined}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -252,6 +237,7 @@ export default function DashboardPage() {
           value={data.signedClients}
           sub={`sur ${data.totalCRM} prospects`}
           color="#0ec98c"
+          badge={data.completedLast24h > 0 ? { text: `+${data.completedLast24h} 24h`, positive: true } : undefined}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -261,43 +247,15 @@ export default function DashboardPage() {
         <KPICard
           label="Idées validées"
           value={data.validatedIdeas}
-          sub={`sur ${data.totalIdeas} idées`}
+          sub={`vélocité ${data.taskVelocity} tâche/j`}
           color="#f59e0b"
+          badge={data.totalIdeas > 0 ? { text: `${Math.round((data.validatedIdeas/data.totalIdeas)*100)}%`, positive: data.validatedIdeas > 0 } : undefined}
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M12 2C8.686 2 6 4.686 6 8c0 2.21 1.118 4.156 2.83 5.315C9.517 13.867 10 14.612 10 15.5V16h4v-.5c0-.888.483-1.633 1.17-2.185C16.882 12.156 18 10.21 18 8c0-3.314-2.686-6-6-6z" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 19h4M9.5 22h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           }
-        />
-      </div>
-
-      {/* Métriques 24h */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
-        <MetricCard
-          label="Ajoutées 24h"
-          value={data.tasksLast24h}
-          delta={data.tasksDelta}
-          sub={`vs ${data.tasksPrev24h} hier`}
-          color="#7c6af5"
-        />
-        <MetricCard
-          label="Terminées 24h"
-          value={data.completedLast24h}
-          color="#0ec98c"
-          sub="tâches finies"
-        />
-        <MetricCard
-          label="Taux complétion"
-          value={`${data.completionRate}%`}
-          color="#4f8ef7"
-          sub={`${data.tasksByStatus['Done'] ?? 0} / ${data.totalTasks} tâches`}
-        />
-        <MetricCard
-          label="Conversion CRM"
-          value={`${data.crmConversionRate}%`}
-          color="#f59e0b"
-          sub={`vélocité ${data.taskVelocity} tâche/j`}
         />
       </div>
 
