@@ -426,50 +426,65 @@ export interface Note {
   titre: string
   contenu: string
   utilisateur: string
+  sharedWith: string[]
   createdAt: string
   updatedAt: string
+}
+
+function mapNote(r: Record<string, unknown>): Note {
+  return {
+    id: r.id as string,
+    titre: r.titre as string,
+    contenu: r.contenu as string,
+    utilisateur: r.utilisateur as string,
+    sharedWith: (r.shared_with as string[]) || [],
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  }
 }
 
 export async function getNotes(utilisateur: string): Promise<Note[]> {
   const { data, error } = await getClient()
     .from('notes')
-    .select('id, titre, contenu, utilisateur, created_at, updated_at')
-    .eq('utilisateur', utilisateur)
+    .select('id, titre, contenu, utilisateur, shared_with, created_at, updated_at')
+    .or(`utilisateur.eq.${utilisateur},shared_with.cs.{"${utilisateur}"}`)
     .order('updated_at', { ascending: false })
     .limit(200)
   if (error) throw error
-  return (data || []).map(r => ({
-    id: r.id,
-    titre: r.titre,
-    contenu: r.contenu,
-    utilisateur: r.utilisateur,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }))
+  return (data || []).map(mapNote)
 }
 
 export async function getNote(id: string): Promise<Note | null> {
   const { data } = await getClient()
     .from('notes')
-    .select('*')
+    .select('id, titre, contenu, utilisateur, shared_with, created_at, updated_at')
     .eq('id', id)
     .maybeSingle()
   if (!data) return null
-  return { id: data.id, titre: data.titre, contenu: data.contenu, utilisateur: data.utilisateur, createdAt: data.created_at, updatedAt: data.updated_at }
+  return mapNote(data)
 }
 
 export async function createNote(utilisateur: string, titre: string, contenu: string): Promise<Note> {
   const { data, error } = await getClient()
     .from('notes')
     .insert({ utilisateur, titre, contenu })
-    .select()
+    .select('id, titre, contenu, utilisateur, shared_with, created_at, updated_at')
     .single()
   if (error) throw error
-  return { id: data.id, titre: data.titre, contenu: data.contenu, utilisateur: data.utilisateur, createdAt: data.created_at, updatedAt: data.updated_at }
+  return mapNote(data)
 }
 
 export async function updateNote(id: string, data: { titre?: string; contenu?: string }): Promise<void> {
   const { error } = await getClient().from('notes').update(data).eq('id', id)
+  if (error) throw error
+}
+
+export async function shareNote(id: string, ownerName: string, sharedWith: string[]): Promise<void> {
+  const { error } = await getClient()
+    .from('notes')
+    .update({ shared_with: sharedWith })
+    .eq('id', id)
+    .eq('utilisateur', ownerName) // only owner can change sharing
   if (error) throw error
 }
 
