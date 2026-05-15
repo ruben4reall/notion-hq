@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
 import { UserPicker, useUsers } from './UserPicker'
 import type { Task } from '@/lib/types'
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Props) {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [form, setForm] = useState<Partial<Task>>(empty())
   const [loading, setLoading] = useState(false)
   const users = useUsers()
@@ -37,7 +37,7 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
     e.preventDefault()
     if (!form.title?.trim()) return
     setLoading(true)
-    const body = { ...form, modifiedBy: session?.user?.name ?? '' }
+    const body = { ...form, modifiedBy: session?.name ?? '' }
     try {
       if (task) {
         await fetch(`/api/tasks/${task.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

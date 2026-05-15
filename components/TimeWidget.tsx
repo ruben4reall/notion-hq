@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTimer } from '@/lib/timer-context'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 
 const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
@@ -18,7 +18,7 @@ function fmtShort(sec: number) {
 }
 
 export function TimeWidget() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const { active, elapsed, setActive } = useTimer()
 
   const stop = async (e: React.MouseEvent) => {
@@ -28,7 +28,7 @@ export function TimeWidget() {
     setActive(null)
   }
 
-  if (!session?.user || !active) return null
+  if (!session || !active) return null
 
   const color = CAT_COLORS[active.categorie] || '#7c6af5'
 

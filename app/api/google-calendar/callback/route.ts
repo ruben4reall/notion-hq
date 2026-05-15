@@ -10,17 +10,17 @@ export async function GET(req: NextRequest) {
   cookieStore.delete('gcal_state')
 
   if (!expectedState || expectedState !== receivedState) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/calendar?error=state_mismatch`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/calendar?error=state_mismatch`)
   }
 
   const code = req.nextUrl.searchParams.get('code')
   if (!code) {
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/calendar?error=no_code`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/calendar?error=no_code`)
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID!
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/google-calendar/callback`
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/callback`
 
   try {
     const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -37,9 +37,9 @@ export async function GET(req: NextRequest) {
       cookieStore.set('gcal_refresh', tokens.refresh_token, { httpOnly: true, secure: true, maxAge: 60 * 60 * 24 * 30, path: '/' })
     }
 
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/calendar?gcal=connected`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/calendar?gcal=connected`)
   } catch (err) {
     console.error(err)
-    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/calendar?error=auth_failed`)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/calendar?error=auth_failed`)
   }
 }

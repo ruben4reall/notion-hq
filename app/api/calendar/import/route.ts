@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { getUser } from '@/lib/auth'
 import { getUserSettings, updateUserSettings } from '@/lib/db'
 
 // Unfold RFC 5545 folded lines, then parse VEVENT blocks
@@ -90,10 +90,10 @@ function unescapeIcal(str: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await getUser(req)
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const settings = await getUserSettings(token.name as string).catch(() => null)
+  const settings = await getUserSettings(token?.name as string).catch(() => null)
   const feedUrl = settings?.icalFeedUrl
 
   if (!feedUrl) return NextResponse.json({ events: [], connected: false })
@@ -122,12 +122,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await getUser(req)
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { url } = await req.json()
   const feedUrl = url ? String(url).trim().slice(0, 1000) : null
 
-  await updateUserSettings(token.name as string, { icalFeedUrl: feedUrl })
+  await updateUserSettings(token?.name as string, { icalFeedUrl: feedUrl })
   return NextResponse.json({ ok: true })
 }

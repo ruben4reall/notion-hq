@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 
 export interface ActiveSession {
   id: string
@@ -22,13 +22,13 @@ const TimerContext = createContext<TimerCtx>({
 })
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [active, setActive] = useState<ActiveSession | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const tickRef = useRef<ReturnType<typeof setInterval>>()
 
   const refresh = useCallback(async () => {
-    if (!session?.user) return
+    if (!session) return
     try {
       const res = await fetch('/api/time?days=1')
       if (res.ok) {
@@ -36,9 +36,13 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         setActive(a ? { id: a.id, categorie: a.categorie, debut: a.debut } : null)
       }
     } catch {}
-  }, [session?.user])
+  }, [session])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    refresh()
+    const interval = setInterval(refresh, 30000)
+    return () => clearInterval(interval)
+  }, [refresh])
 
   useEffect(() => {
     clearInterval(tickRef.current)

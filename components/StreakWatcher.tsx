@@ -1,19 +1,19 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@/context/AuthContext'
 import { useOnboarding } from './Onboarding'
 import { StreakModal, type StreakData } from './StreakModal'
 
 export function StreakWatcher() {
-  const { status } = useSession()
+  const { status } = useAuth()
   const { show: onboardingVisible } = useOnboarding()
   const [streakData, setStreakData] = useState<StreakData | null>(null)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
     if (status !== 'authenticated') return
-    if (onboardingVisible) return // wait until onboarding is done
+    if (onboardingVisible) return
     if (fetchedRef.current) return
     fetchedRef.current = true
 

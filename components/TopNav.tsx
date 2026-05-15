@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 import { PresenceIndicator } from './PresenceIndicator'
@@ -39,12 +39,12 @@ function streakEmoji(n: number) {
 
 export function TopNav() {
   const path = usePathname()
-  const { data: session } = useSession()
+  const { user: session, signOut } = useAuth()
   const [showMenu, setShowMenu] = useState(false)
   const streak = useStreak()
-  const initials = session?.user?.name?.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) ?? '?'
+  const initials = session?.name?.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) ?? '?'
 
-  if (path === '/login') return null
+  if (path === '/login' || path === '/auth') return null
 
   return (
     <header
@@ -98,7 +98,7 @@ export function TopNav() {
           <ThemeToggle />
 
           {/* User menu */}
-          {session?.user && (
+          {session && (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowMenu(v => !v)}
@@ -118,7 +118,7 @@ export function TopNav() {
                   {initials}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--t0)' }}>
-                  {session.user.name}
+                  {session.name}
                 </span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--t2)' }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -172,7 +172,7 @@ export function TopNav() {
                       Paramètres
                     </Link>
                     <button
-                      onClick={() => signOut({ callbackUrl: '/login' })}
+                      onClick={() => signOut()}
                       style={{
                         width: '100%', padding: '8px 12px', borderRadius: 7,
                         background: 'none', border: 'none',

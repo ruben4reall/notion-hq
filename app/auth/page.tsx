@@ -1,0 +1,286 @@
+'use client'
+
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { playLoginSound } from '@/lib/sounds'
+
+const COLORS = ['#7c6af5', '#4f8ef7', '#0ec98c', '#f59e0b', '#ef4444', '#ec4899']
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '11px 14px',
+  background: 'var(--bg-2)', border: '1px solid var(--border-m)',
+  borderRadius: 10, color: 'var(--t0)', fontSize: 14,
+  outline: 'none', transition: 'border-color 0.15s',
+}
+
+function focusIn(e: React.FocusEvent<HTMLInputElement>) { e.target.style.borderColor = 'var(--accent)' }
+function focusOut(e: React.FocusEvent<HTMLInputElement>) { e.target.style.borderColor = 'var(--border-m)' }
+
+function AuthForm() {
+  const router = useRouter()
+  const params = useSearchParams()
+  const redirect = params.get('redirect') || '/org'
+  const supabase = createClient()
+
+  const [tab, setTab] = useState<'login' | 'register'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [selectedColor, setSelectedColor] = useState(COLORS[0])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    supabase.auth.getSession().then((res: Awaited<ReturnType<typeof supabase.auth.getSession>>) => {
+      if (res.data.session) router.replace(redirect)
+    })
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError('Email ou mot de passe incorrect')
+      setLoading(false)
+      return
+    }
+    playLoginSound()
+    router.push(redirect)
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    if (password.length < 8) {
+      setError('Mot de passe trop court (minimum 8 caractères)')
+      setLoading(false)
+      return
+    }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName.trim(), color: selectedColor },
+      },
+    })
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+    setSuccess('Vérifiez votre email pour confirmer votre compte.')
+    setLoading(false)
+  }
+
+  return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', background: 'var(--bg-0)', padding: 20,
+    }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 16, background: 'var(--accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px', boxShadow: '0 8px 32px var(--accent-glow)',
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+            </svg>
+          </div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.03em' }}>
+            Manager Dashboard
+          </h1>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', background: 'var(--bg-2)', borderRadius: 12,
+          padding: 4, marginBottom: 24, border: '1px solid var(--border-s)',
+        }}>
+          {(['login', 'register'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setError(''); setSuccess('') }}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 9, border: 'none',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                background: tab === t ? 'var(--accent)' : 'transparent',
+                color: tab === t ? 'white' : 'var(--t2)',
+              }}
+            >
+              {t === 'login' ? 'Connexion' : 'Créer un compte'}
+            </button>
+          ))}
+        </div>
+
+        {/* Success message */}
+        {success && (
+          <div style={{
+            padding: '12px 14px', borderRadius: 10, marginBottom: 16,
+            background: 'rgba(14,201,140,0.08)', border: '1px solid rgba(14,201,140,0.2)',
+            fontSize: 13, color: 'var(--green)', textAlign: 'center',
+          }}>
+            {success}
+          </div>
+        )}
+
+        {/* Login form */}
+        {tab === 'login' && (
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Email
+              </label>
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                required placeholder="vous@exemple.com" style={inputStyle}
+                autoComplete="email" autoFocus onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  Mot de passe
+                </label>
+                <a
+                  href="/auth/forgot-password"
+                  style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}
+                >
+                  Mot de passe oublié ?
+                </a>
+              </div>
+              <input
+                type="password" value={password} onChange={e => setPassword(e.target.value)}
+                required placeholder="••••••••" style={inputStyle}
+                autoComplete="current-password" onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+            {error && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                background: 'var(--red-bg)', border: '1px solid rgba(244,63,94,0.2)',
+                fontSize: 13, color: 'var(--red)', textAlign: 'center',
+              }}>
+                {error}
+              </div>
+            )}
+            <button
+              type="submit" disabled={loading}
+              style={{
+                marginTop: 4, height: 44, width: '100%',
+                background: loading ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
+                color: 'white', border: 'none', borderRadius: 10,
+                fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
+                  Connexion…
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </>
+              ) : 'Se connecter'}
+            </button>
+          </form>
+        )}
+
+        {/* Register form */}
+        {tab === 'register' && !success && (
+          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Nom complet
+              </label>
+              <input
+                type="text" value={fullName} onChange={e => setFullName(e.target.value)}
+                required placeholder="Prénom Nom" style={inputStyle}
+                autoFocus onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Email
+              </label>
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                required placeholder="vous@exemple.com" style={inputStyle}
+                autoComplete="email" onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Mot de passe
+              </label>
+              <input
+                type="password" value={password} onChange={e => setPassword(e.target.value)}
+                required placeholder="Minimum 8 caractères" style={inputStyle}
+                autoComplete="new-password" onFocus={focusIn} onBlur={focusOut}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Couleur de profil
+              </label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {COLORS.map(c => (
+                  <button
+                    key={c} type="button" onClick={() => setSelectedColor(c)}
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%', background: c,
+                      border: selectedColor === c ? '3px solid white' : '3px solid transparent',
+                      outline: selectedColor === c ? `2px solid ${c}` : 'none',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            {error && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                background: 'var(--red-bg)', border: '1px solid rgba(244,63,94,0.2)',
+                fontSize: 13, color: 'var(--red)', textAlign: 'center',
+              }}>
+                {error}
+              </div>
+            )}
+            <button
+              type="submit" disabled={loading}
+              style={{
+                marginTop: 4, height: 44, width: '100%',
+                background: loading ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
+                color: 'white', border: 'none', borderRadius: 10,
+                fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
+                  Création…
+                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </>
+              ) : 'Créer mon compte'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense>
+      <AuthForm />
+    </Suspense>
+  )
+}

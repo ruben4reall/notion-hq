@@ -1,24 +1,45 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 
-const PUBLIC = ['/login', '/api/auth', '/api/calendar.ics']
+const PUBLIC = ['/auth', '/api/calendar.ics']
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+
   if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const res = NextResponse.next()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (list) => list.forEach(({ name, value, options }) => res.cookies.set(name, value, options)),
+      },
+    }
+  )
 
-  if (!token) {
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const url = new URL('/login', req.url)
-    url.searchParams.set('callbackUrl', pathname)
+    const url = new URL('/auth', req.url)
+    url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  return NextResponse.next()
+  // Redirect to org picker if no org selected (except for org page and API)
+  if (!pathname.startsWith('/api/') && pathname !== '/org' && pathname !== '/auth') {
+    const orgId = req.cookies.get('current_org_id')?.value
+    if (!orgId) {
+      return NextResponse.redirect(new URL('/org', req.url))
+    }
+  }
+
+  return res
 }
 
 export const config = {

@@ -1,27 +1,25 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth-options'
+import { NextRequest, NextResponse } from 'next/server'
+import { getUser } from '@/lib/auth'
 import { getClient } from '@/lib/db'
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.name) return NextResponse.json({ streak: 0, longest: 0 })
+export async function GET(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ streak: 0, longest: 0 })
 
   const { data } = await getClient()
     .from('presence')
     .select('current_streak, longest_streak')
-    .eq('username', session.user.name)
+    .eq('username', user.name)
     .maybeSingle()
 
   return NextResponse.json({ streak: data?.current_streak ?? 0, longest: data?.longest_streak ?? 0 })
 }
 
-export async function POST() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.name) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const name = session.user.name
-  // Use local date to avoid UTC day-boundary issues for european users
+  const name = user.name
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const yesterday = new Date(now.getTime() - 86400000)
@@ -33,7 +31,6 @@ export async function POST() {
     .eq('username', name)
     .maybeSingle()
 
-  // Already counted today → no change
   if (data?.last_streak_date === today) {
     return NextResponse.json({ streak: data.current_streak, longest: data.longest_streak, isNew: false })
   }

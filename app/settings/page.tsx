@@ -1,15 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useOnboarding, OnboardingModal } from '@/components/Onboarding'
 
 interface UserSettings {
   name: string
-  username: string
+  email: string
   displayName: string | null
-  hasPasswordOverride: boolean
   icalFeedUrl: string | null
 }
 
@@ -56,14 +55,13 @@ function Alert({ type, message }: { type: 'error' | 'success'; message: string }
 }
 
 export default function SettingsPage() {
-  const { data: session } = useSession()
+  const { user: session, signOut } = useAuth()
   const [settings, setSettings] = useState<UserSettings | null>(null)
 
   const [displayName, setDisplayName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameMsg, setNameMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
-  const [currentPwd, setCurrentPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [savingPwd, setSavingPwd] = useState(false)
@@ -110,14 +108,14 @@ export default function SettingsPage() {
     const res = await fetch('/api/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'password', currentPassword: currentPwd, newPassword: newPwd }),
+      body: JSON.stringify({ type: 'password', newPassword: newPwd }),
     })
     const data = await res.json()
     if (!res.ok) {
       setPwdMsg({ type: 'error', text: data.error || 'Erreur' })
     } else {
       setPwdMsg({ type: 'success', text: 'Mot de passe modifié avec succès' })
-      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
+      setNewPwd(''); setConfirmPwd('')
     }
     setSavingPwd(false)
   }
@@ -140,7 +138,7 @@ export default function SettingsPage() {
     setTimeout(() => setIcalMsg(null), 4000)
   }
 
-  const name = session?.user?.name || ''
+  const name = session?.name || ''
   const initials = name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) || '?'
   const shownName = settings?.displayName || name
 
@@ -165,7 +163,7 @@ export default function SettingsPage() {
           <div>
             <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--t0)' }}>{shownName}</p>
             <p style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>
-              @{settings?.username || '—'}
+              {settings?.email || '—'}
             </p>
           </div>
         </div>
@@ -195,13 +193,6 @@ export default function SettingsPage() {
 
       {/* Security */}
       <Section title="Sécurité">
-        <Field label="Mot de passe actuel">
-          <input type="password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
-            placeholder="••••••••" style={inputStyle}
-            onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-            onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
-          />
-        </Field>
         <Field label="Nouveau mot de passe">
           <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)}
             placeholder="Minimum 8 caractères" style={inputStyle}
@@ -222,7 +213,7 @@ export default function SettingsPage() {
         <button
           className="btn btn-primary"
           onClick={savePassword}
-          disabled={savingPwd || !currentPwd || !newPwd || !confirmPwd}
+          disabled={savingPwd || !newPwd || !confirmPwd}
         >
           {savingPwd ? 'Modification…' : 'Changer le mot de passe'}
         </button>
@@ -311,7 +302,7 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <p style={{ fontSize: 13, color: 'var(--t1)' }}>Se déconnecter de la session en cours</p>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={() => signOut()}
             style={{
               padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
               background: 'var(--red-bg)', color: 'var(--red)',

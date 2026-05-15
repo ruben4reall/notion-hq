@@ -12,7 +12,7 @@ export async function GET() {
   const state = crypto.randomBytes(16).toString('hex')
   cookieStore.set('gcal_state', state, { httpOnly: true, secure: true, maxAge: 600, path: '/' })
 
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/google-calendar/callback`
+  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/callback`
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
   url.searchParams.set('client_id', clientId)
   url.searchParams.set('redirect_uri', redirectUri)

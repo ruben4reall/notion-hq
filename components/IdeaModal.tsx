@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
 import { UserPicker, useUsers } from './UserPicker'
 import type { Idea } from '@/lib/types'
@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [form, setForm] = useState<Partial<Idea>>(empty())
   const [loading, setLoading] = useState(false)
   const users = useUsers()
@@ -36,7 +36,7 @@ export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
     e.preventDefault()
     if (!form.title?.trim()) return
     setLoading(true)
-    const body = { ...form, modifiedBy: session?.user?.name ?? '' }
+    const body = { ...form, modifiedBy: session?.name ?? '' }
     try {
       if (idea) {
         await fetch(`/api/ideas/${idea.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

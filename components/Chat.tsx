@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { playNotifSound } from '@/lib/sounds'
 import { useUsers } from './UserPicker'
 
@@ -351,8 +351,8 @@ function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; show
 // ── Main Chat Component ───────────────────────────────────────────────────────
 
 export function Chat() {
-  const { data: session, status } = useSession()
-  const myName = session?.user?.name || ''
+  const { user: session, status } = useAuth()
+  const myName = session?.name || ''
 
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'list' | 'chat'>('list')

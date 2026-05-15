@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
 import { UserPicker, useUsers } from './UserPicker'
 import type { CRMEntry } from '@/lib/types'
@@ -26,7 +26,7 @@ interface Props {
 }
 
 export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Props) {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [form, setForm] = useState<Partial<CRMEntry>>(empty())
   const [loading, setLoading] = useState(false)
   const users = useUsers()
@@ -42,7 +42,7 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
     e.preventDefault()
     if (!form.enseigne?.trim()) return
     setLoading(true)
-    const body = { ...form, modifiedBy: session?.user?.name ?? '' }
+    const body = { ...form, modifiedBy: session?.name ?? '' }
     try {
       if (entry) {
         await fetch(`/api/crm/${entry.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

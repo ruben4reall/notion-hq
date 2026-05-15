@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { IdeaModal } from './IdeaModal'
 import { UserAvatar, useUsers } from './UserPicker'
 import type { Idea } from '@/lib/types'
@@ -89,7 +89,7 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
 }
 
 export default function IdeasView() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('Toutes')
@@ -113,7 +113,7 @@ export default function IdeasView() {
     setIdeas(prev => prev.map(i => i.id === id ? { ...i, votes: newVotes } : i))
     await fetch(`/api/ideas/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ votes: newVotes, modifiedBy: session?.user?.name ?? '' }),
+      body: JSON.stringify({ votes: newVotes, modifiedBy: session?.name ?? '' }),
     })
   }
 

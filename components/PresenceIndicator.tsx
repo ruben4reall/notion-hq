@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/context/AuthContext'
 import { playPresenceSound } from '@/lib/sounds'
 
 interface PresenceEntry {
@@ -157,7 +157,7 @@ function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () =
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PresenceIndicator() {
-  const { data: session } = useSession()
+  const { user: session } = useAuth()
   const [users, setUsers] = useState<PresenceEntry[]>([])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -172,15 +172,15 @@ export function PresenceIndicator() {
   }, [])
 
   const ping = useCallback(async () => {
-    if (!session?.user?.name) return
+    if (!session?.name) return
     try {
       await fetch('/api/presence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: session.user.name }),
+        body: JSON.stringify({ username: session?.name }),
       })
     } catch {}
-  }, [session?.user?.name])
+  }, [session?.name])
 
   const loadPresence = useCallback(async () => {
     if (document.hidden) return

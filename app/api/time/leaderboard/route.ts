@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { getUser } from '@/lib/auth'
 import { getClient } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  if (!token) return NextResponse.json({}, { status: 401 })
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({}, { status: 401 })
 
   const days = parseInt(req.nextUrl.searchParams.get('days') || '7')
   const since = new Date(Date.now() - days * 86400000).toISOString()
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
     }
 
     const leaderboard = Object.entries(byUser)
-      .map(([user, stats]) => ({
-        utilisateur: user,
+      .map(([utilisateur, stats]) => ({
+        utilisateur,
         totalMinutes: stats.totalMinutes,
         sessions: stats.sessions,
         byCategory: stats.byCategory,

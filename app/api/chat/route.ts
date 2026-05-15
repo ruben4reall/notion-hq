@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { getUser } from '@/lib/auth'
 import { getChatMessages, sendChatMessage, createNotification } from '@/lib/db'
 
 export async function GET() {
@@ -15,8 +15,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!process.env.NOTION_CHAT_DB) return NextResponse.json({ error: 'Not configured' }, { status: 503 })
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  const author = (token?.name as string) || 'Anonyme'
+  const token = await getUser(req)
+  const author = (token?.name) || 'Anonyme'
 
   try {
     const { message, destinataire } = await req.json()
