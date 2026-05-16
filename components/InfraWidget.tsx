@@ -224,7 +224,7 @@ export default function InfraWidget() {
             <>
               <UsageBar label="Base de données" used={data.sbMetrics.db_bytes} limit={data.sbLimits.db_size}/>
               <UsageBar label="Storage" used={data.sbMetrics.storage_bytes} limit={data.sbLimits.storage}/>
-              <UsageBar label="Auth users" used={data.sbMetrics.auth_users} limit={data.sbLimits.auth_users} fmtFn={fmtNum}/>
+              <UsageBar label="Comptes plateforme (tous orgs)" used={data.sbMetrics.auth_users} limit={data.sbLimits.auth_users} fmtFn={fmtNum}/>
               <div style={{ display:'flex', gap:16, marginTop:8 }}>
                 <span style={{ fontSize:10, color:'var(--t2)' }}>Sessions actives <b style={{ color:'var(--t0)' }}>{data.sbMetrics.active_sessions}</b></span>
                 <span style={{ fontSize:10, color:'var(--t2)' }}>PG <b style={{ color:'var(--t0)' }}>{data.sbMetrics.pg_version}</b></span>

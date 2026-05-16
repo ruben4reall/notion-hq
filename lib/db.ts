@@ -331,9 +331,11 @@ export interface PresenceEntry {
 }
 
 export async function getPresence(filterUsernames?: string[]): Promise<PresenceEntry[]> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString()
   let query = getClient()
     .from('presence')
     .select('id, username, last_seen, connected_at')
+    .gte('last_seen', thirtyDaysAgo)
     .limit(20)
   if (filterUsernames && filterUsernames.length > 0) {
     query = query.in('username', filterUsernames)
