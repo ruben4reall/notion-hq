@@ -4,6 +4,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 
 const InfraWidget = lazy(() => import('@/components/InfraWidget'))
+const UptimeWidget = lazy(() => import('@/components/UptimeWidget'))
 
 interface Metrics {
   users: number
@@ -107,7 +108,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [activity, setActivity] = useState<ActivityEntry[] | null>(null)
   const [userSearch, setUserSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<'users' | 'activity' | 'infra'>('users')
+  const [activeTab, setActiveTab] = useState<'monitoring' | 'users' | 'activity' | 'infra'>('monitoring')
 
   useEffect(() => {
     fetch('/api/admin/check')
@@ -229,9 +230,10 @@ export default function AdminPage() {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 10, padding: 3, width: 'fit-content', flexWrap: 'wrap' }}>
           {([
-            { id: 'users',    label: `Utilisateurs${users ? ` (${users.length})` : ''}` },
-            { id: 'activity', label: 'Activité récente' },
-            { id: 'infra',    label: '🔧 Infrastructure' },
+            { id: 'monitoring', label: '📡 Monitoring' },
+            { id: 'users',      label: `Utilisateurs${users ? ` (${users.length})` : ''}` },
+            { id: 'activity',   label: 'Activité récente' },
+            { id: 'infra',      label: '🔧 Infrastructure' },
           ] as const).map(tab => (
             <button
               key={tab.id}
@@ -247,6 +249,17 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {/* Monitoring tab */}
+        {activeTab === 'monitoring' && (
+          <Suspense fallback={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[1, 2, 3].map(i => <div key={i} style={{ height: 140, borderRadius: 14, background: 'var(--bg-1)', border: '1px solid var(--border-s)', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />)}
+            </div>
+          }>
+            <UptimeWidget />
+          </Suspense>
+        )}
 
         {/* Users tab */}
         {activeTab === 'users' && (
