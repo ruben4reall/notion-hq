@@ -32,29 +32,65 @@ function toAuthUser(u: User): AuthUser {
   }
 }
 
+const SESSION_DURATION = 6 * 60 * 60 * 1000 // 6 hours
+const LOGIN_AT_KEY = 'mgr_login_at'
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading')
   const supabase = createClient()
 
+  const doSignOut = async () => {
+    localStorage.removeItem(LOGIN_AT_KEY)
+    document.cookie = 'current_org_id=; Max-Age=0; path=/'
+    await supabase.auth.signOut()
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then((res: { data: { session: Session | null } }) => {
       const session = res.data.session
+      if (session?.user) {
+        const loginAt = parseInt(localStorage.getItem(LOGIN_AT_KEY) || '0', 10)
+        if (loginAt && Date.now() - loginAt > SESSION_DURATION) {
+          doSignOut()
+          setUser(null)
+          setStatus('unauthenticated')
+          return
+        }
+      }
       setUser(session?.user ? toAuthUser(session.user) : null)
       setStatus(session?.user ? 'authenticated' : 'unauthenticated')
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+      if (_event === 'SIGNED_IN') {
+        localStorage.setItem(LOGIN_AT_KEY, Date.now().toString())
+      }
+      if (_event === 'SIGNED_OUT') {
+        localStorage.removeItem(LOGIN_AT_KEY)
+      }
       setUser(session?.user ? toAuthUser(session.user) : null)
       setStatus(session?.user ? 'authenticated' : 'unauthenticated')
     })
 
-    return () => subscription.unsubscribe()
+    // Check expiry every minute while app is open
+    const interval = setInterval(async () => {
+      const loginAt = parseInt(localStorage.getItem(LOGIN_AT_KEY) || '0', 10)
+      if (loginAt && Date.now() - loginAt > SESSION_DURATION) {
+        doSignOut()
+        setUser(null)
+        setStatus('unauthenticated')
+      }
+    }, 60_000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearInterval(interval)
+    }
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    document.cookie = 'current_org_id=; Max-Age=0; path=/'
+    await doSignOut()
   }
 
   return (
