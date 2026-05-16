@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTasks, getEvents } from '@/lib/db'
+import { getClient } from '@/lib/db'
 
 function icalDate(iso: string) {
   if (!iso) return ''
@@ -26,7 +26,22 @@ function foldLine(line: string): string {
 
 export async function GET() {
   try {
-    const [tasks, events] = await Promise.all([getTasks(), getEvents()])
+    const db = getClient()
+    const [tasksRes, eventsRes] = await Promise.all([
+      db.from('tasks').select('*').not('date_start', 'is', null).limit(500),
+      db.from('events').select('*').limit(500),
+    ])
+    const tasks = (tasksRes.data || []).map((r: any) => ({
+      id: r.id, title: r.title, status: r.status, priority: r.priority,
+      module: r.module, description: r.description,
+      dateStart: r.date_start || '', dateEnd: r.date_end || '',
+      modifiedBy: r.modified_by || '',
+    }))
+    const events = (eventsRes.data || []).map((r: any) => ({
+      id: r.id, title: r.title, type: r.type,
+      dateStart: r.date_start || '', dateEnd: r.date_end || '',
+      description: r.description || '',
+    }))
 
     const lines: string[] = [
       'BEGIN:VCALENDAR',
