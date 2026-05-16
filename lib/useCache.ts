@@ -37,7 +37,7 @@ export function useCache<T>(
 
   const refresh = useCallback(async () => {
     try {
-      const r = await fetch(url)
+      const r = await fetch(url, { cache: 'no-store' })
       if (!r.ok || !alive.current) return
       const fresh: T = await r.json()
       if (!alive.current) return

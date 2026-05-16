@@ -338,8 +338,7 @@ export default function TodoPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: done ? 'Done' : 'À faire' }),
     })
-    refresh()
-  }, [refresh])
+  }, [])
 
   const quickAdd = useCallback(async (title: string) => {
     await fetch('/api/tasks', {
