@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useCache } from '@/lib/useCache'
 
 interface LeaderEntry {
   utilisateur: string
@@ -24,19 +25,11 @@ function fmt(min: number) {
 const MEDALS = ['🥇', '🥈', '🥉']
 
 export function Leaderboard() {
-  const [data, setData] = useState<LeaderEntry[]>([])
   const [period, setPeriod] = useState(7)
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useCache<LeaderEntry[]>(`/api/time/leaderboard?days=${period}`)
 
-  useEffect(() => {
-    setLoading(true)
-    fetch(`/api/time/leaderboard?days=${period}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [period])
-
-  const max = data[0]?.totalMinutes || 1
+  const entries = data ?? []
+  const max = entries[0]?.totalMinutes || 1
 
   return (
     <div className="card" style={{ padding: '20px' }}>
@@ -64,13 +57,13 @@ export function Leaderboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 10 }} />)}
         </div>
-      ) : data.length === 0 ? (
+      ) : entries.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>
           Aucune session sur cette période
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {data.map((entry, i) => {
+          {entries.map((entry, i) => {
             const pct = (entry.totalMinutes / max) * 100
             const topCat = Object.entries(entry.byCategory).sort((a, b) => b[1] - a[1])[0]
             const topColor = topCat ? (CAT_COLORS[topCat[0]] || '#7c6af5') : 'var(--accent)'

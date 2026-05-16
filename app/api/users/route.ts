@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser } from '@/lib/auth'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { cachedJson } from '@/lib/api-cache'
 
 function getAdminClient() {
   return createAdminClient(
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
       color: (u.user_metadata?.color as string) || '#7c6af5',
     })).filter(u => u.name)
 
-    return NextResponse.json(users)
+    return cachedJson(users, 60, 120)
   } catch {
     return NextResponse.json([])
   }

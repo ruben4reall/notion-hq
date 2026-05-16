@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getOrgId } from '@/lib/auth'
 import { getTasks, getCRM, getIdeas } from '@/lib/db'
+import { cachedJson } from '@/lib/api-cache'
 
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
       ? (tasksLast24h > 0 ? 100 : 0)
       : Math.round(((tasksLast24h - tasksPrev24h) / tasksPrev24h) * 100)
 
-    return NextResponse.json({
+    return cachedJson({
       tasksInProgress,
       activeProspects,
       signedClients,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Suspense } from 'react'
+import { useCache } from '@/lib/useCache'
 import type { Task, CalendarEvent } from '@/lib/types'
 import { Modal, Field, Input, Textarea } from '@/components/Modal'
 
@@ -139,11 +140,13 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
 function CalendarContent() {
   const { user: session } = useAuth()
 
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const { data: fetchedTasks, loading: tasksLoading, refresh: refreshTasks } = useCache<Task[]>('/api/tasks')
+  const { data: fetchedEvents, loading: eventsLoading, refresh: refreshEvents } = useCache<CalendarEvent[]>('/api/events')
+  const [tasks, setTasks] = useState<Task[]>(fetchedTasks ?? [])
+  const [events, setEvents] = useState<CalendarEvent[]>(fetchedEvents ?? [])
   const [externalEvents, setExternalEvents] = useState<CalendarEvent[]>([])
   const [externalConnected, setExternalConnected] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const loading = tasksLoading || eventsLoading
   const [modal, setModal] = useState<ModalState>({ open: false })
   const [showExternal, setShowExternal] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -158,21 +161,28 @@ function CalendarContent() {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
 
+  useEffect(() => {
+    if (fetchedTasks) setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : [])
+  }, [fetchedTasks])
+
+  useEffect(() => {
+    if (fetchedEvents) setEvents(Array.isArray(fetchedEvents) ? fetchedEvents : [])
+  }, [fetchedEvents])
+
   const load = useCallback(async () => {
-    setLoading(true)
-    const [taskRes, eventRes, extRes] = await Promise.all([
-      fetch('/api/tasks').then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch('/api/events').then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch('/api/calendar/import').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false })),
-    ])
-    setTasks(Array.isArray(taskRes) ? taskRes : [])
-    setEvents(Array.isArray(eventRes) ? eventRes : [])
+    refreshTasks()
+    refreshEvents()
+    const extRes = await fetch('/api/calendar/import').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false }))
     setExternalEvents(Array.isArray(extRes?.events) ? extRes.events : [])
     setExternalConnected(extRes?.connected || false)
-    setLoading(false)
-  }, [])
+  }, [refreshTasks, refreshEvents])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    fetch('/api/calendar/import').then(r => r.ok ? r.json() : { events: [], connected: false }).catch(() => ({ events: [], connected: false })).then(extRes => {
+      setExternalEvents(Array.isArray(extRes?.events) ? extRes.events : [])
+      setExternalConnected(extRes?.connected || false)
+    })
+  }, [])
 
   const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y-1) } else setMonth(m => m-1) }
   const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y+1) } else setMonth(m => m+1) }

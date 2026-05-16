@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
+import { useCache } from '@/lib/useCache'
 import type { Task } from '@/lib/types'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -121,19 +122,10 @@ const ALL_MODULES = ['Produit', 'Marketing', 'Prospection', 'Ops'] as const
 const ALL_STATUSES = ['Backlog', 'À faire', 'En cours', 'Review', 'Done'] as const
 
 export default function RoadmapPage() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useCache<Task[]>('/api/tasks')
+  const tasks = data ?? []
   const [moduleFilter, setModuleFilter] = useState<string>('Tous')
   const [statusFilter, setStatusFilter] = useState<string>('Tous')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch('/api/tasks')
-    setTasks(await res.json())
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
 
   const filtered = tasks.filter(t => {
     if (moduleFilter !== 'Tous' && t.module !== moduleFilter) return false

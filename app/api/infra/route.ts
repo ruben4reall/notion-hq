@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { getUser } from '@/lib/auth'
+import { cachedJson } from '@/lib/api-cache'
 
 const SB_REF = process.env.SUPABASE_URL?.match(/https:\/\/([^.]+)/)?.[1] ?? ''
 
@@ -52,13 +53,35 @@ export async function GET(req: NextRequest) {
   )
   const totalRows = Object.values(tableCounts).reduce((a, b) => a + b, 0)
 
-  // ── 3. Users online (presence table) ───────────────────────
+  // ── 3. Users online (presence table, filtered to current org) ─
+  const orgId = req.cookies.get('current_org_id')?.value
   const twoMinAgo = new Date(Date.now() - 2 * 60_000).toISOString()
-  const { data: onlineUsers } = await db
-    .from('presence')
-    .select('display_name, username, last_seen, connected_at')
-    .gte('last_seen', twoMinAgo)
-    .order('last_seen', { ascending: false })
+  let onlineUsers: { display_name: string; username: string; last_seen: string; connected_at: string }[] = []
+  if (orgId) {
+    const { data: members } = await db.from('org_members').select('user_id').eq('org_id', orgId)
+    if (members?.length) {
+      const orgUsernames = (await Promise.all(
+        members.map(async (m: { user_id: string }) => {
+          const { data: { user: u } } = await db.auth.admin.getUserById(m.user_id)
+          return u ? ((u.user_metadata?.full_name as string) || u.email || '') : null
+        })
+      )).filter(Boolean) as string[]
+      const { data } = await db
+        .from('presence')
+        .select('display_name, username, last_seen, connected_at')
+        .gte('last_seen', twoMinAgo)
+        .in('username', orgUsernames)
+        .order('last_seen', { ascending: false })
+      onlineUsers = data ?? []
+    }
+  } else {
+    const { data } = await db
+      .from('presence')
+      .select('display_name, username, last_seen, connected_at')
+      .gte('last_seen', twoMinAgo)
+      .order('last_seen', { ascending: false })
+    onlineUsers = data ?? []
+  }
 
   // ── 4. Row history sparkline ────────────────────────────────
   const today = new Date().toISOString().slice(0, 10)
@@ -225,13 +248,13 @@ export async function GET(req: NextRequest) {
     } catch {}
   }
 
-  return NextResponse.json({
+  return cachedJson({
     ping, tableCounts, totalRows, rowHistory,
-    onlineUsers: onlineUsers ?? [],
+    onlineUsers,
     pageStats, hourlyActivity, topUsers, totalVisits, avgSessionSec,
     sbMetrics, sbLimits: SB_LIMITS,
     vercelDeployments, vercelLimits: VERCEL_LIMITS,
     hasSupabaseToken: !!sbToken,
     hasVercelToken:   !!vercelToken,
-  })
+  }, 60, 120)
 }

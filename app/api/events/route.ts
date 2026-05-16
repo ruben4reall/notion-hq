@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getOrgId } from '@/lib/auth'
 import { getEvents, createEvent } from '@/lib/db'
+import { cachedJson } from '@/lib/api-cache'
 
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
   const orgId = getOrgId(req)
   if (!orgId) return NextResponse.json([], { status: 400 })
   try {
-    return NextResponse.json(await getEvents(orgId))
+    return cachedJson(await getEvents(orgId))
   } catch (err) {
     console.error(err)
     return NextResponse.json([])

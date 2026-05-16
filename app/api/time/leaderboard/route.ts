@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getOrgId } from '@/lib/auth'
 import { getClient } from '@/lib/db'
+import { cachedJson } from '@/lib/api-cache'
 
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
       byUser[row.utilisateur].byCategory[row.categorie] = (byUser[row.utilisateur].byCategory[row.categorie] || 0) + min
     }
 
-    return NextResponse.json(
+    return cachedJson(
       Object.entries(byUser)
         .map(([utilisateur, stats]) => ({ utilisateur, totalMinutes: stats.totalMinutes, sessions: stats.sessions, byCategory: stats.byCategory, avgSession: stats.sessions > 0 ? Math.round(stats.totalMinutes / stats.sessions) : 0 }))
         .sort((a, b) => b.totalMinutes - a.totalMinutes)

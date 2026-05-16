@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { useCache } from '@/lib/useCache'
 import type { KPIData, Task } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -130,21 +130,13 @@ function Skeleton() {
 
 export default function DashboardPage() {
   const { user: session } = useAuth()
-  const [data, setData] = useState<KPIData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, loading } = useCache<KPIData>('/api/kpis', { ttl: 30_000 })
 
   const firstName = session?.name?.split(' ')[0] ?? ''
 
   const today = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).format(new Date())
-
-  useEffect(() => {
-    fetch('/api/kpis')
-      .then(r => r.json())
-      .then(setData)
-      .finally(() => setLoading(false))
-  }, [])
 
   if (loading) return <div className="page-container"><Skeleton /></div>
   if (!data) return null

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { TaskModal } from './TaskModal'
 import { UserAvatar, useUsers } from './UserPicker'
+import { useCache } from '@/lib/useCache'
 import type { Task } from '@/lib/types'
 
 const COLUMNS: { id: Task['status']; color: string }[] = [
@@ -130,20 +131,15 @@ function Skeleton() {
 }
 
 export default function KanbanBoard() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: fetchedTasks, loading, refresh } = useCache<Task[]>('/api/tasks')
+  const [tasks, setTasks] = useState<Task[]>(fetchedTasks ?? [])
   const [modal, setModal] = useState<{ open: boolean; task?: Task | null; defaultStatus?: Task['status'] }>({ open: false })
   const [filterUser, setFilterUser] = useState('')
   const users = useUsers()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch('/api/tasks')
-    setTasks(await res.json())
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (fetchedTasks) setTasks(fetchedTasks)
+  }, [fetchedTasks])
 
   const onDragEnd = async (result: DropResult) => {
     const { draggableId, destination, source } = result
@@ -265,7 +261,7 @@ export default function KanbanBoard() {
         task={modal.task}
         defaultStatus={modal.defaultStatus}
         onClose={() => setModal({ open: false })}
-        onSaved={load}
+        onSaved={refresh}
       />
     </>
   )

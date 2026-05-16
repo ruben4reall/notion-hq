@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { IdeaModal } from './IdeaModal'
+import { useCache } from '@/lib/useCache'
 import { UserAvatar, useUsers } from './UserPicker'
 import type { Idea } from '@/lib/types'
 
@@ -90,21 +91,16 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
 
 export default function IdeasView() {
   const { user: session } = useAuth()
-  const [ideas, setIdeas] = useState<Idea[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: fetchedIdeas, loading, refresh } = useCache<Idea[]>('/api/ideas')
+  const [ideas, setIdeas] = useState<Idea[]>(fetchedIdeas ?? [])
   const [filter, setFilter] = useState<Filter>('Toutes')
   const [filterUser, setFilterUser] = useState('')
   const [modal, setModal] = useState<{ open: boolean; idea?: Idea | null }>({ open: false })
   const users = useUsers()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch('/api/ideas')
-    setIdeas(await res.json())
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (fetchedIdeas) setIdeas(fetchedIdeas)
+  }, [fetchedIdeas])
 
   const handleVote = async (id: string, delta: number) => {
     const idea = ideas.find(i => i.id === id)
@@ -189,7 +185,7 @@ export default function IdeasView() {
         isOpen={modal.open}
         idea={modal.idea}
         onClose={() => setModal({ open: false })}
-        onSaved={load}
+        onSaved={refresh}
       />
     </>
   )

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getOrgId } from '@/lib/auth'
 import { getTimeSessions, getActiveSession, startTimeSession } from '@/lib/db'
+import { cachedJson } from '@/lib/api-cache'
 
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
       getTimeSessions(orgId, user.name, days),
       getActiveSession(orgId, user.name),
     ])
-    return NextResponse.json({ sessions, active })
+    return cachedJson({ sessions, active }, 10, 20)
   } catch (err) {
     console.error(err)
     return NextResponse.json({ sessions: [], active: null })

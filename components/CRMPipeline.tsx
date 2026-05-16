@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { CRMModal } from './CRMModal'
+import { useCache } from '@/lib/useCache'
 import { UserAvatar, useUsers } from './UserPicker'
 import type { CRMEntry } from '@/lib/types'
 
@@ -83,20 +84,15 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
 }
 
 export default function CRMPipeline() {
-  const [entries, setEntries] = useState<CRMEntry[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: fetchedEntries, loading, refresh } = useCache<CRMEntry[]>('/api/crm')
+  const [entries, setEntries] = useState<CRMEntry[]>(fetchedEntries ?? [])
   const [modal, setModal] = useState<{ open: boolean; entry?: CRMEntry | null; defaultStatus?: CRMEntry['status'] }>({ open: false })
   const [filterUser, setFilterUser] = useState('')
   const users = useUsers()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const res = await fetch('/api/crm')
-    setEntries(await res.json())
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (fetchedEntries) setEntries(fetchedEntries)
+  }, [fetchedEntries])
 
   const onDragEnd = async (result: DropResult) => {
     const { draggableId, destination, source } = result
@@ -193,7 +189,7 @@ export default function CRMPipeline() {
         entry={modal.entry}
         defaultStatus={modal.defaultStatus}
         onClose={() => setModal({ open: false })}
-        onSaved={load}
+        onSaved={refresh}
       />
     </>
   )

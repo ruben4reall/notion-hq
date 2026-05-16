@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import { useTimer } from '@/lib/timer-context'
+import { useCache } from '@/lib/useCache'
 
 interface TimeSession {
   id: string
@@ -63,27 +64,23 @@ function getCatEmoji(cat: string) {
 
 export default function TimePage() {
   const { setActive: setTimerCtx } = useTimer()
-  const [sessions, setSessions] = useState<TimeSession[]>([])
-  const [active, setActive] = useState<TimeSession | null>(null)
+  const [days, setDays] = useState(7)
+  const { data: timeData, loading, refresh } = useCache<{ sessions: TimeSession[]; active: TimeSession | null }>(`/api/time?days=${days}`, { ttl: 15_000 })
+  const [sessions, setSessions] = useState<TimeSession[]>(timeData?.sessions ?? [])
+  const [active, setActive] = useState<TimeSession | null>(timeData?.active ?? null)
   const [elapsed, setElapsed] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [startError, setStartError] = useState(false)
   const [selectedCat, setSelectedCat] = useState('Travail')
-  const [days, setDays] = useState(7)
   const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
 
-  const load = useCallback(async () => {
-    const res = await fetch(`/api/time?days=${days}`)
-    if (res.ok) {
-      const { sessions: s, active: a } = await res.json()
-      setSessions(s || [])
-      setActive(a || null)
+  useEffect(() => {
+    if (timeData) {
+      setSessions(timeData.sessions || [])
+      const a = timeData.active || null
+      setActive(a)
       if (a) setSelectedCat(a.categorie)
     }
-    setLoading(false)
-  }, [days])
-
-  useEffect(() => { load() }, [load])
+  }, [timeData])
 
   useEffect(() => {
     clearInterval(tickRef.current)
@@ -119,7 +116,7 @@ export default function TimePage() {
     setActive(null)
     setElapsed(0)
     setTimerCtx(null)
-    await load()
+    refresh()
   }
 
   // ── Stats ─────────────────────────────────────────────────

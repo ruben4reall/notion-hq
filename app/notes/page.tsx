@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useUsers, UserAvatar } from '@/components/UserPicker'
+import { useCache } from '@/lib/useCache'
 
 interface Note {
   id: string
@@ -47,7 +48,8 @@ export default function NotesPage() {
   const { user: session } = useAuth()
   const users = useUsers()
   const myName = session?.name || ''
-  const [notes, setNotes] = useState<Note[]>([])
+  const { data: fetchedNotes } = useCache<Note[]>('/api/notes')
+  const [notes, setNotes] = useState<Note[]>(fetchedNotes ?? [])
   const [active, setActive] = useState<Note | null>(null)
   const [preview, setPreview] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,12 +59,9 @@ export default function NotesPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const saveAbort = useRef<AbortController | undefined>(undefined)
 
-  const load = useCallback(async () => {
-    const res = await fetch('/api/notes')
-    if (res.ok) setNotes(await res.json())
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (fetchedNotes) setNotes(fetchedNotes)
+  }, [fetchedNotes])
 
   const create = async () => {
     const res = await fetch('/api/notes', {
