@@ -23,18 +23,19 @@ async function migrate() {
   }
 
   // Parse the connection string and force IPv4
+  // Use individual params (not connectionString) so sslmode in the URL
+  // doesn't override our ssl options — pg parses sslmode=require as verify-full
   const parsed = new URL(connectionString)
   const ipv4 = await resolveIPv4(parsed.hostname)
   console.log(`🔍  ${parsed.hostname} → ${ipv4}`)
-  const ipv4ConnString = connectionString.replace(parsed.hostname, ipv4)
 
   const client = new Client({
-    connectionString: ipv4ConnString,
-    ssl: {
-      rejectUnauthorized: false,
-      checkServerIdentity: () => undefined,
-      servername: parsed.hostname,
-    },
+    host: ipv4,
+    port: parseInt(parsed.port || '5432'),
+    database: parsed.pathname.replace(/^\//, ''),
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    ssl: { rejectUnauthorized: false },
   })
 
   await client.connect()
