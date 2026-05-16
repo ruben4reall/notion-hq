@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
-import { checkMonitor } from '../[id]/route'
+import { checkMonitor } from '@/lib/checkMonitor'
 
 // Called by Vercel cron every minute
 export async function GET(req: NextRequest) {
