@@ -53,6 +53,7 @@ function AuthForm() {
     setLoading(false)
     setCelebText('Bienvenue !')
     setCelebrating(true)
+    router.refresh()
     setTimeout(() => router.push(redirect), 1300)
   }
 
@@ -81,6 +82,7 @@ function AuthForm() {
     setLoading(false)
     setCelebText('Compte créé !')
     setCelebrating(true)
+    router.refresh()
     setTimeout(() => router.push(redirect), 1300)
   }
 
