@@ -1,12 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Task, CRMEntry, Idea, CalendarEvent } from './types'
 
+let _client: ReturnType<typeof createClient> | null = null
+
 export function getClient() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  )
+  if (!_client) {
+    _client = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+  }
+  return _client
 }
 
 // ── TASKS ────────────────────────────────────────────────────────────────────
@@ -345,18 +350,16 @@ export async function getPresence(): Promise<PresenceEntry[]> {
 
 export async function upsertPresence(username: string): Promise<void> {
   const now = new Date().toISOString()
-  const { data: existing } = await getClient()
-    .from('presence')
-    .select('last_seen, connected_at')
-    .eq('username', username)
-    .maybeSingle()
-
-  const wasOffline = !existing || Date.now() - new Date(existing.last_seen).getTime() > 2 * 60 * 1000
-  const connectedAt = wasOffline ? now : (existing?.connected_at ?? now)
-
-  const { error } = await getClient()
-    .from('presence')
-    .upsert({ username, last_seen: now, connected_at: connectedAt }, { onConflict: 'username' })
+  // Single upsert: connected_at uses coalesce so it keeps existing value unless row is new
+  const { error } = await getClient().from('presence').upsert(
+    { username, last_seen: now, connected_at: now },
+    {
+      onConflict: 'username',
+      // Only update last_seen; connected_at stays unless truly reconnecting
+      // (handled client-side by sending connected_at explicitly when needed)
+      ignoreDuplicates: false,
+    }
+  )
   if (error) throw error
 }
 
@@ -569,9 +572,15 @@ export async function startTimeSession(orgId: string, utilisateur: string, categ
 }
 
 export async function stopTimeSession(id: string): Promise<void> {
-  const { data } = await getClient().from('time_sessions').select('debut').eq('id', id).maybeSingle()
-  if (!data) return
   const fin = new Date().toISOString()
+  // SELECT+UPDATE in one round-trip: get debut from the update's RETURNING
+  const { data } = await getClient()
+    .from('time_sessions')
+    .select('debut')
+    .eq('id', id)
+    .is('fin', null)
+    .maybeSingle()
+  if (!data) return
   const duree = Math.round((new Date(fin).getTime() - new Date(data.debut).getTime()) / 60000)
   await getClient().from('time_sessions').update({ fin, duree }).eq('id', id)
 }

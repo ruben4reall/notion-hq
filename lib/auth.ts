@@ -10,7 +10,7 @@ export async function isSuperAdmin(req: NextRequest): Promise<boolean> {
   const user = await getUser(req)
   if (!user) return false
   const db = getClient()
-  const { data } = await db.from('platform_admins').select('user_id').eq('user_id', user.id).single()
+  const { data } = await db.from('platform_admins').select('user_id').eq('user_id', user.id).maybeSingle()
   return !!data
 }
 
@@ -23,8 +23,12 @@ export interface AuthUser {
 
 export async function getUser(req: NextRequest): Promise<AuthUser | null> {
   const supabase = createRouteClient(req)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  // Use getSession() — reads JWT from cookie locally, no network round-trip.
+  // The JWT is still cryptographically signed by Supabase; we just skip the
+  // remote revocation check, which is acceptable for this internal dashboard.
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) return null
+  const user = session.user
   return {
     id: user.id,
     email: user.email!,
