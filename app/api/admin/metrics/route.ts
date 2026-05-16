@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     db.from('chat_messages').select('id', { count: 'exact', head: true }),
     db.from('time_sessions').select('duree').not('duree', 'is', null),
     db.from('organizations').select('id', { count: 'exact', head: true }),
-    db.from('org_members').select('id', { count: 'exact', head: true }),
+    db.from('org_members').select('user_id'),
     db.auth.admin.listUsers({ perPage: 1000 }),
   ])
 
@@ -26,11 +26,12 @@ export async function GET(req: NextRequest) {
   }, {})
 
   const totalSeconds = (timeRes.data || []).reduce((sum: number, s: any) => sum + (s.duree || 0), 0)
+  const uniqueMembers = new Set((membersRes.data || []).map((m: any) => m.user_id)).size
 
   return NextResponse.json({
     users: usersRes.data?.users?.length ?? 0,
     projects: orgsRes.count ?? 0,
-    members: membersRes.count ?? 0,
+    members: uniqueMembers,
     tasks: tasksRes.data?.length ?? 0,
     tasksByStatus,
     crm: crmRes.count ?? 0,
