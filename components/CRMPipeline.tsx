@@ -88,6 +88,9 @@ export default function CRMPipeline() {
   const [entries, setEntries] = useState<CRMEntry[]>(fetchedEntries ?? [])
   const [modal, setModal] = useState<{ open: boolean; entry?: CRMEntry | null; defaultStatus?: CRMEntry['status'] }>({ open: false })
   const [filterUser, setFilterUser] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
+  const [filterCanal, setFilterCanal] = useState('')
   const users = useUsers()
 
   useEffect(() => {
@@ -124,26 +127,69 @@ export default function CRMPipeline() {
     </div>
   )
 
-  const visibleEntries = filterUser ? entries.filter(e => e.assignedTo === filterUser) : entries
+  const visibleEntries = entries
+    .filter(e => !filterUser || e.assignedTo === filterUser)
+    .filter(e => !filterPriority || e.priority === filterPriority)
+    .filter(e => !filterCanal || e.canal === filterCanal)
+    .filter(e => !search || e.enseigne.toLowerCase().includes(search.toLowerCase()) || (e.contact || '').toLowerCase().includes(search.toLowerCase()))
+
+  const P_COLORS: Record<string, string> = { Haute: '#f43f5e', Moyenne: '#f59e0b', Basse: '#6b7280' }
+  const CANAUX = ['Email', 'Téléphone', 'Salon', 'Terrain', 'Recommandation']
+  const activeFilters = (filterUser ? 1 : 0) + (filterPriority ? 1 : 0) + (filterCanal ? 1 : 0) + (search ? 1 : 0)
 
   return (
     <>
-      {users.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>FILTRER :</span>
-          <button onClick={() => setFilterUser('')} style={{ padding: '4px 12px', borderRadius: 100, fontSize: 11, fontWeight: !filterUser ? 700 : 400, background: !filterUser ? 'var(--accent-bg)' : 'var(--bg-2)', color: !filterUser ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${!filterUser ? 'rgba(124,106,245,0.3)' : 'var(--border-s)'}`, cursor: 'pointer' }}>
-            Tous
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
+            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <input placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
+            style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 150 }} />
+          {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
+        </div>
+
+        <div style={{ width: 1, height: 18, background: 'var(--border-s)', flexShrink: 0 }} />
+
+        {/* Priority */}
+        {['Haute', 'Moyenne', 'Basse'].map(p => (
+          <button key={p} onClick={() => setFilterPriority(v => v === p ? '' : p)}
+            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterPriority === p ? 700 : 400, background: filterPriority === p ? `${P_COLORS[p]}20` : 'var(--bg-2)', color: filterPriority === p ? P_COLORS[p] : 'var(--t2)', border: `1px solid ${filterPriority === p ? P_COLORS[p] + '50' : 'var(--border-s)'}`, cursor: 'pointer' }}>
+            {p}
           </button>
+        ))}
+
+        <div style={{ width: 1, height: 18, background: 'var(--border-s)', flexShrink: 0 }} />
+
+        {/* Canal */}
+        {CANAUX.map(c => (
+          <button key={c} onClick={() => setFilterCanal(v => v === c ? '' : c)}
+            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCanal === c ? 700 : 400, background: filterCanal === c ? 'var(--accent-bg)' : 'var(--bg-2)', color: filterCanal === c ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${filterCanal === c ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {CANAL_ICON[c] || ''} {c}
+          </button>
+        ))}
+
+        {users.length > 0 && <>
+          <div style={{ width: 1, height: 18, background: 'var(--border-s)', flexShrink: 0 }} />
           {users.map(u => (
-            <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px 3px 4px', borderRadius: 100, fontSize: 11, fontWeight: filterUser === u.name ? 700 : 400, background: filterUser === u.name ? `${u.color}18` : 'var(--bg-2)', color: filterUser === u.name ? u.color : 'var(--t2)', border: `1px solid ${filterUser === u.name ? `${u.color}40` : 'var(--border-s)'}`, cursor: 'pointer' }}>
+            <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 4px', borderRadius: 100, fontSize: 11, fontWeight: filterUser === u.name ? 700 : 400, background: filterUser === u.name ? `${u.color}18` : 'var(--bg-2)', color: filterUser === u.name ? u.color : 'var(--t2)', border: `1px solid ${filterUser === u.name ? `${u.color}40` : 'var(--border-s)'}`, cursor: 'pointer' }}>
               <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700 }}>
                 {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
               </div>
               {u.name.split(' ')[0]}
             </button>
           ))}
-        </div>
-      )}
+        </>}
+
+        {activeFilters > 0 && (
+          <button onClick={() => { setSearch(''); setFilterUser(''); setFilterPriority(''); setFilterCanal('') }}
+            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer', marginLeft: 'auto' }}>
+            Effacer ({activeFilters})
+          </button>
+        )}
+      </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <div data-tour="crm-pipeline" style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
           {STAGES.map(stage => {

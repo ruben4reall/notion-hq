@@ -126,10 +126,14 @@ export default function RoadmapPage() {
   const tasks = data ?? []
   const [moduleFilter, setModuleFilter] = useState<string>('Tous')
   const [statusFilter, setStatusFilter] = useState<string>('Tous')
+  const [priorityFilter, setPriorityFilter] = useState<string>('')
+  const [search, setSearch] = useState('')
 
   const filtered = tasks.filter(t => {
     if (moduleFilter !== 'Tous' && t.module !== moduleFilter) return false
     if (statusFilter !== 'Tous' && t.status !== statusFilter) return false
+    if (priorityFilter && t.priority !== priorityFilter) return false
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
@@ -214,7 +218,34 @@ export default function RoadmapPage() {
 
       {/* Filtres */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexDirection: 'column' }}>
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto', }}>
+        {/* Row 1: search + priority + clear */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
+              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <input placeholder="Rechercher une tâche…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 32, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 200 }} />
+            {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
+          </div>
+          {(['P0', 'P1', 'P2'] as const).map(p => {
+            const pc = { P0: '#f43f5e', P1: '#f59e0b', P2: '#6b7280' }[p]
+            return (
+              <button key={p} onClick={() => setPriorityFilter(v => v === p ? '' : p)}
+                style={{ padding: '5px 12px', borderRadius: 100, fontSize: 11, fontWeight: priorityFilter === p ? 700 : 400, background: priorityFilter === p ? `${pc}20` : 'var(--bg-2)', color: priorityFilter === p ? pc : 'var(--t2)', border: `1px solid ${priorityFilter === p ? pc + '50' : 'var(--border-s)'}`, cursor: 'pointer' }}>
+                {p}
+              </button>
+            )
+          })}
+          {(priorityFilter || search) && (
+            <button onClick={() => { setPriorityFilter(''); setSearch('') }}
+              style={{ padding: '5px 10px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>
+              Effacer
+            </button>
+          )}
+        </div>
+        {/* Row 2: module */}
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
           {['Tous', ...ALL_MODULES].map(m => (
             <button key={m} onClick={() => setModuleFilter(m)} style={{
               padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: moduleFilter === m ? 700 : 400,
@@ -224,7 +255,8 @@ export default function RoadmapPage() {
             }}>{m}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto', }}>
+        {/* Row 3: status */}
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
           {['Tous', ...ALL_STATUSES].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)} style={{
               padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400,

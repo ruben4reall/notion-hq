@@ -65,6 +65,7 @@ function getCatEmoji(cat: string) {
 export default function TimePage() {
   const { setActive: setTimerCtx } = useTimer()
   const [days, setDays] = useState(7)
+  const [filterCat, setFilterCat] = useState('')
   const { data: timeData, loading, refresh } = useCache<{ sessions: TimeSession[]; active: TimeSession | null }>(`/api/time?days=${days}`, { ttl: 15_000 })
   const [sessions, setSessions] = useState<TimeSession[]>(timeData?.sessions ?? [])
   const [active, setActive] = useState<TimeSession | null>(timeData?.active ?? null)
@@ -147,7 +148,18 @@ export default function TimePage() {
     ss.reduce((a, s) => a + (s.duree || 0), 0)
   ), 1)
 
-  const dayKeys = Object.keys(byDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+  // allDayKeys used by bar chart (unfiltered)
+  const allDayKeys = Object.keys(byDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+
+  // filteredByDay used by session log
+  const filteredCompleted = filterCat ? completed.filter(s => s.categorie === filterCat) : completed
+  const filteredByDay: Record<string, TimeSession[]> = {}
+  filteredCompleted.forEach(s => {
+    const key = new Date(s.debut).toDateString()
+    if (!filteredByDay[key]) filteredByDay[key] = []
+    filteredByDay[key].push(s)
+  })
+  const dayKeys = Object.keys(filteredByDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
   return (
     <div className="page-container">
@@ -272,11 +284,11 @@ export default function TimePage() {
               <option value={30}>30 jours</option>
             </select>
           </div>
-          {dayKeys.length === 0 ? (
+          {allDayKeys.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>Aucune session</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {dayKeys.slice(0, 7).map(key => {
+              {allDayKeys.slice(0, 7).map(key => {
                 const daySessions = byDay[key]
                 const dayTotal = daySessions.reduce((a, s) => a + (s.duree || 0), 0)
                 return (
@@ -305,8 +317,15 @@ export default function TimePage() {
 
       {/* ── Session log ── */}
       <div className="card" style={{ marginTop: 20, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-s)' }}>
-          <p className="section-title" style={{ margin: 0 }}>Historique des sessions</p>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <p className="section-title" style={{ margin: 0, marginRight: 8 }}>Historique des sessions</p>
+          {CATEGORIES.map(cat => (
+            <button key={cat.id} onClick={() => setFilterCat(v => v === cat.id ? '' : cat.id)}
+              style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCat === cat.id ? 700 : 400, background: filterCat === cat.id ? `${cat.color}20` : 'var(--bg-2)', color: filterCat === cat.id ? cat.color : 'var(--t2)', border: `1px solid ${filterCat === cat.id ? cat.color + '50' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {cat.emoji} {cat.id}
+            </button>
+          ))}
+          {filterCat && <button onClick={() => setFilterCat('')} style={{ padding: '3px 8px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>×</button>}
         </div>
         {loading ? (
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -322,10 +341,10 @@ export default function TimePage() {
               <div key={key}>
                 <div style={{ padding: '8px 20px', background: 'var(--bg-2)', borderBottom: '1px solid var(--border-s)' }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {dayLabel(byDay[key][0].debut)}
+                    {dayLabel(filteredByDay[key][0].debut)}
                   </span>
                 </div>
-                {byDay[key].map(s => (
+                {filteredByDay[key].map(s => (
                   <div key={s.id} style={{
                     padding: '12px 20px', borderBottom: '1px solid var(--border-s)',
                     display: 'flex', alignItems: 'center', gap: 12,

@@ -95,6 +95,9 @@ export default function IdeasView() {
   const [ideas, setIdeas] = useState<Idea[]>(fetchedIdeas ?? [])
   const [filter, setFilter] = useState<Filter>('Toutes')
   const [filterUser, setFilterUser] = useState('')
+  const [search, setSearch] = useState('')
+  const [filterCat, setFilterCat] = useState('')
+  const [sortBy, setSortBy] = useState<'votes' | 'date'>('votes')
   const [modal, setModal] = useState<{ open: boolean; idea?: Idea | null }>({ open: false })
   const users = useUsers()
 
@@ -119,9 +122,14 @@ export default function IdeasView() {
     await fetch(`/api/ideas/${id}`, { method: 'DELETE' })
   }
 
+  const CATEGORIES_IDEAS = ['Produit', 'Marketing', 'Prospection', 'Ops']
+
   const filtered = ideas
     .filter(i => filter === 'Toutes' || i.status === filter)
     .filter(i => !filterUser || i.assignedTo === filterUser)
+    .filter(i => !filterCat || i.category === filterCat)
+    .filter(i => !search || i.title.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => sortBy === 'votes' ? b.votes - a.votes : new Date(b.lastEdited || 0).getTime() - new Date(a.lastEdited || 0).getTime())
 
   if (loading) return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
@@ -145,21 +153,40 @@ export default function IdeasView() {
             )
           })}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-          {users.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              {users.map(u => (
-                <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} title={u.name} style={{ width: 30, height: 30, borderRadius: '50%', background: filterUser === u.name ? u.color : `${u.color}30`, color: filterUser === u.name ? 'white' : u.color, border: `2px solid ${filterUser === u.name ? u.color : 'transparent'}`, cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                  {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => setModal({ open: true, idea: null })}
-            className="btn btn-primary"
-            style={{ padding: '7px 16px', fontSize: 12 }}
-          >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Search */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
+              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <input placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 140 }} />
+            {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
+          </div>
+
+          {/* Category */}
+          {CATEGORIES_IDEAS.map(c => (
+            <button key={c} onClick={() => setFilterCat(v => v === c ? '' : c)}
+              style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCat === c ? 700 : 400, background: filterCat === c ? 'var(--accent-bg)' : 'var(--bg-2)', color: filterCat === c ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${filterCat === c ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {c}
+            </button>
+          ))}
+
+          {/* Sort */}
+          <button onClick={() => setSortBy(v => v === 'votes' ? 'date' : 'votes')}
+            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, background: 'var(--bg-2)', color: 'var(--t2)', border: '1px solid var(--border-s)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {sortBy === 'votes' ? '▲ Votes' : '🕐 Date'}
+          </button>
+
+          {/* Users */}
+          {users.length > 0 && users.map(u => (
+            <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} title={u.name}
+              style={{ width: 28, height: 28, borderRadius: '50%', background: filterUser === u.name ? u.color : `${u.color}30`, color: filterUser === u.name ? 'white' : u.color, border: `2px solid ${filterUser === u.name ? u.color : 'transparent'}`, cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+            </button>
+          ))}
+
+          <button onClick={() => setModal({ open: true, idea: null })} className="btn btn-primary" style={{ padding: '7px 16px', fontSize: 12, marginLeft: 'auto' }}>
             + Nouvelle idée
           </button>
         </div>
