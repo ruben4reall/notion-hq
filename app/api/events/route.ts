@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getUser, getOrgId } from '@/lib/auth'
 import { getEvents, createEvent } from '@/lib/db'
 
-export async function GET() {
-  if (!process.env.NOTION_EVENTS_DB) return NextResponse.json([])
+export async function GET(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json([], { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json([], { status: 400 })
   try {
-    const events = await getEvents()
-    return NextResponse.json(events)
+    return NextResponse.json(await getEvents(orgId))
   } catch (err) {
     console.error(err)
     return NextResponse.json([])
@@ -13,10 +16,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.NOTION_EVENTS_DB) return NextResponse.json({ error: 'Not configured' }, { status: 503 })
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json({ error: 'No project' }, { status: 400 })
   try {
     const body = await req.json()
-    await createEvent(body)
+    await createEvent(orgId, body)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)

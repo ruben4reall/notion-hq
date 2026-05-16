@@ -1,23 +1,32 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getUser, getOrgId } from '@/lib/auth'
 import { getIdeas, createIdea, createNotification } from '@/lib/db'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json([], { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json([], { status: 400 })
   try {
-    return NextResponse.json(await getIdeas())
+    return NextResponse.json(await getIdeas(orgId))
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: 'Failed to fetch ideas' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json({ error: 'No project' }, { status: 400 })
   try {
-    const body = await request.json()
-    await createIdea(body)
+    const body = await req.json()
+    await createIdea(orgId, body)
     createNotification({ message: `💡 Nouvelle idée : "${body.title}"`, type: 'info', de: body.modifiedBy || '' }).catch(() => {})
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
-    return NextResponse.json({ error: 'Failed to create idea' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }

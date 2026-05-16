@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server'
 import { createRouteClient } from './supabase/server'
 
+export function getOrgId(req: NextRequest): string | null {
+  return req.cookies.get('current_org_id')?.value || null
+}
+
 export interface AuthUser {
   id: string
   email: string

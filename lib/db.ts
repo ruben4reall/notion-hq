@@ -11,10 +11,11 @@ export function getClient() {
 
 // ── TASKS ────────────────────────────────────────────────────────────────────
 
-export async function getTasks(): Promise<Task[]> {
+export async function getTasks(orgId: string): Promise<Task[]> {
   const { data, error } = await getClient()
     .from('tasks')
     .select('*')
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error
@@ -34,8 +35,9 @@ export async function getTasks(): Promise<Task[]> {
   }))
 }
 
-export async function createTask(data: Partial<Task> & { modifiedBy?: string }): Promise<void> {
+export async function createTask(orgId: string, data: Partial<Task> & { modifiedBy?: string }): Promise<void> {
   const { error } = await getClient().from('tasks').insert({
+    org_id: orgId,
     title: data.title || '',
     status: data.status || 'Backlog',
     priority: data.priority || '',
@@ -74,10 +76,11 @@ export const updateTaskStatus = (id: string, status: string) =>
 
 // ── CRM ──────────────────────────────────────────────────────────────────────
 
-export async function getCRM(): Promise<CRMEntry[]> {
+export async function getCRM(orgId: string): Promise<CRMEntry[]> {
   const { data, error } = await getClient()
     .from('crm')
     .select('*')
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw error
@@ -101,8 +104,9 @@ export async function getCRM(): Promise<CRMEntry[]> {
   }))
 }
 
-export async function createCRM(data: Partial<CRMEntry> & { modifiedBy?: string }): Promise<void> {
+export async function createCRM(orgId: string, data: Partial<CRMEntry> & { modifiedBy?: string }): Promise<void> {
   const { error } = await getClient().from('crm').insert({
+    org_id: orgId,
     enseigne: data.enseigne || '',
     contact: data.contact || '',
     email: data.email || null,
@@ -151,10 +155,11 @@ export const updateCRMStatus = (id: string, status: string) =>
 
 // ── IDEAS ─────────────────────────────────────────────────────────────────────
 
-export async function getIdeas(): Promise<Idea[]> {
+export async function getIdeas(orgId: string): Promise<Idea[]> {
   const { data, error } = await getClient()
     .from('ideas')
     .select('*')
+    .eq('org_id', orgId)
     .order('votes', { ascending: false })
     .limit(100)
   if (error) throw error
@@ -172,8 +177,9 @@ export async function getIdeas(): Promise<Idea[]> {
   }))
 }
 
-export async function createIdea(data: Partial<Idea> & { modifiedBy?: string }): Promise<void> {
+export async function createIdea(orgId: string, data: Partial<Idea> & { modifiedBy?: string }): Promise<void> {
   const { error } = await getClient().from('ideas').insert({
+    org_id: orgId,
     title: data.title || '',
     description: data.description || '',
     status: data.status || 'Brute',
@@ -209,10 +215,11 @@ export const updateIdeaVotes = (id: string, votes: number) => updateIdea(id, { v
 
 // ── EVENTS ───────────────────────────────────────────────────────────────────
 
-export async function getEvents(): Promise<CalendarEvent[]> {
+export async function getEvents(orgId: string): Promise<CalendarEvent[]> {
   const { data, error } = await getClient()
     .from('events')
     .select('*')
+    .eq('org_id', orgId)
     .order('date_start', { ascending: true })
     .limit(200)
   if (error) throw error
@@ -228,8 +235,9 @@ export async function getEvents(): Promise<CalendarEvent[]> {
   }))
 }
 
-export async function createEvent(data: Partial<CalendarEvent> & { modifiedBy?: string }): Promise<void> {
+export async function createEvent(orgId: string, data: Partial<CalendarEvent> & { modifiedBy?: string }): Promise<void> {
   const { error } = await getClient().from('events').insert({
+    org_id: orgId,
     title: data.title || '',
     date_start: data.dateStart || null,
     date_end: data.dateEnd || null,
@@ -394,10 +402,11 @@ export interface ChatMessage {
   createdAt: string
 }
 
-export async function getChatMessages(limit = 100): Promise<ChatMessage[]> {
+export async function getChatMessages(orgId: string, limit = 100): Promise<ChatMessage[]> {
   const { data, error } = await getClient()
     .from('chat_messages')
     .select('*')
+    .eq('org_id', orgId)
     .order('created_at', { ascending: true })
     .limit(limit)
   if (error) throw error
@@ -410,8 +419,9 @@ export async function getChatMessages(limit = 100): Promise<ChatMessage[]> {
   }))
 }
 
-export async function sendChatMessage(author: string, message: string, destinataire = ''): Promise<void> {
+export async function sendChatMessage(orgId: string, author: string, message: string, destinataire = ''): Promise<void> {
   const { error } = await getClient().from('chat_messages').insert({
+    org_id: orgId,
     author,
     message: message.trim(),
     destinataire,
@@ -443,10 +453,11 @@ function mapNote(r: Record<string, unknown>): Note {
   }
 }
 
-export async function getNotes(utilisateur: string): Promise<Note[]> {
+export async function getNotes(orgId: string, utilisateur: string): Promise<Note[]> {
   const { data, error } = await getClient()
     .from('notes')
     .select('id, titre, contenu, utilisateur, shared_with, created_at, updated_at')
+    .eq('org_id', orgId)
     .or(`utilisateur.eq.${utilisateur},shared_with.cs.{"${utilisateur}"}`)
     .order('updated_at', { ascending: false })
     .limit(200)
@@ -464,10 +475,10 @@ export async function getNote(id: string): Promise<Note | null> {
   return mapNote(data)
 }
 
-export async function createNote(utilisateur: string, titre: string, contenu: string): Promise<Note> {
+export async function createNote(orgId: string, utilisateur: string, titre: string, contenu: string): Promise<Note> {
   const { data, error } = await getClient()
     .from('notes')
-    .insert({ utilisateur, titre, contenu })
+    .insert({ org_id: orgId, utilisateur, titre, contenu })
     .select('id, titre, contenu, utilisateur, shared_with, created_at, updated_at')
     .single()
   if (error) throw error
@@ -484,7 +495,7 @@ export async function shareNote(id: string, ownerName: string, sharedWith: strin
     .from('notes')
     .update({ shared_with: sharedWith })
     .eq('id', id)
-    .eq('utilisateur', ownerName) // only owner can change sharing
+    .eq('utilisateur', ownerName)
   if (error) throw error
 }
 
@@ -506,11 +517,12 @@ export interface TimeSession {
   createdAt: string
 }
 
-export async function getTimeSessions(utilisateur: string, days = 7): Promise<TimeSession[]> {
+export async function getTimeSessions(orgId: string, utilisateur: string, days = 7): Promise<TimeSession[]> {
   const since = new Date(Date.now() - days * 86400000).toISOString()
   const { data, error } = await getClient()
     .from('time_sessions')
     .select('*')
+    .eq('org_id', orgId)
     .eq('utilisateur', utilisateur)
     .gte('debut', since)
     .order('debut', { ascending: false })
@@ -528,10 +540,11 @@ export async function getTimeSessions(utilisateur: string, days = 7): Promise<Ti
   }))
 }
 
-export async function getActiveSession(utilisateur: string): Promise<TimeSession | null> {
+export async function getActiveSession(orgId: string, utilisateur: string): Promise<TimeSession | null> {
   const { data } = await getClient()
     .from('time_sessions')
     .select('*')
+    .eq('org_id', orgId)
     .eq('utilisateur', utilisateur)
     .is('fin', null)
     .order('debut', { ascending: false })
@@ -541,14 +554,13 @@ export async function getActiveSession(utilisateur: string): Promise<TimeSession
   return { id: data.id, utilisateur: data.utilisateur, categorie: data.categorie, debut: data.debut, fin: null, duree: null, note: data.note, createdAt: data.created_at }
 }
 
-export async function startTimeSession(utilisateur: string, categorie: string, note = ''): Promise<TimeSession> {
-  // Stop any existing active session first
-  const active = await getActiveSession(utilisateur)
+export async function startTimeSession(orgId: string, utilisateur: string, categorie: string, note = ''): Promise<TimeSession> {
+  const active = await getActiveSession(orgId, utilisateur)
   if (active) await stopTimeSession(active.id)
 
   const { data, error } = await getClient()
     .from('time_sessions')
-    .insert({ utilisateur, categorie, note, debut: new Date().toISOString() })
+    .insert({ org_id: orgId, utilisateur, categorie, note, debut: new Date().toISOString() })
     .select()
     .single()
   if (error) throw error

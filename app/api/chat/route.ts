@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUser } from '@/lib/auth'
+import { getUser, getOrgId } from '@/lib/auth'
 import { getChatMessages, sendChatMessage, createNotification } from '@/lib/db'
 
-export async function GET() {
-  if (!process.env.NOTION_CHAT_DB) return NextResponse.json([])
+export async function GET(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json([], { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json([], { status: 400 })
   try {
-    return NextResponse.json(await getChatMessages(100))
+    return NextResponse.json(await getChatMessages(orgId, 100))
   } catch (err) {
     console.error(err)
     return NextResponse.json([])
@@ -13,26 +16,17 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.NOTION_CHAT_DB) return NextResponse.json({ error: 'Not configured' }, { status: 503 })
-
-  const token = await getUser(req)
-  const author = (token?.name) || 'Anonyme'
-
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const orgId = getOrgId(req)
+  if (!orgId) return NextResponse.json({ error: 'No project' }, { status: 400 })
   try {
     const { message, destinataire } = await req.json()
     if (!message?.trim()) return NextResponse.json({ error: 'Message vide' }, { status: 400 })
-
-    await sendChatMessage(author, message, destinataire || '')
-
-    // Notify only for group messages, not DMs
+    await sendChatMessage(orgId, user.name, message, destinataire || '')
     if (!destinataire) {
-      createNotification({
-        message: `💬 ${author} : ${String(message).startsWith('gif::') ? '(GIF)' : String(message).slice(0, 60)}${String(message).length > 60 ? '…' : ''}`,
-        type: 'info',
-        de: author,
-      }).catch(() => {})
+      createNotification({ message: `💬 ${user.name} : ${String(message).startsWith('gif::') ? '(GIF)' : String(message).slice(0, 60)}${String(message).length > 60 ? '…' : ''}`, type: 'info', de: user.name }).catch(() => {})
     }
-
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
