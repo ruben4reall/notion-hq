@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS platform_admins (
 
 -- Insert first superadmin by email
 INSERT INTO platform_admins (user_id)
-SELECT id FROM auth.users WHERE email = 'glambytaisa@gmail.com'
+SELECT id FROM auth.users WHERE email = 'ruben.ctlo@protonmail.com'
 ON CONFLICT (user_id) DO NOTHING;
