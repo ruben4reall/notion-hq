@@ -42,16 +42,27 @@ function fmtDate(d: string) {
   return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(d))
 }
 
-type TodoistTask = { id: string; content: string; priority: number; due?: { date: string }; is_completed: boolean; url: string }
+type NotionTask = { id: string; title: string; done: boolean; due: string | null; priority: string | null }
 
-const TODOIST_KEY = '_todoist_token'
+const NOTION_KEY = '_notion_token'
+const NOTION_DB_KEY = '_notion_db_id'
 
-function loadTodoistToken(): string {
+function loadNotionToken(): string {
   if (typeof window === 'undefined') return ''
-  try { return localStorage.getItem(TODOIST_KEY) || '' } catch { return '' }
+  try { return localStorage.getItem(NOTION_KEY) || '' } catch { return '' }
 }
-function saveTodoistToken(t: string) {
-  try { localStorage.setItem(TODOIST_KEY, t) } catch {}
+function saveNotionToken(t: string) { try { localStorage.setItem(NOTION_KEY, t) } catch {} }
+function loadNotionDb(): string {
+  if (typeof window === 'undefined') return ''
+  try { return localStorage.getItem(NOTION_DB_KEY) || '' } catch { return '' }
+}
+function saveNotionDb(id: string) { try { localStorage.setItem(NOTION_DB_KEY, id) } catch {} }
+
+function parseNotionDbId(input: string): string {
+  // Accept full URL like https://www.notion.so/xxx/Title-abc123def456...
+  // or bare 32-char ID with or without hyphens
+  const match = input.match(/([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+  return match ? match[1].replace(/-/g, '') : input.trim()
 }
 
 function TaskRow({
@@ -223,82 +234,112 @@ function EditModal({ task, onClose, onSaved, onDelete }: { task: Task; onClose: 
   )
 }
 
-function TodoistPanel({ onImport }: { onImport: (tasks: TodoistTask[]) => void }) {
-  const [token, setToken] = useState(() => loadTodoistToken())
+function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) {
+  const [token, setToken] = useState(() => loadNotionToken())
+  const [dbInput, setDbInput] = useState(() => loadNotionDb())
   const [loading, setLoading] = useState(false)
-  const [todoistTasks, setTodoistTasks] = useState<TodoistTask[]>([])
+  const [notionTasks, setNotionTasks] = useState<NotionTask[]>([])
   const [error, setError] = useState('')
   const [expanded, setExpanded] = useState(false)
 
-  const fetchTodoist = async () => {
-    if (!token.trim()) return
+  const fetchNotion = async () => {
+    if (!token.trim() || !dbInput.trim()) return
     setLoading(true)
     setError('')
-    saveTodoistToken(token)
-    const res = await fetch('/api/todo/todoist', { headers: { 'x-todoist-token': token } })
+    saveNotionToken(token)
+    const dbId = parseNotionDbId(dbInput)
+    saveNotionDb(dbInput)
+    const res = await fetch('/api/todo/notion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notion-token': token },
+      body: JSON.stringify({ database_id: dbId }),
+    })
     if (!res.ok) {
-      setError('Token invalide ou erreur de connexion')
+      const d = await res.json().catch(() => ({}))
+      setError(d.error || 'Token ou base de données invalide')
       setLoading(false)
       return
     }
     const data = await res.json()
-    setTodoistTasks(data.tasks || [])
+    setNotionTasks(data.tasks || [])
     setLoading(false)
   }
 
+  const pending = notionTasks.filter(t => !t.done)
+
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden', marginTop: 28 }}>
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <button
         onClick={() => setExpanded(v => !v)}
         style={{ width: '100%', padding: '16px 20px', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', textAlign: 'left' }}
       >
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(220,60,41,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="#dc3c29" strokeWidth="2"/>
-            <path d="M8 12l3 3 5-5" stroke="#dc3c29" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="3" y="3" width="18" height="18" rx="3" stroke="var(--t1)" strokeWidth="1.8"/>
+            <path d="M7 8h10M7 12h7M7 16h5" stroke="var(--t1)" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
         </div>
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)' }}>Todoist</p>
-          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>{token ? 'Connecté · cliquer pour voir les tâches' : 'Connecter votre compte Todoist'}</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)' }}>Notion</p>
+          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>
+            {token && dbInput ? `Connecté · ${pending.length > 0 ? `${pending.length} tâches en attente` : 'cliquer pour synchroniser'}` : 'Importer depuis une base Notion'}
+          </p>
         </div>
         <span style={{ fontSize: 16, color: 'var(--t2)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
       </button>
 
       {expanded && (
         <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border-s)' }}>
-          <p style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 10, marginTop: 14, lineHeight: 1.6 }}>
-            Collez votre token Todoist (Paramètres → Intégrations → Token d'API dans Todoist).
-          </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <div style={{ marginTop: 14, marginBottom: 10, padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8, fontSize: 12, color: 'var(--t2)', lineHeight: 1.7 }}>
+            <strong style={{ color: 'var(--t1)' }}>Configuration :</strong><br />
+            1. Dans Notion, allez sur <strong style={{ color: 'var(--t1)' }}>notion.so/my-integrations</strong> → Nouvelle intégration → copiez le token<br />
+            2. Ouvrez votre base de données → menu ··· → <strong style={{ color: 'var(--t1)' }}>Connexions</strong> → ajoutez votre intégration<br />
+            3. Copiez l'URL de la base et collez-la ci-dessous
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
             <input
               type="password"
               value={token}
               onChange={e => setToken(e.target.value)}
-              placeholder="Token Todoist…"
-              style={{ flex: 1, padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }}
+              placeholder="Token secret_… (Integration Token)"
+              style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
             />
-            <button onClick={fetchTodoist} disabled={loading || !token} style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: '#dc3c29', color: 'white', border: 'none', cursor: 'pointer', opacity: loading || !token ? 0.6 : 1 }}>
-              {loading ? '…' : 'Sync'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={dbInput}
+                onChange={e => setDbInput(e.target.value)}
+                placeholder="URL ou ID de la base de données Notion"
+                style={{ flex: 1, padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }}
+              />
+              <button
+                onClick={fetchNotion}
+                disabled={loading || !token.trim() || !dbInput.trim()}
+                style={{ padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', flexShrink: 0, opacity: loading || !token.trim() || !dbInput.trim() ? 0.5 : 1 }}
+              >
+                {loading ? '…' : 'Sync'}
+              </button>
+            </div>
           </div>
+
           {error && <p style={{ fontSize: 12, color: '#f43f5e', marginBottom: 10 }}>{error}</p>}
-          {todoistTasks.length > 0 && (
+
+          {notionTasks.length > 0 && (
             <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflow: 'auto', marginBottom: 12 }}>
-                {todoistTasks.filter(t => !t.is_completed).slice(0, 20).map(t => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflow: 'auto', marginBottom: 12 }}>
+                {pending.slice(0, 25).map(t => (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.priority >= 2 ? '#f43f5e' : '#f59e0b', flexShrink: 0 }} />
-                    <p style={{ flex: 1, fontSize: 13, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.content}</p>
-                    {t.due && <span style={{ fontSize: 11, color: 'var(--t2)', flexShrink: 0 }}>{fmtDate(t.due.date)}</span>}
+                    <div style={{ width: 8, height: 8, borderRadius: 3, background: t.priority === 'P0' ? '#f43f5e' : t.priority === 'P1' ? '#f59e0b' : 'var(--border-m)', flexShrink: 0 }} />
+                    <p style={{ flex: 1, fontSize: 13, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</p>
+                    {t.due && <span style={{ fontSize: 11, color: 'var(--t2)', flexShrink: 0 }}>{fmtDate(t.due)}</span>}
                   </div>
                 ))}
               </div>
               <button
-                onClick={() => onImport(todoistTasks.filter(t => !t.is_completed))}
-                style={{ width: '100%', padding: '10px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'rgba(220,60,41,0.1)', color: '#dc3c29', border: '1px solid rgba(220,60,41,0.2)', cursor: 'pointer' }}
+                onClick={() => onImport(pending)}
+                style={{ width: '100%', padding: '10px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'rgba(var(--accent-rgb),0.1)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.2)', cursor: 'pointer' }}
               >
-                Importer {todoistTasks.filter(t => !t.is_completed).length} tâches dans le Kanban
+                Importer {pending.length} tâche{pending.length > 1 ? 's' : ''} dans le Kanban
               </button>
             </>
           )}
@@ -349,17 +390,17 @@ export default function TodoPage() {
     refresh()
   }, [myName, refresh])
 
-  const importTodoist = useCallback(async (todoistTasks: TodoistTask[]) => {
+  const importNotion = useCallback(async (notionTasks: NotionTask[]) => {
     setImporting(true)
-    for (const t of todoistTasks.slice(0, 50)) {
+    for (const t of notionTasks.slice(0, 50)) {
       await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: t.content,
+          title: t.title,
           status: 'À faire',
-          priority: t.priority >= 4 ? 'P0' : t.priority >= 3 ? 'P1' : 'P2',
-          dateEnd: t.due?.date || null,
+          priority: t.priority || null,
+          dateEnd: t.due || null,
           assignedTo: myName || undefined,
         }),
       })
@@ -478,7 +519,7 @@ export default function TodoPage() {
       {/* Integrations */}
       <div style={{ marginTop: 28 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 14 }}>Intégrations externes</p>
-        <TodoistPanel onImport={importTodoist} />
+        <NotionPanel onImport={importNotion} />
         {importing && (
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--t2)', textAlign: 'center' }}>
             Import en cours…
