@@ -10,6 +10,7 @@ interface PresenceEntry {
   lastSeen: string
   connectedAt: string
   online: boolean
+  avatarUrl?: string | null
 }
 
 function initials(name: string) {
@@ -112,15 +113,20 @@ function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () =
           }}>
             {/* Avatar */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: user.online ? 'var(--accent)' : 'var(--bg-3)',
-                color: user.online ? 'white' : 'var(--t2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, fontWeight: 700,
-              }}>
-                {initials(user.username)}
-              </div>
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt={user.username} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: user.online ? 'var(--accent)' : 'var(--bg-3)',
+                  color: user.online ? 'white' : 'var(--t2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700,
+                }}>
+                  {initials(user.username)}
+                </div>
+              )}
               <div style={{
                 position: 'absolute', bottom: 1, right: 1,
                 width: 11, height: 11, borderRadius: '50%',
@@ -232,16 +238,21 @@ export function PresenceIndicator() {
         >
           {users.map((user, i) => (
             <div key={user.id} style={{ position: 'relative', marginLeft: i > 0 ? -8 : 0, zIndex: users.length - i }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: '50%',
-                background: user.online ? 'var(--accent)' : 'var(--bg-3)',
-                color: user.online ? 'white' : 'var(--t2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
-                border: '2px solid var(--bg-0)',
-              }}>
-                {initials(user.username)}
-              </div>
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt={user.username} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--bg-0)', display: 'block' }} />
+              ) : (
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: user.online ? 'var(--accent)' : 'var(--bg-3)',
+                  color: user.online ? 'white' : 'var(--t2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700,
+                  border: '2px solid var(--bg-0)',
+                }}>
+                  {initials(user.username)}
+                </div>
+              )}
               <div style={{
                 position: 'absolute', bottom: 0, right: 0,
                 width: 8, height: 8, borderRadius: '50%',
@@ -266,17 +277,22 @@ export function PresenceIndicator() {
           onMouseEnter={() => setHoveredId(user.id)}
           onMouseLeave={() => setHoveredId(null)}
         >
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: user.online ? 'var(--accent)' : 'var(--bg-3)',
-            color: user.online ? 'white' : 'var(--t2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 700,
-            border: '2px solid var(--bg-0)',
-            cursor: 'default',
-          }}>
-            {initials(user.username)}
-          </div>
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatarUrl} alt={user.username} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--bg-0)', display: 'block', cursor: 'default' }} />
+          ) : (
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: user.online ? 'var(--accent)' : 'var(--bg-3)',
+              color: user.online ? 'white' : 'var(--t2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700,
+              border: '2px solid var(--bg-0)',
+              cursor: 'default',
+            }}>
+              {initials(user.username)}
+            </div>
+          )}
           <div style={{
             position: 'absolute', bottom: 0, right: 0,
             width: 8, height: 8, borderRadius: '50%',

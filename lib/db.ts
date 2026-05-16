@@ -332,13 +332,14 @@ export interface PresenceEntry {
   lastSeen: string
   connectedAt: string
   online: boolean
+  avatarUrl: string | null
 }
 
 export async function getPresence(filterUsernames?: string[]): Promise<PresenceEntry[]> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString()
-  let query = getClient()
-    .from('presence')
-    .select('id, username, last_seen, connected_at')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (getClient().from('presence') as any)
+    .select('id, username, last_seen, connected_at, avatar_url')
     .gte('last_seen', thirtyDaysAgo)
     .limit(20)
   if (filterUsernames && filterUsernames.length > 0) {
@@ -346,7 +347,8 @@ export async function getPresence(filterUsernames?: string[]): Promise<PresenceE
   }
   const { data, error } = await query
   if (error) throw error
-  return (data || []).map(r => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data as any[]) || []).map((r: any) => {
     const online = Date.now() - new Date(r.last_seen).getTime() < 2 * 60 * 1000
     return {
       id: r.id,
@@ -354,6 +356,7 @@ export async function getPresence(filterUsernames?: string[]): Promise<PresenceE
       lastSeen: r.last_seen,
       connectedAt: r.connected_at || r.last_seen,
       online,
+      avatarUrl: r.avatar_url ?? null,
     }
   })
 }
@@ -379,19 +382,23 @@ export interface UserSettings {
   displayName: string | null
   passwordOverride: string | null
   icalFeedUrl: string | null
+  avatarUrl: string | null
 }
 
 export async function getUserSettings(name: string): Promise<UserSettings | null> {
-  const { data } = await getClient()
-    .from('presence')
-    .select('display_name, password_override, ical_feed_url')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (getClient().from('presence') as any)
+    .select('display_name, password_override, ical_feed_url, avatar_url')
     .eq('username', name)
     .maybeSingle()
   if (!data) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = data as any
   return {
-    displayName: data.display_name ?? null,
-    passwordOverride: data.password_override ?? null,
-    icalFeedUrl: data.ical_feed_url ?? null,
+    displayName: d.display_name ?? null,
+    passwordOverride: d.password_override ?? null,
+    icalFeedUrl: d.ical_feed_url ?? null,
+    avatarUrl: d.avatar_url ?? null,
   }
 }
 
@@ -400,6 +407,7 @@ export async function updateUserSettings(name: string, settings: Partial<UserSet
   if (settings.displayName !== undefined)      u.display_name = settings.displayName
   if (settings.passwordOverride !== undefined) u.password_override = settings.passwordOverride
   if (settings.icalFeedUrl !== undefined)      u.ical_feed_url = settings.icalFeedUrl
+  if (settings.avatarUrl !== undefined)        (u as any).avatar_url = settings.avatarUrl
   const { error } = await getClient()
     .from('presence')
     .upsert({ username: name, last_seen: new Date().toISOString(), ...u }, { onConflict: 'username' })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -12,6 +12,7 @@ interface UserSettings {
   email: string
   displayName: string | null
   icalFeedUrl: string | null
+  avatarUrl: string | null
 }
 
 const inputStyle: React.CSSProperties = {
@@ -75,6 +76,16 @@ export default function SettingsPage() {
   const [icalUrl, setIcalUrl] = useState('')
   const [savingIcal, setSavingIcal] = useState(false)
   const [icalMsg, setIcalMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarPicker, setAvatarPicker] = useState(false)
+  const [avatarTab, setAvatarTab] = useState<'upload' | 'gif'>('upload')
+  const [gifSearch, setGifSearch] = useState('')
+  const [gifs, setGifs] = useState<{ id: string; url: string; title: string }[]>([])
+  const [loadingGifs, setLoadingGifs] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarMsg, setAvatarMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const exportUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/calendar.ics` : '/api/calendar.ics'
 
   useEffect(() => {
@@ -94,6 +105,7 @@ export default function SettingsPage() {
         setSettings(data)
         setDisplayName(data.displayName || '')
         setIcalUrl(data.icalFeedUrl || '')
+        setAvatarUrl(data.avatarUrl ?? null)
       })
     fetch('/api/admin/check')
       .then(r => r.json())
@@ -157,6 +169,65 @@ export default function SettingsPage() {
     setTimeout(() => setIcalMsg(null), 4000)
   }
 
+  const searchGifs = async (q: string) => {
+    setLoadingGifs(true)
+    try {
+      const url = q ? `/api/gifs?q=${encodeURIComponent(q)}` : '/api/gifs'
+      const data = await fetch(url).then(r => r.json())
+      setGifs(data)
+    } catch {}
+    setLoadingGifs(false)
+  }
+
+  useEffect(() => {
+    if (avatarTab === 'gif') searchGifs(gifSearch)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avatarTab])
+
+  const uploadFile = async (file: File) => {
+    setUploadingAvatar(true)
+    setAvatarMsg(null)
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/avatar', { method: 'POST', body: form })
+    const data = await res.json()
+    if (!res.ok) {
+      setAvatarMsg({ type: 'error', text: data.error || 'Erreur upload' })
+    } else {
+      setAvatarUrl(data.url)
+      setSettings(prev => prev ? { ...prev, avatarUrl: data.url } : prev)
+      setAvatarPicker(false)
+      setAvatarMsg({ type: 'success', text: 'Photo de profil mise à jour' })
+      setTimeout(() => setAvatarMsg(null), 3000)
+    }
+    setUploadingAvatar(false)
+  }
+
+  const pickGif = async (url: string) => {
+    setUploadingAvatar(true)
+    setAvatarMsg(null)
+    const form = new FormData()
+    form.append('gifUrl', url)
+    const res = await fetch('/api/avatar', { method: 'POST', body: form })
+    const data = await res.json()
+    if (!res.ok) {
+      setAvatarMsg({ type: 'error', text: data.error || 'Erreur' })
+    } else {
+      setAvatarUrl(data.url)
+      setSettings(prev => prev ? { ...prev, avatarUrl: data.url } : prev)
+      setAvatarPicker(false)
+      setAvatarMsg({ type: 'success', text: 'GIF de profil mis à jour' })
+      setTimeout(() => setAvatarMsg(null), 3000)
+    }
+    setUploadingAvatar(false)
+  }
+
+  const removeAvatar = async () => {
+    await fetch('/api/avatar', { method: 'DELETE' })
+    setAvatarUrl(null)
+    setSettings(prev => prev ? { ...prev, avatarUrl: null } : prev)
+  }
+
   const name = session?.name || ''
   const initials = name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) || '?'
   const shownName = settings?.displayName || name
@@ -195,21 +266,142 @@ export default function SettingsPage() {
       {/* Profile */}
       <Section title="Profil">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-s)' }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'var(--accent)', color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 700, flexShrink: 0,
-          }}>
-            {initials}
+          {/* Clickable avatar */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              onClick={() => setAvatarPicker(v => !v)}
+              style={{ width: 52, height: 52, borderRadius: '50%', padding: 0, border: 'none', cursor: 'pointer', position: 'relative', background: 'none' }}
+              title="Changer la photo de profil"
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={name} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <div style={{
+                  width: 52, height: 52, borderRadius: '50%',
+                  background: 'var(--accent)', color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, fontWeight: 700,
+                }}>
+                  {initials}
+                </div>
+              )}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: 0, transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 20h9" stroke="white" strokeWidth="2" strokeLinecap="round"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+            </button>
           </div>
           <div>
             <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--t0)' }}>{shownName}</p>
             <p style={{ fontSize: 12, color: 'var(--t2)', marginTop: 2 }}>
               {settings?.email || '—'}
             </p>
+            <button
+              onClick={() => setAvatarPicker(v => !v)}
+              style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, marginTop: 4 }}
+            >
+              Changer la photo de profil
+            </button>
           </div>
         </div>
+
+        {/* Avatar picker panel */}
+        {avatarPicker && (
+          <div style={{ marginBottom: 16, borderRadius: 12, border: '1px solid var(--border-m)', background: 'var(--bg-2)', overflow: 'hidden' }}>
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-s)' }}>
+              {(['upload', 'gif'] as const).map(tab => (
+                <button key={tab} onClick={() => setAvatarTab(tab)}
+                  style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: avatarTab === tab ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', color: avatarTab === tab ? 'var(--accent)' : 'var(--t2)', borderBottom: avatarTab === tab ? '2px solid var(--accent)' : '2px solid transparent', transition: 'all 0.15s' }}>
+                  {tab === 'upload' ? 'Photo' : 'GIF'}
+                </button>
+              ))}
+              {avatarUrl && (
+                <button onClick={removeAvatar}
+                  style={{ padding: '10px 14px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', borderBottom: '2px solid transparent' }}>
+                  Supprimer
+                </button>
+              )}
+            </div>
+
+            {/* Upload tab */}
+            {avatarTab === 'upload' && (
+              <div style={{ padding: 16 }}>
+                <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f) }} />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) uploadFile(f) }}
+                  style={{ border: '2px dashed var(--border-m)', borderRadius: 10, padding: '28px 16px', textAlign: 'center', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-m)')}
+                >
+                  {uploadingAvatar ? (
+                    <p style={{ fontSize: 13, color: 'var(--t2)' }}>Envoi en cours…</p>
+                  ) : (
+                    <>
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 10px', color: 'var(--t2)' }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      <p style={{ fontSize: 13, color: 'var(--t1)', fontWeight: 500 }}>Glissez une image ou cliquez</p>
+                      <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 4 }}>JPG, PNG, GIF, WebP · max 5 Mo</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GIF tab */}
+            {avatarTab === 'gif' && (
+              <div style={{ padding: 12 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                  <input
+                    value={gifSearch}
+                    onChange={e => setGifSearch(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') searchGifs(gifSearch) }}
+                    placeholder="Rechercher un GIF…"
+                    style={{ ...inputStyle, flex: 1, height: 32, padding: '6px 10px', fontSize: 12 }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
+                  />
+                  <button onClick={() => searchGifs(gifSearch)} className="btn btn-primary" style={{ padding: '6px 14px', fontSize: 12, flexShrink: 0 }}>
+                    OK
+                  </button>
+                </div>
+                {loadingGifs ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                    {[...Array(8)].map((_, i) => <div key={i} className="skeleton" style={{ aspectRatio: '1', borderRadius: 6 }} />)}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                    {gifs.map(g => (
+                      <button key={g.id} onClick={() => pickGif(g.url)}
+                        style={{ padding: 0, border: '2px solid transparent', borderRadius: 6, cursor: 'pointer', overflow: 'hidden', background: 'var(--bg-3)', transition: 'border-color 0.12s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent)')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={g.url} alt={g.title} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block' }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!loadingGifs && gifs.length === 0 && (
+                  <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)', padding: '20px 0' }}>Aucun résultat</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {avatarMsg && <Alert type={avatarMsg.type} message={avatarMsg.text} />}
 
         <Field label="Nom affiché" hint="Remplace votre nom complet partout dans l'app">
           <input

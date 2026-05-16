@@ -5,13 +5,25 @@ import { useState, useEffect, useRef } from 'react'
 export interface AppUser {
   name: string
   color: string
+  avatarUrl?: string | null
 }
 
 export function userInitials(name: string) {
   return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
 }
 
-export function UserAvatar({ name, color, size = 22 }: { name: string; color: string; size?: number }) {
+export function UserAvatar({ name, color, size = 22, avatarUrl }: { name: string; color: string; size?: number; avatarUrl?: string | null }) {
+  if (avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt={name}
+        title={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    )
+  }
   return (
     <div title={name} style={{
       width: size, height: size, borderRadius: '50%',
@@ -68,7 +80,7 @@ export function UserPicker({ value, onChange, users, placeholder = 'Assigner', s
       >
         {selected ? (
           <>
-            <UserAvatar name={selected.name} color={selected.color} size={isSmall ? 16 : 20} />
+            <UserAvatar name={selected.name} color={selected.color} size={isSmall ? 16 : 20} avatarUrl={selected.avatarUrl} />
             {selected.name.split(' ')[0]}
           </>
         ) : (
@@ -118,7 +130,7 @@ export function UserPicker({ value, onChange, users, placeholder = 'Assigner', s
                 fontSize: 12, cursor: 'pointer', textAlign: 'left', fontWeight: value === user.name ? 600 : 400,
               }}
             >
-              <UserAvatar name={user.name} color={user.color} size={20} />
+              <UserAvatar name={user.name} color={user.color} size={20} avatarUrl={user.avatarUrl} />
               {user.name}
               {value === user.name && (
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 'auto', color: user.color }}>

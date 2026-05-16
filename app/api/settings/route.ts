@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     email: user.email,
     displayName: settings?.displayName ?? null,
     icalFeedUrl: settings?.icalFeedUrl ?? null,
+    avatarUrl: settings?.avatarUrl ?? null,
   })
 }
 

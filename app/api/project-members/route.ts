@@ -22,11 +22,14 @@ export async function GET(req: NextRequest) {
   for (const m of members) {
     const { data: { user: u } } = await db.auth.admin.getUserById(m.user_id)
     if (u) {
+      const name = (u.user_metadata?.full_name as string) || u.email || ''
+      const { data: presence } = await db.from('presence').select('avatar_url').eq('username', name).maybeSingle()
       result.push({
         id: u.id,
-        name: (u.user_metadata?.full_name as string) || u.email || '',
+        name,
         email: u.email || '',
         color: (u.user_metadata?.color as string) || '#7c6af5',
+        avatarUrl: (presence as any)?.avatar_url ?? null,
       })
     }
   }

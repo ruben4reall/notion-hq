@@ -90,6 +90,57 @@ export function NotificationBell() {
     })
   }
 
+  const deleteNotifs = async (ids: string[]) => {
+    if (!ids.length) return
+    setNotifs(prev => prev.filter(n => !ids.includes(n.id)))
+    await fetch('/api/notifications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+  }
+
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000
+  const newNotifs = notifs.filter(n => !n.lu || new Date(n.createdAt).getTime() > cutoff)
+  const oldNotifs = notifs.filter(n => n.lu && new Date(n.createdAt).getTime() <= cutoff)
+
+  const NotifRow = ({ n }: { n: Notification }) => {
+    const link = getNotifLink(n)
+    return (
+      <div
+        onClick={() => { if (link) { setOpen(false); router.push(link) } }}
+        style={{
+          padding: '10px 16px', borderBottom: '1px solid var(--border-s)',
+          background: n.lu ? 'transparent' : `${TYPE_BG[n.type]}`,
+          display: 'flex', gap: 10, alignItems: 'flex-start',
+          cursor: link ? 'pointer' : 'default',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => { if (link) (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.lu ? 'transparent' : `${TYPE_BG[n.type]}` }}
+      >
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: n.lu ? 'var(--border-m)' : TYPE_COLOR[n.type],
+          flexShrink: 0, marginTop: 5,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 12, color: n.lu ? 'var(--t1)' : 'var(--t0)', lineHeight: 1.5 }}>{n.message}</p>
+          <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
+            {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
+            <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
+            {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>Voir →</span>}
+          </div>
+        </div>
+        <button
+          onClick={e => { e.stopPropagation(); deleteNotifs([n.id]) }}
+          style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: '0 2px', fontSize: 14, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
+          title="Supprimer"
+        >×</button>
+      </div>
+    )
+  }
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
@@ -130,53 +181,48 @@ export function NotificationBell() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border-s)' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Notifications</span>
-            {notifs.some(n => !n.lu) && (
-              <button onClick={markAllRead} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                Tout lire
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {notifs.some(n => !n.lu) && (
+                <button onClick={markAllRead} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                  Tout lire
+                </button>
+              )}
+              {notifs.length > 0 && (
+                <button onClick={() => deleteNotifs(notifs.map(n => n.id))} style={{ fontSize: 11, color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer' }} title="Tout supprimer">
+                  Effacer tout
+                </button>
+              )}
+            </div>
           </div>
 
-          <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 420, overflowY: 'auto' }}>
             {notifs.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>
                 Aucune notification
               </div>
             ) : (
-              notifs.map(n => {
-                const link = getNotifLink(n)
-                return (
-                  <div
-                    key={n.id}
-                    onClick={() => {
-                      if (link) { setOpen(false); router.push(link) }
-                    }}
-                    style={{
-                      padding: '10px 16px', borderBottom: '1px solid var(--border-s)',
-                      background: n.lu ? 'transparent' : `${TYPE_BG[n.type]}`,
-                      display: 'flex', gap: 10, alignItems: 'flex-start',
-                      cursor: link ? 'pointer' : 'default',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => { if (link) (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.lu ? 'transparent' : `${TYPE_BG[n.type]}` }}
-                  >
-                    <div style={{
-                      width: 6, height: 6, borderRadius: '50%',
-                      background: n.lu ? 'var(--border-m)' : TYPE_COLOR[n.type],
-                      flexShrink: 0, marginTop: 5,
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12, color: n.lu ? 'var(--t1)' : 'var(--t0)', lineHeight: 1.5 }}>{n.message}</p>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
-                        {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
-                        <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
-                        {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>Voir →</span>}
-                      </div>
+              <>
+                {newNotifs.length > 0 && (
+                  <>
+                    <div style={{ padding: '6px 16px 4px', fontSize: 10, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+                      Nouvelles
                     </div>
-                  </div>
-                )
-              })
+                    {newNotifs.map(n => <NotifRow key={n.id} n={n} />)}
+                  </>
+                )}
+
+                {oldNotifs.length > 0 && (
+                  <>
+                    <div style={{ padding: '10px 16px 4px', fontSize: 10, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Anciennes</span>
+                      <button onClick={() => deleteNotifs(oldNotifs.map(n => n.id))} style={{ fontSize: 10, color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
+                        Nettoyer
+                      </button>
+                    </div>
+                    {oldNotifs.map(n => <NotifRow key={n.id} n={n} />)}
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>
