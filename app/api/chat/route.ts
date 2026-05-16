@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUser, getOrgId } from '@/lib/auth'
 import { getChatMessages, sendChatMessage, createNotification } from '@/lib/db'
 
+const MAX_MESSAGE_LENGTH = 2000
+
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
   if (!user) return NextResponse.json([], { status: 401 })
@@ -21,11 +23,15 @@ export async function POST(req: NextRequest) {
   const orgId = getOrgId(req)
   if (!orgId) return NextResponse.json({ error: 'No project' }, { status: 400 })
   try {
-    const { message, destinataire } = await req.json()
-    if (!message?.trim()) return NextResponse.json({ error: 'Message vide' }, { status: 400 })
-    await sendChatMessage(orgId, user.name, message, destinataire || '')
+    const body = await req.json()
+    const message = String(body?.message || '').trim()
+    const destinataire = String(body?.destinataire || '').trim().slice(0, 200)
+    if (!message) return NextResponse.json({ error: 'Message vide' }, { status: 400 })
+    if (message.length > MAX_MESSAGE_LENGTH) return NextResponse.json({ error: 'Message trop long' }, { status: 400 })
+    await sendChatMessage(orgId, user.name, message, destinataire)
     if (!destinataire) {
-      createNotification({ message: `💬 ${user.name} : ${String(message).startsWith('gif::') ? '(GIF)' : String(message).slice(0, 60)}${String(message).length > 60 ? '…' : ''}`, type: 'info', de: user.name }).catch(() => {})
+      const preview = message.startsWith('gif::') ? '(GIF)' : message.slice(0, 60) + (message.length > 60 ? '…' : '')
+      createNotification({ message: `💬 ${user.name} : ${preview}`, type: 'info', de: user.name }).catch(() => {})
     }
     return NextResponse.json({ ok: true })
   } catch (err) {

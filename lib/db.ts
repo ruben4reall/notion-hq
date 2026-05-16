@@ -231,7 +231,7 @@ export async function getEvents(orgId: string): Promise<CalendarEvent[]> {
     type: (r.type || 'Autre') as CalendarEvent['type'],
     description: r.description,
     modifiedBy: r.modified_by,
-    source: 'notion' as const,
+    source: 'supabase' as const,
   }))
 }
 

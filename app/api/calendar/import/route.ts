@@ -90,10 +90,10 @@ function unescapeIcal(str: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  const token = await getUser(req)
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const settings = await getUserSettings(token?.name as string).catch(() => null)
+  const settings = await getUserSettings(user.name).catch(() => null)
   const feedUrl = settings?.icalFeedUrl
 
   if (!feedUrl) return NextResponse.json({ events: [], connected: false })
@@ -122,12 +122,27 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = await getUser(req)
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { url } = await req.json()
-  const feedUrl = url ? String(url).trim().slice(0, 1000) : null
+  const body = await req.json()
+  const raw = body?.url ? String(body.url).trim().slice(0, 1000) : null
 
-  await updateUserSettings(token?.name as string, { icalFeedUrl: feedUrl })
+  if (raw) {
+    // Only allow https:// and webcal:// — block SSRF via file://, ftp://, internal IPs, etc.
+    const normalized = raw.replace(/^webcal:\/\//i, 'https://')
+    let parsed: URL
+    try { parsed = new URL(normalized) } catch { return NextResponse.json({ error: 'URL invalide' }, { status: 400 }) }
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      return NextResponse.json({ error: 'Protocole non autorisé' }, { status: 400 })
+    }
+    // Block private/internal IP ranges
+    const hostname = parsed.hostname
+    if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1|0\.0\.0\.0)/.test(hostname)) {
+      return NextResponse.json({ error: 'URL non autorisée' }, { status: 400 })
+    }
+  }
+
+  await updateUserSettings(user.name, { icalFeedUrl: raw })
   return NextResponse.json({ ok: true })
 }

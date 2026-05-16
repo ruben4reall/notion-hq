@@ -53,7 +53,7 @@ export interface CalendarEvent {
   type: 'RDV' | 'Réunion' | 'Appel' | 'Deadline' | 'Autre'
   description: string
   modifiedBy: string
-  source: 'notion' | 'google'
+  source: 'supabase' | 'google' | 'external'
   color?: string
 }
 
