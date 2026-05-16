@@ -128,9 +128,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ type: 'displayName', value: displayName }),
       })
       setSettings(prev => prev ? { ...prev, displayName: displayName || null } : prev)
-      setNameMsg({ type: 'success', text: 'Nom mis à jour' })
+      setNameMsg({ type: 'success', text: t('nameUpdated') })
     } catch {
-      setNameMsg({ type: 'error', text: 'Erreur lors de la sauvegarde' })
+      setNameMsg({ type: 'error', text: t('saveError') })
     }
     setSavingName(false)
     setTimeout(() => setNameMsg(null), 3000)
@@ -138,8 +138,8 @@ export default function SettingsPage() {
 
   const savePassword = async () => {
     setPwdMsg(null)
-    if (newPwd !== confirmPwd) { setPwdMsg({ type: 'error', text: 'Les mots de passe ne correspondent pas' }); return }
-    if (newPwd.length < 8) { setPwdMsg({ type: 'error', text: 'Minimum 8 caractères' }); return }
+    if (newPwd !== confirmPwd) { setPwdMsg({ type: 'error', text: t('passwordMismatch') }); return }
+    if (newPwd.length < 8) { setPwdMsg({ type: 'error', text: t('passwordMin') }); return }
     setSavingPwd(true)
     const res = await fetch('/api/settings', {
       method: 'PATCH',
@@ -148,9 +148,9 @@ export default function SettingsPage() {
     })
     const data = await res.json()
     if (!res.ok) {
-      setPwdMsg({ type: 'error', text: data.error || 'Erreur' })
+      setPwdMsg({ type: 'error', text: data.error || t('genericError') })
     } else {
-      setPwdMsg({ type: 'success', text: 'Mot de passe modifié avec succès' })
+      setPwdMsg({ type: 'success', text: t('passwordChanged') })
       setNewPwd(''); setConfirmPwd('')
     }
     setSavingPwd(false)
@@ -166,9 +166,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ url: icalUrl || null }),
       })
       setSettings(prev => prev ? { ...prev, icalFeedUrl: icalUrl || null } : prev)
-      setIcalMsg({ type: 'success', text: icalUrl ? 'Calendrier connecté !' : 'Calendrier déconnecté' })
+      setIcalMsg({ type: 'success', text: icalUrl ? t('calendarConnected') : t('calendarDisconnected') })
     } catch {
-      setIcalMsg({ type: 'error', text: 'Erreur lors de la sauvegarde' })
+      setIcalMsg({ type: 'error', text: t('saveError') })
     }
     setSavingIcal(false)
     setTimeout(() => setIcalMsg(null), 4000)
@@ -197,12 +197,12 @@ export default function SettingsPage() {
     const res = await fetch('/api/avatar', { method: 'POST', body: form })
     const data = await res.json()
     if (!res.ok) {
-      setAvatarMsg({ type: 'error', text: data.error || 'Erreur upload' })
+      setAvatarMsg({ type: 'error', text: data.error || t('uploadError') })
     } else {
       setAvatarUrl(data.url)
       setSettings(prev => prev ? { ...prev, avatarUrl: data.url } : prev)
       setAvatarPicker(false)
-      setAvatarMsg({ type: 'success', text: 'Photo de profil mise à jour' })
+      setAvatarMsg({ type: 'success', text: t('avatarUpdated') })
       setTimeout(() => setAvatarMsg(null), 3000)
     }
     setUploadingAvatar(false)
@@ -216,12 +216,12 @@ export default function SettingsPage() {
     const res = await fetch('/api/avatar', { method: 'POST', body: form })
     const data = await res.json()
     if (!res.ok) {
-      setAvatarMsg({ type: 'error', text: data.error || 'Erreur' })
+      setAvatarMsg({ type: 'error', text: data.error || t('genericError') })
     } else {
       setAvatarUrl(data.url)
       setSettings(prev => prev ? { ...prev, avatarUrl: data.url } : prev)
       setAvatarPicker(false)
-      setAvatarMsg({ type: 'success', text: 'GIF de profil mis à jour' })
+      setAvatarMsg({ type: 'success', text: t('gifUpdated') })
       setTimeout(() => setAvatarMsg(null), 3000)
     }
     setUploadingAvatar(false)
@@ -253,15 +253,15 @@ export default function SettingsPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Dashboard SuperAdmin</p>
-                <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>Métriques, utilisateurs et activité de la plateforme</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{t('superAdminTitle')}</p>
+                <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>{t('superAdminHint')}</p>
               </div>
             </div>
             <button
               onClick={() => router.push('/admin')}
               style={{ padding: '8px 16px', background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.25)', borderRadius: 9, color: '#f43f5e', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              Ouvrir
+              {t('openBtn')}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
@@ -276,7 +276,7 @@ export default function SettingsPage() {
             <button
               onClick={() => setAvatarPicker(v => !v)}
               style={{ width: 52, height: 52, borderRadius: '50%', padding: 0, border: 'none', cursor: 'pointer', position: 'relative', background: 'none' }}
-              title="Changer la photo de profil"
+              title={t('changeAvatar')}
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -313,7 +313,7 @@ export default function SettingsPage() {
               onClick={() => setAvatarPicker(v => !v)}
               style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, marginTop: 4 }}
             >
-              Changer la photo de profil
+              {t('changeAvatar')}
             </button>
           </div>
         </div>
@@ -326,13 +326,13 @@ export default function SettingsPage() {
               {(['upload', 'gif'] as const).map(tab => (
                 <button key={tab} onClick={() => setAvatarTab(tab)}
                   style={{ flex: 1, padding: '10px 0', fontSize: 12, fontWeight: avatarTab === tab ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', color: avatarTab === tab ? 'var(--accent)' : 'var(--t2)', borderBottom: avatarTab === tab ? '2px solid var(--accent)' : '2px solid transparent', transition: 'all 0.15s' }}>
-                  {tab === 'upload' ? 'Photo' : 'GIF'}
+                  {tab === 'upload' ? t('uploadTab') : t('gifTab')}
                 </button>
               ))}
               {avatarUrl && (
                 <button onClick={removeAvatar}
                   style={{ padding: '10px 14px', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', borderBottom: '2px solid transparent' }}>
-                  Supprimer
+                  {t('removeAvatar')}
                 </button>
               )}
             </div>
@@ -351,12 +351,12 @@ export default function SettingsPage() {
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-m)')}
                 >
                   {uploadingAvatar ? (
-                    <p style={{ fontSize: 13, color: 'var(--t2)' }}>Envoi en cours…</p>
+                    <p style={{ fontSize: 13, color: 'var(--t2)' }}>{t('uploading')}</p>
                   ) : (
                     <>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 10px', color: 'var(--t2)' }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                      <p style={{ fontSize: 13, color: 'var(--t1)', fontWeight: 500 }}>Glissez une image ou cliquez</p>
-                      <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 4 }}>JPG, PNG, GIF, WebP · max 5 Mo</p>
+                      <p style={{ fontSize: 13, color: 'var(--t1)', fontWeight: 500 }}>{t('dragOrClick')}</p>
+                      <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 4 }}>{t('dragHint')}</p>
                     </>
                   )}
                 </div>
@@ -371,7 +371,7 @@ export default function SettingsPage() {
                     value={gifSearch}
                     onChange={e => setGifSearch(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') searchGifs(gifSearch) }}
-                    placeholder="Rechercher un GIF…"
+                    placeholder={t('searchGif')}
                     style={{ ...inputStyle, flex: 1, height: 32, padding: '6px 10px', fontSize: 12 }}
                     onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                     onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                   </div>
                 )}
                 {!loadingGifs && gifs.length === 0 && (
-                  <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)', padding: '20px 0' }}>Aucun résultat</p>
+                  <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--t2)', padding: '20px 0' }}>{t('noResults')}</p>
                 )}
               </div>
             )}
@@ -408,7 +408,7 @@ export default function SettingsPage() {
 
         {avatarMsg && <Alert type={avatarMsg.type} message={avatarMsg.text} />}
 
-        <Field label="Nom affiché" hint="Remplace votre nom complet partout dans l'app">
+        <Field label={t('displayName')} hint={t('displayNameHint')}>
           <input
             type="text"
             value={displayName}
@@ -427,20 +427,20 @@ export default function SettingsPage() {
           onClick={saveName}
           disabled={savingName}
         >
-          {savingName ? 'Enregistrement…' : 'Enregistrer'}
+          {savingName ? t('saving') : t('save')}
         </button>
       </Section>
 
       {/* Security */}
       <Section title={t('securitySection')}>
-        <Field label="Nouveau mot de passe">
+        <Field label={t('newPassword')}>
           <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)}
-            placeholder="Minimum 8 caractères" style={inputStyle}
+            placeholder={t('passwordMin')} style={inputStyle}
             onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
             onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
           />
         </Field>
-        <Field label="Confirmer le mot de passe">
+        <Field label={t('confirmPassword')}>
           <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
             placeholder="••••••••" style={inputStyle}
             onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
@@ -455,15 +455,15 @@ export default function SettingsPage() {
           onClick={savePassword}
           disabled={savingPwd || !newPwd || !confirmPwd}
         >
-          {savingPwd ? 'Modification…' : 'Changer le mot de passe'}
+          {savingPwd ? t('changingDots') : t('changePassword')}
         </button>
       </Section>
 
       {/* Calendar */}
       <Section title={t('calendarSection')} id="calendar">
         <Field
-          label="Importer un calendrier externe"
-          hint="Collez l'URL iCal de votre Apple Calendar ou Google Calendar. Vos évènements apparaîtront dans l'app."
+          label={t('importCalendarLabel')}
+          hint={t('importCalendarHint')}
         >
           <input
             type="text"
@@ -476,15 +476,15 @@ export default function SettingsPage() {
           />
         </Field>
         <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 14, lineHeight: 1.6 }}>
-          <strong style={{ color: 'var(--t1)' }}>Apple Calendar :</strong> Faites un clic droit sur un calendrier → &quot;Partager le calendrier&quot; → copiez le lien<br />
-          <strong style={{ color: 'var(--t1)' }}>Google Calendar :</strong> Paramètres → votre agenda → &quot;URL au format iCal&quot;
+          {t('calendarHintApple')}<br />
+          {t('calendarHintGoogle')}
         </div>
 
         {icalMsg && <Alert type={icalMsg.type} message={icalMsg.text} />}
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-primary" onClick={saveIcal} disabled={savingIcal}>
-            {savingIcal ? 'Enregistrement…' : 'Connecter'}
+            {savingIcal ? t('saving') : t('connectBtn')}
           </button>
           {settings?.icalFeedUrl && (
             <button
@@ -492,22 +492,22 @@ export default function SettingsPage() {
                 setIcalUrl('')
                 await fetch('/api/calendar/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: null }) })
                 setSettings(prev => prev ? { ...prev, icalFeedUrl: null } : prev)
-                setIcalMsg({ type: 'success', text: 'Calendrier déconnecté' })
+                setIcalMsg({ type: 'success', text: t('calendarDisconnected') })
                 setTimeout(() => setIcalMsg(null), 3000)
               }}
               style={{ padding: '8px 14px', borderRadius: 8, fontSize: 13, background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}
             >
-              Déconnecter
+              {t('disconnectBtn')}
             </button>
           )}
         </div>
 
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-s)' }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 8 }}>
-            Abonnez-vous depuis Apple/Google Calendar
+            {t('calendarSubscribeTitle')}
           </p>
           <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.6 }}>
-            Copiez cette URL dans Google Calendar → &quot;Autres agendas&quot; → &quot;Via une URL&quot; ou Apple Calendar → Fichier → Nouvel abonnement. Vos tâches et évènements de l&apos;app apparaîtront dans votre calendrier.
+            {t('calendarSubscribeHint')}
           </p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-3)', borderRadius: 8, padding: '8px 12px', border: '1px solid var(--border-s)' }}>
             <code style={{ fontSize: 11, color: 'var(--accent)', flex: 1, wordBreak: 'break-all' }}>
@@ -517,7 +517,7 @@ export default function SettingsPage() {
               onClick={() => navigator.clipboard.writeText(exportUrl)}
               style={{ padding: '4px 10px', borderRadius: 6, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid rgba(124,106,245,0.2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
             >
-              Copier
+              {t('copy')}
             </button>
           </div>
         </div>
@@ -560,8 +560,8 @@ export default function SettingsPage() {
       <Section title={t('preferencesSection')}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border-s)' }}>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>Thème de l&apos;interface</p>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>Sombre ou clair selon votre préférence</p>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>{t('themeLabel')}</p>
+            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>{t('themeHint')}</p>
           </div>
           <ThemeToggle />
         </div>
@@ -592,6 +592,7 @@ export default function SettingsPage() {
 }
 
 function AccentPicker() {
+  const { t } = useLanguage()
   const [activeId, setActiveId] = useState('violet')
 
   useEffect(() => { setActiveId(getCurrentAccentId()) }, [])
@@ -603,8 +604,8 @@ function AccentPicker() {
 
   return (
     <div>
-      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', marginBottom: 4 }}>Couleur d&apos;accentuation</p>
-      <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 12 }}>Couleur des boutons, liens et éléments actifs</p>
+      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', marginBottom: 4 }}>{t('accentLabel')}</p>
+      <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 12 }}>{t('accentHint')}</p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {ACCENTS.map(a => (
           <button
@@ -628,7 +629,7 @@ function AccentPicker() {
         ))}
       </div>
       <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 10 }}>
-        Couleur active : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+        {t('accentActive')} <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
           {ACCENTS.find(a => a.id === activeId)?.label}
         </span>
       </p>
@@ -637,14 +638,15 @@ function AccentPicker() {
 }
 
 function OnboardingSettings() {
+  const { t } = useLanguage()
   const { reset, resetSection } = useOnboarding()
 
   return (
-    <Section title="Guide de l'application">
+    <Section title={t('guideSectionTitle')}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-s)' }}>
         <div>
-          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>Revoir tout le guide</p>
-          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>Recommence le tour interactif complet depuis le début</p>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>{t('reviewAllTitle')}</p>
+          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>{t('reviewAllHint')}</p>
         </div>
         <button
           onClick={reset}
@@ -654,11 +656,11 @@ function OnboardingSettings() {
             border: '1px solid rgba(var(--accent-rgb),0.25)', cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
-          Revoir tout
+          {t('reviewAllBtn')}
         </button>
       </div>
       <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
-        Revoir par section
+        {t('reviewBySectionLabel')}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {SECTIONS.map(s => (
@@ -673,7 +675,7 @@ function OnboardingSettings() {
               onClick={() => resetSection(s.id)}
               style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: `${s.color}14`, color: s.color, border: `1px solid ${s.color}25`, cursor: 'pointer' }}
             >
-              Revoir
+              {t('reviewBtn')}
             </button>
           </div>
         ))}
