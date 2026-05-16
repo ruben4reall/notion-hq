@@ -376,6 +376,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
 
   const [stepIndex, setStepIndex] = useState(getInitialStep)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
+  const [tooltipReady, setTooltipReady] = useState(false)
   const pollRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const step = STEPS[stepIndex]
@@ -390,23 +391,35 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
   useEffect(() => {
     if (!step || isNavigating) {
       setTargetRect(null)
+      setTooltipReady(false)
       return
     }
     if (pollRef.current) clearTimeout(pollRef.current)
     setTargetRect(null)
-    if (!step.targetSelector) return
 
+    if (!step.targetSelector) {
+      // No target to find — show tooltip immediately at center
+      setTooltipReady(true)
+      return
+    }
+
+    // Wait for target element before showing tooltip to avoid position jump
+    setTooltipReady(false)
     let attempts = 0
     const poll = () => {
       const el = document.querySelector(step.targetSelector!)
       if (el) {
         setTargetRect(el.getBoundingClientRect())
-      } else if (attempts < 30) {
+        setTooltipReady(true)
+      } else if (attempts < 25) {
         attempts++
-        pollRef.current = setTimeout(poll, 120)
+        pollRef.current = setTimeout(poll, 100)
+      } else {
+        // Element not found — fall back to centered tooltip
+        setTooltipReady(true)
       }
     }
-    pollRef.current = setTimeout(poll, 450)
+    pollRef.current = setTimeout(poll, 150)
     return () => { if (pollRef.current) clearTimeout(pollRef.current) }
   }, [stepIndex, pathname, isNavigating])
 
@@ -471,17 +484,34 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
   return (
     <>
       <SpotlightOverlay rect={targetRect} />
-      <TourTooltip
-        step={step}
-        sectionStepIndex={sectionIdx}
-        sectionTotal={sectionStepsArr.length}
-        targetRect={targetRect}
-        onNext={next}
-        onPrev={prev}
-        onSkip={onComplete}
-        isFirst={isFirst}
-        isLast={isLast}
-      />
+      {tooltipReady ? (
+        <TourTooltip
+          step={step}
+          sectionStepIndex={sectionIdx}
+          sectionTotal={sectionStepsArr.length}
+          targetRect={targetRect}
+          onNext={next}
+          onPrev={prev}
+          onSkip={onComplete}
+          isFirst={isFirst}
+          isLast={isLast}
+        />
+      ) : (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9002, display: 'flex', alignItems: 'center', gap: 8,
+          background: 'var(--bg-1)', border: '1px solid var(--border-m)',
+          borderRadius: 99, padding: '8px 16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              width: 5, height: 5, borderRadius: '50%', background: step.color,
+              animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
+            }} />
+          ))}
+        </div>
+      )}
     </>
   )
 }
