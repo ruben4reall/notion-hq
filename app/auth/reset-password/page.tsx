@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage } from '@/context/LanguageContext'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '11px 14px',
@@ -14,6 +15,7 @@ const inputStyle: React.CSSProperties = {
 function ResetForm() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,12 +27,12 @@ function ResetForm() {
     supabase.auth.onAuthStateChange((event: string) => {
       if (event === 'PASSWORD_RECOVERY') setReady(true)
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (password !== confirm) { setError('Les mots de passe ne correspondent pas'); return }
-    if (password.length < 8) { setError('Minimum 8 caractères'); return }
+    if (password !== confirm) { setError(t('passwordMismatch')); return }
+    if (password.length < 8) { setError(t('passwordMin')); return }
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.updateUser({ password })
@@ -43,7 +45,7 @@ function ResetForm() {
       <div style={{ textAlign: 'center', color: 'var(--t1)', fontSize: 14, paddingTop: 40 }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid var(--border-m)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite', margin: '0 auto 16px' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        Vérification du lien…
+        {t('verifyingLink')}
       </div>
     )
   }
@@ -52,22 +54,22 @@ function ResetForm() {
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Nouveau mot de passe
+          {t('newPasswordTitle')}
         </label>
         <input
           type="password" value={password} onChange={e => setPassword(e.target.value)}
-          required placeholder="Minimum 8 caractères" style={inputStyle} autoFocus
+          required placeholder={t('passwordMin')} style={inputStyle} autoFocus
           onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
           onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
         />
       </div>
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Confirmer le mot de passe
+          {t('confirmPassword')}
         </label>
         <input
           type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
-          required placeholder="••••••••" style={inputStyle}
+          required placeholder={t('passwordCurrentPlaceholder')} style={inputStyle}
           onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
           onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
         />
@@ -94,16 +96,17 @@ function ResetForm() {
         {loading ? (
           <>
             <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
-            Mise à jour…
+            {t('updating')}
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </>
-        ) : 'Mettre à jour le mot de passe'}
+        ) : t('updatePassword')}
       </button>
     </form>
   )
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useLanguage()
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center',
@@ -122,7 +125,7 @@ export default function ResetPasswordPage() {
             </svg>
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em' }}>
-            Nouveau mot de passe
+            {t('newPasswordTitle')}
           </h1>
         </div>
         <Suspense>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Task } from '@/lib/types'
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -29,17 +30,10 @@ function getGroup(task: Task): 'overdue' | 'today' | 'week' | 'later' | 'nodate'
 }
 
 const GROUP_ORDER = ['overdue', 'today', 'week', 'later', 'nodate'] as const
-const GROUP_LABEL: Record<string, { label: string; color: string }> = {
-  overdue: { label: 'En retard',      color: '#f43f5e' },
-  today:   { label: 'Aujourd\'hui',   color: '#f59e0b' },
-  week:    { label: 'Cette semaine',  color: '#4f8ef7' },
-  later:   { label: 'Plus tard',      color: '#6b7280' },
-  nodate:  { label: 'Sans date',      color: '#6b7280' },
-}
 
-function fmtDate(d: string) {
+function fmtDate(d: string, locale: string) {
   if (!d) return ''
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(d))
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(d))
 }
 
 type NotionTask = { id: string; title: string; done: boolean; due: string | null; priority: string | null }
@@ -70,6 +64,9 @@ function TaskRow({
 }: {
   task: Task; onToggle: (id: string, done: boolean) => void; onEdit: (task: Task) => void
 }) {
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const isDone = task.status === 'Done'
   const end = task.dateEnd || task.dateStart
   const today = isoDate(new Date())
@@ -99,7 +96,7 @@ function TaskRow({
 
       <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onEdit(task)}>
         <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--t0)', textDecoration: isDone ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {task.title || 'Sans titre'}
+          {task.title || t('noTitle')}
         </p>
         {(task.module || task.assignedTo) && (
           <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
@@ -116,7 +113,7 @@ function TaskRow({
         )}
         {end && (
           <span style={{ fontSize: 11, color: isOverdue ? '#f43f5e' : isToday ? '#f59e0b' : 'var(--t2)', fontWeight: isOverdue || isToday ? 600 : 400 }}>
-            {fmtDate(end)}
+            {fmtDate(end, locale)}
           </span>
         )}
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[task.status] || '#6b7280', flexShrink: 0 }} />
@@ -126,13 +123,14 @@ function TaskRow({
 }
 
 function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
+  const { t } = useLanguage()
   const [value, setValue] = useState('')
   const ref = useRef<HTMLInputElement | null>(null)
 
   const submit = () => {
-    const t = value.trim()
-    if (!t) return
-    onAdd(t)
+    const v = value.trim()
+    if (!v) return
+    onAdd(v)
     setValue('')
     ref.current?.focus()
   }
@@ -145,12 +143,12 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && submit()}
-        placeholder="Ajouter une tâche… (Entrée pour créer)"
+        placeholder={t('addTaskPlaceholder')}
         style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: 'var(--t1)', caretColor: 'var(--accent)' }}
       />
       {value && (
         <button onClick={submit} style={{ padding: '3px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
-          Ajouter
+          {t('add')}
         </button>
       )}
     </div>
@@ -158,6 +156,7 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
 }
 
 function EditModal({ task, onClose, onSaved, onDelete }: { task: Task; onClose: () => void; onSaved: () => void; onDelete: () => void }) {
+  const { t } = useLanguage()
   const [title, setTitle] = useState(task.title || '')
   const [status, setStatus] = useState<Task['status']>(task.status)
   const [priority, setPriority] = useState(task.priority || '')
@@ -177,7 +176,7 @@ function EditModal({ task, onClose, onSaved, onDelete }: { task: Task; onClose: 
   }
 
   const del = async () => {
-    if (!confirm('Supprimer cette tâche ?')) return
+    if (!confirm(t('deleteTask'))) return
     await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
     onDelete()
     onClose()
@@ -188,44 +187,44 @@ function EditModal({ task, onClose, onSaved, onDelete }: { task: Task; onClose: 
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} onClick={onClose} />
       <div style={{ position: 'relative', background: 'var(--bg-1)', border: '1px solid var(--border-m)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, maxHeight: '90dvh', overflow: 'auto', animation: 'floatIn 0.25s var(--ease-spring) both' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)' }}>Modifier la tâche</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)' }}>{t('editTask')}</p>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--t2)', fontSize: 20, cursor: 'pointer', padding: 4 }}>×</button>
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Titre</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{t('taskTitle')}</label>
           <input value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 14, outline: 'none' }} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Statut</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{t('status')}</label>
             <select value={status} onChange={e => setStatus(e.target.value as Task['status'])} style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }}>
-              {['Backlog','À faire','En cours','Review','Done'].map(s => <option key={s} value={s}>{s}</option>)}
+              {([['Backlog','statusBacklog'],['À faire','todo'],['En cours','inProgress'],['Review','inReview'],['Done','done']] as [string,string][]).map(([v,k]) => <option key={v} value={v}>{t(k)}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Priorité</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{t('priority')}</label>
             <select value={priority} onChange={e => setPriority(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }}>
               <option value="">—</option>
-              <option value="P0">P0 Critique</option>
-              <option value="P1">P1 Haute</option>
-              <option value="P2">P2 Normale</option>
+              <option value="P0">{t('priorityLabelP0')}</option>
+              <option value="P1">{t('priorityLabelP1')}</option>
+              <option value="P2">{t('priorityLabelP2')}</option>
             </select>
           </div>
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Deadline</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{t('deadlineLabel')}</label>
           <input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }} />
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-          <button onClick={del} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>Supprimer</button>
+          <button onClick={del} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>{t('delete')}</button>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 500, background: 'var(--bg-3)', border: '1px solid var(--border-m)', color: 'var(--t1)', cursor: 'pointer' }}>Annuler</button>
+            <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 500, background: 'var(--bg-3)', border: '1px solid var(--border-m)', color: 'var(--t1)', cursor: 'pointer' }}>{t('cancel')}</button>
             <button onClick={save} disabled={saving || !title.trim()} style={{ padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 700, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', opacity: saving || !title.trim() ? 0.6 : 1 }}>
-              {saving ? 'Enregistrement…' : 'Enregistrer'}
+              {saving ? t('saving') : t('save')}
             </button>
           </div>
         </div>
@@ -235,6 +234,9 @@ function EditModal({ task, onClose, onSaved, onDelete }: { task: Task; onClose: 
 }
 
 function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) {
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const [token, setToken] = useState(() => loadNotionToken())
   const [dbInput, setDbInput] = useState(() => loadNotionDb())
   const [loading, setLoading] = useState(false)
@@ -256,7 +258,7 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
     })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      setError(d.error || 'Token ou base de données invalide')
+      setError(d.error || t('notionInvalidError'))
       setLoading(false)
       return
     }
@@ -265,7 +267,7 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
     setLoading(false)
   }
 
-  const pending = notionTasks.filter(t => !t.done)
+  const pending = notionTasks.filter(item => !item.done)
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -282,7 +284,9 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)' }}>Notion</p>
           <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>
-            {token && dbInput ? `Connecté · ${pending.length > 0 ? `${pending.length} tâches en attente` : 'cliquer pour synchroniser'}` : 'Importer depuis une base Notion'}
+            {token && dbInput
+              ? `${t('notionConnected')} · ${pending.length > 0 ? t('notionPendingN', { n: pending.length }) : t('notionClickSync')}`
+              : t('notionImportHint')}
           </p>
         </div>
         <span style={{ fontSize: 16, color: 'var(--t2)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>›</span>
@@ -291,10 +295,10 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
       {expanded && (
         <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border-s)' }}>
           <div style={{ marginTop: 14, marginBottom: 10, padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8, fontSize: 12, color: 'var(--t2)', lineHeight: 1.7 }}>
-            <strong style={{ color: 'var(--t1)' }}>Configuration :</strong><br />
-            1. Dans Notion, allez sur <strong style={{ color: 'var(--t1)' }}>notion.so/my-integrations</strong> → Nouvelle intégration → copiez le token<br />
-            2. Ouvrez votre base de données → menu ··· → <strong style={{ color: 'var(--t1)' }}>Connexions</strong> → ajoutez votre intégration<br />
-            3. Copiez l'URL de la base et collez-la ci-dessous
+            <strong style={{ color: 'var(--t1)' }}>{t('notionConfigTitle')} :</strong><br />
+            1. {t('notionStep1')}<br />
+            2. {t('notionStep2')}<br />
+            3. {t('notionStep3')}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
@@ -309,7 +313,7 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
               <input
                 value={dbInput}
                 onChange={e => setDbInput(e.target.value)}
-                placeholder="URL ou ID de la base de données Notion"
+                placeholder={t('notionDbUrl')}
                 style={{ flex: 1, padding: '9px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none' }}
               />
               <button
@@ -327,11 +331,11 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
           {notionTasks.length > 0 && (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflow: 'auto', marginBottom: 12 }}>
-                {pending.slice(0, 25).map(t => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 3, background: t.priority === 'P0' ? '#f43f5e' : t.priority === 'P1' ? '#f59e0b' : 'var(--border-m)', flexShrink: 0 }} />
-                    <p style={{ flex: 1, fontSize: 13, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</p>
-                    {t.due && <span style={{ fontSize: 11, color: 'var(--t2)', flexShrink: 0 }}>{fmtDate(t.due)}</span>}
+                {pending.slice(0, 25).map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 3, background: item.priority === 'P0' ? '#f43f5e' : item.priority === 'P1' ? '#f59e0b' : 'var(--border-m)', flexShrink: 0 }} />
+                    <p style={{ flex: 1, fontSize: 13, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</p>
+                    {item.due && <span style={{ fontSize: 11, color: 'var(--t2)', flexShrink: 0 }}>{fmtDate(item.due, locale)}</span>}
                   </div>
                 ))}
               </div>
@@ -339,7 +343,7 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
                 onClick={() => onImport(pending)}
                 style={{ width: '100%', padding: '10px', borderRadius: 9, fontSize: 13, fontWeight: 600, background: 'rgba(var(--accent-rgb),0.1)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.2)', cursor: 'pointer' }}
               >
-                Importer {pending.length} tâche{pending.length > 1 ? 's' : ''} dans le Kanban
+                {t('notionImportBtn', { n: pending.length })}
               </button>
             </>
           )}
@@ -350,6 +354,14 @@ function NotionPanel({ onImport }: { onImport: (tasks: NotionTask[]) => void }) 
 }
 
 export default function TodoPage() {
+  const { t } = useLanguage()
+  const GROUP_LABEL: Record<string, { label: string; color: string }> = {
+    overdue: { label: t('overdue'),    color: '#f43f5e' },
+    today:   { label: t('today'),      color: '#f59e0b' },
+    week:    { label: t('thisWeek'),   color: '#4f8ef7' },
+    later:   { label: t('laterLabel'), color: '#6b7280' },
+    nodate:  { label: t('noDueDate'),  color: '#6b7280' },
+  }
   const { user: session } = useAuth()
   const myName = session?.name || ''
   const { data: fetchedTasks, loading, refresh } = useCache<Task[]>('/api/tasks', { ttl: 15_000 })
@@ -359,21 +371,22 @@ export default function TodoPage() {
   const [showDone, setShowDone] = useState(false)
   const [importing, setImporting] = useState(false)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (fetchedTasks) setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []) }, [fetchedTasks])
 
-  const visibleTasks = tasks.filter(t => {
-    if (filter === 'mine' && myName && t.assignedTo !== myName) return false
-    if (!showDone && t.status === 'Done') return false
+  const visibleTasks = tasks.filter(tk => {
+    if (filter === 'mine' && myName && tk.assignedTo !== myName) return false
+    if (!showDone && tk.status === 'Done') return false
     return true
   })
 
   const grouped = GROUP_ORDER.reduce((acc, g) => {
-    acc[g] = visibleTasks.filter(t => getGroup(t) === g)
+    acc[g] = visibleTasks.filter(tk => getGroup(tk) === g)
     return acc
   }, {} as Record<string, Task[]>)
 
   const toggleDone = useCallback(async (id: string, done: boolean) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: done ? 'Done' : 'À faire' } : t))
+    setTasks(prev => prev.map(tk => tk.id === id ? { ...tk, status: done ? 'Done' : 'À faire' } : tk))
     await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -392,15 +405,15 @@ export default function TodoPage() {
 
   const importNotion = useCallback(async (notionTasks: NotionTask[]) => {
     setImporting(true)
-    for (const t of notionTasks.slice(0, 50)) {
+    for (const nt of notionTasks.slice(0, 50)) {
       await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: t.title,
+          title: nt.title,
           status: 'À faire',
-          priority: t.priority || null,
-          dateEnd: t.due || null,
+          priority: nt.priority || null,
+          dateEnd: nt.due || null,
           assignedTo: myName || undefined,
         }),
       })
@@ -409,8 +422,8 @@ export default function TodoPage() {
     refresh()
   }, [myName, refresh])
 
-  const totalMine = tasks.filter(t => t.assignedTo === myName && t.status !== 'Done').length
-  const totalOverdue = tasks.filter(t => getGroup(t) === 'overdue').length
+  const totalMine = tasks.filter(tk => tk.assignedTo === myName && tk.status !== 'Done').length
+  const totalOverdue = tasks.filter(tk => getGroup(tk) === 'overdue').length
 
   return (
     <div className="page-container animate-in">
@@ -426,7 +439,7 @@ export default function TodoPage() {
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">Todo</h1>
         <p className="page-subtitle">
-          {totalMine} tâche{totalMine !== 1 ? 's' : ''} assignée{totalMine !== 1 ? 's' : ''} · {totalOverdue > 0 ? <span style={{ color: '#f43f5e' }}>{totalOverdue} en retard</span> : 'Tout est à jour'}
+          {t('assignedTasksN', { n: totalMine })} · {totalOverdue > 0 ? <span style={{ color: '#f43f5e' }}>{t('overdueN', { n: totalOverdue })}</span> : t('allUpToDate')}
         </p>
       </div>
 
@@ -441,7 +454,7 @@ export default function TodoPage() {
               border: filter === f ? '1px solid var(--border-s)' : '1px solid transparent',
               boxShadow: filter === f ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
             }}>
-              {f === 'mine' ? 'Mes tâches' : 'Toutes'}
+              {f === 'mine' ? t('myTasks') : t('allFem')}
             </button>
           ))}
         </div>
@@ -454,7 +467,7 @@ export default function TodoPage() {
             border: `1px solid ${showDone ? 'rgba(14,201,140,0.25)' : 'var(--border-s)'}`,
           }}
         >
-          {showDone ? '✓ Cachant les terminées' : 'Afficher terminées'}
+          {showDone ? t('hidingCompleted') : t('showCompleted')}
         </button>
       </div>
 
@@ -491,9 +504,9 @@ export default function TodoPage() {
           {visibleTasks.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <p style={{ fontSize: 28, marginBottom: 8 }}>🎉</p>
-              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--t0)', marginBottom: 4 }}>Tout est fait !</p>
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--t0)', marginBottom: 4 }}>{t('allDone')}</p>
               <p style={{ fontSize: 13, color: 'var(--t2)' }}>
-                {filter === 'mine' ? 'Aucune tâche assignée à vous.' : 'Aucune tâche en cours.'}
+                {filter === 'mine' ? t('noTasksAssigned') : t('noActiveTask')}
               </p>
             </div>
           )}
@@ -504,9 +517,9 @@ export default function TodoPage() {
       {tasks.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 20 }}>
           {[
-            { label: 'Total', value: tasks.filter(t => filter === 'mine' ? t.assignedTo === myName : true).length, color: 'var(--t2)' },
-            { label: 'En cours', value: tasks.filter(t => (filter === 'mine' ? t.assignedTo === myName : true) && t.status === 'En cours').length, color: 'var(--accent)' },
-            { label: 'Terminées', value: tasks.filter(t => (filter === 'mine' ? t.assignedTo === myName : true) && t.status === 'Done').length, color: 'var(--green)' },
+            { label: t('statsTotal'), value: tasks.filter(tk => filter === 'mine' ? tk.assignedTo === myName : true).length, color: 'var(--t2)' },
+            { label: t('inProgress'), value: tasks.filter(tk => (filter === 'mine' ? tk.assignedTo === myName : true) && tk.status === 'En cours').length, color: 'var(--accent)' },
+            { label: t('completedLabel'), value: tasks.filter(tk => (filter === 'mine' ? tk.assignedTo === myName : true) && tk.status === 'Done').length, color: 'var(--green)' },
           ].map(stat => (
             <div key={stat.label} className="card" style={{ padding: '14px 16px', textAlign: 'center' }}>
               <p style={{ fontSize: 24, fontWeight: 800, color: stat.color, letterSpacing: '-0.03em' }}>{stat.value}</p>
@@ -518,11 +531,11 @@ export default function TodoPage() {
 
       {/* Integrations */}
       <div style={{ marginTop: 28 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 14 }}>Intégrations externes</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 14 }}>{t('externalIntegrations')}</p>
         <NotionPanel onImport={importNotion} />
         {importing && (
           <div style={{ marginTop: 10, fontSize: 12, color: 'var(--t2)', textAlign: 'center' }}>
-            Import en cours…
+            {t('importingDots')}
           </div>
         )}
       </div>

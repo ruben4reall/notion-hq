@@ -2,6 +2,7 @@
 
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/context/LanguageContext'
 
 const InfraWidget = lazy(() => import('@/components/InfraWidget'))
 const UptimeWidget = lazy(() => import('@/components/UptimeWidget'))
@@ -38,64 +39,21 @@ interface ActivityEntry {
   created_at: string
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'à l\'instant'
-  if (m < 60) return `${m}min`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.floor(h / 24)}j`
-}
-
-function fmtDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+function fmtDate(dateStr: string, locale: string) {
+  return new Date(dateStr).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
 }
 
-const ACTIVITY_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  task: {
-    label: 'Tâche',
-    color: '#059669',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  },
-  note: {
-    label: 'Note',
-    color: '#3b82f6',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="1.8"/><polyline points="14,2 14,8 20,8" stroke="white" strokeWidth="1.8"/></svg>,
-  },
-  chat: {
-    label: 'Message',
-    color: '#7c6af5',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.8"/></svg>,
-  },
-  crm: {
-    label: 'CRM',
-    color: '#ea580c',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="white" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>,
-  },
-  idea: {
-    label: 'Idée',
-    color: '#f59e0b',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 22h4M12 2a7 7 0 017 7c0 2.6-1.4 4.9-3.5 6.2L15 17H9l-.5-1.8C6.4 13.9 5 11.6 5 9a7 7 0 017-7z" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>,
-  },
+const ACTIVITY_ICONS: Record<string, { color: string; icon: React.ReactNode }> = {
+  task: { color: '#059669', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  note: { color: '#3b82f6', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="white" strokeWidth="1.8"/><polyline points="14,2 14,8 20,8" stroke="white" strokeWidth="1.8"/></svg> },
+  chat: { color: '#7c6af5', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="white" strokeWidth="1.8"/></svg> },
+  crm:  { color: '#ea580c', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="white" strokeWidth="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+  idea: { color: '#f59e0b', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 22h4M12 2a7 7 0 017 7c0 2.6-1.4 4.9-3.5 6.2L15 17H9l-.5-1.8C6.4 13.9 5 11.6 5 9a7 7 0 017-7z" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg> },
 }
-
-const METRIC_CARDS = (m: Metrics) => [
-  { label: 'Utilisateurs', value: m.users, color: '#7c6af5', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M3 21c0-4 2.7-7 6-7h0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="17" cy="9" r="3" stroke="currentColor" strokeWidth="1.8"/><path d="M15 21c0-3 1.3-5 4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-  { label: 'Projets', value: m.projects, color: '#3b82f6', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" stroke="currentColor" strokeWidth="1.8"/></svg> },
-  { label: 'Membres', value: m.members, color: '#0d9488', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-  { label: 'Tâches', value: m.tasks, color: '#059669', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  { label: 'CRM', value: m.crm, color: '#ea580c', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  { label: 'Notes', value: m.notes, color: '#db2777', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.8"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-  { label: 'Idées', value: m.ideas, color: '#f59e0b', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a7 7 0 017 7c0 2.6-1.4 4.9-3.5 6.2L15 17H9l-.5-1.8C6.4 13.9 5 11.6 5 9a7 7 0 017-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-  { label: 'Évènements', value: m.events, color: '#6366f1', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="1.8"/></svg> },
-  { label: 'Messages', value: m.messages, color: '#06b6d4', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.8"/></svg> },
-  { label: 'Heures loggées', value: `${m.totalHoursLogged}h`, color: '#10b981', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/><polyline points="12,6 12,12 16,14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
-]
 
 function Skeleton({ w, h }: { w?: number | string; h?: number }) {
   return <div style={{ width: w || '100%', height: h || 16, borderRadius: 6, background: 'var(--bg-3)', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
@@ -103,6 +61,42 @@ function Skeleton({ w, h }: { w?: number | string; h?: number }) {
 
 export default function AdminPage() {
   const router = useRouter()
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
+
+  const ACTIVITY_META = {
+    task: { label: t('typeTask'), ...ACTIVITY_ICONS.task },
+    note: { label: 'Note',       ...ACTIVITY_ICONS.note },
+    chat: { label: 'Message',    ...ACTIVITY_ICONS.chat },
+    crm:  { label: 'CRM',        ...ACTIVITY_ICONS.crm  },
+    idea: { label: t('typeIdea'),...ACTIVITY_ICONS.idea  },
+  } as Record<string, { label: string; color: string; icon: React.ReactNode }>
+
+  const METRIC_CARDS = (m: Metrics) => [
+    { label: t('adminUsersLabel'),    value: m.users,            color: '#7c6af5', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M3 21c0-4 2.7-7 6-7h0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="17" cy="9" r="3" stroke="currentColor" strokeWidth="1.8"/><path d="M15 21c0-3 1.3-5 4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+    { label: t('adminProjectsLabel'), value: m.projects,         color: '#3b82f6', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" stroke="currentColor" strokeWidth="1.8"/></svg> },
+    { label: t('adminMembersLabel'),  value: m.members,          color: '#0d9488', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+    { label: t('adminTasksLabel'),    value: m.tasks,            color: '#059669', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { label: 'CRM',                   value: m.crm,              color: '#ea580c', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { label: 'Notes',                 value: m.notes,            color: '#db2777', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.8"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+    { label: t('adminIdeasLabel'),    value: m.ideas,            color: '#f59e0b', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a7 7 0 017 7c0 2.6-1.4 4.9-3.5 6.2L15 17H9l-.5-1.8C6.4 13.9 5 11.6 5 9a7 7 0 017-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+    { label: t('adminEventsLabel'),   value: m.events,           color: '#6366f1', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="1.8"/></svg> },
+    { label: 'Messages',              value: m.messages,         color: '#06b6d4', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.8"/></svg> },
+    { label: t('adminHoursLabel'),    value: `${m.totalHoursLogged}h`, color: '#10b981', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8"/><polyline points="12,6 12,12 16,14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+  ]
+
+  const timeAgo = (dateStr: string) => {
+    // eslint-disable-next-line react-hooks/purity
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return t('instant')
+    if (m < 60) return `${m}min`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h}h`
+    return `${Math.floor(h / 24)}j`
+  }
+
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [users, setUsers] = useState<AdminUser[] | null>(null)
@@ -138,9 +132,9 @@ export default function AdminPage() {
         <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(244,63,94,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </div>
-        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)' }}>Accès refusé</p>
-        <p style={{ fontSize: 13, color: 'var(--t2)' }}>Vous n'avez pas les droits SuperAdmin.</p>
-        <button onClick={() => router.push('/')} style={{ marginTop: 8, padding: '8px 20px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Retour</button>
+        <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--t0)' }}>{t('accessDenied')}</p>
+        <p style={{ fontSize: 13, color: 'var(--t2)' }}>{t('noSuperAdminRights')}</p>
+        <button onClick={() => router.push('/')} style={{ marginTop: 8, padding: '8px 20px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{t('back')}</button>
       </div>
     )
   }
@@ -156,7 +150,7 @@ export default function AdminPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', height: 56, display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => router.push('/settings')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '4px 8px 4px 0' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Retour
+            {t('back')}
           </button>
           <div style={{ width: 1, height: 20, background: 'var(--border-m)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -177,7 +171,7 @@ export default function AdminPage() {
 
         {/* Metrics grid */}
         <div style={{ marginBottom: 36 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>Métriques plateforme</p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>{t('platformMetrics')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {metrics ? METRIC_CARDS(metrics).map(card => (
               <div key={card.label} style={{
@@ -202,12 +196,12 @@ export default function AdminPage() {
         {/* Task status bar */}
         {metrics && metrics.tasks > 0 && (
           <div style={{ marginBottom: 36, padding: '16px 20px', background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 14 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 10 }}>Répartition des tâches</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t1)', marginBottom: 10 }}>{t('taskDistribution')}</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {Object.entries(metrics.tasksByStatus).map(([status, count]) => {
                 const pct = Math.round((count / metrics.tasks) * 100)
                 const colors: Record<string, string> = { todo: '#6366f1', in_progress: '#f59e0b', done: '#10b981', review: '#3b82f6' }
-                const labels: Record<string, string> = { todo: 'À faire', in_progress: 'En cours', done: 'Terminé', review: 'En révision' }
+                const labels: Record<string, string> = { todo: t('todo'), in_progress: t('inProgress'), done: t('done'), review: t('inReview') }
                 return (
                   <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: colors[status] || 'var(--t2)', flexShrink: 0 }} />
@@ -231,8 +225,8 @@ export default function AdminPage() {
         <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 10, padding: 3, width: 'fit-content', flexWrap: 'wrap' }}>
           {([
             { id: 'monitoring', label: '📡 Monitoring' },
-            { id: 'users',      label: `Utilisateurs${users ? ` (${users.length})` : ''}` },
-            { id: 'activity',   label: 'Activité récente' },
+            { id: 'users',      label: `${t('adminUsersLabel')}${users ? ` (${users.length})` : ''}` },
+            { id: 'activity',   label: t('activityTab') },
             { id: 'infra',      label: '🔧 Infrastructure' },
           ] as const).map(tab => (
             <button
@@ -265,7 +259,7 @@ export default function AdminPage() {
         {activeTab === 'users' && (
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 16, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', flex: 1 }}>Tous les utilisateurs</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', flex: 1 }}>{t('adminUsersLabel')}</p>
               <div style={{ position: 'relative' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)' }}>
                   <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
@@ -273,7 +267,7 @@ export default function AdminPage() {
                 <input
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
-                  placeholder="Rechercher…"
+                  placeholder={t('search')}
                   style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7, background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t0)', fontSize: 12, outline: 'none', width: 200 }}
                 />
               </div>
@@ -282,7 +276,7 @@ export default function AdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-s)' }}>
-                    {['Utilisateur', 'Email', 'Projets', 'Rôle', 'Inscrit le'].map(h => (
+                    {[t('adminUsersLabel'), 'Email', t('adminProjectsLabel'), t('status'), t('today')].map(h => (
                       <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -313,17 +307,17 @@ export default function AdminPage() {
                         {u.is_superadmin ? (
                           <span style={{ fontSize: 10, fontWeight: 700, color: '#f43f5e', background: 'rgba(244,63,94,0.1)', padding: '2px 7px', borderRadius: 4 }}>SUPERADMIN</span>
                         ) : (
-                          <span style={{ fontSize: 10, color: 'var(--t2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 4 }}>Utilisateur</span>
+                          <span style={{ fontSize: 10, color: 'var(--t2)', background: 'var(--bg-3)', padding: '2px 7px', borderRadius: 4 }}>{t('adminUsersLabel').slice(0,-1)}</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 20px', fontSize: 12, color: 'var(--t2)', whiteSpace: 'nowrap' }}>{fmtDate(u.created_at)}</td>
+                      <td style={{ padding: '12px 20px', fontSize: 12, color: 'var(--t2)', whiteSpace: 'nowrap' }}>{fmtDate(u.created_at, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             {users && filteredUsers.length === 0 && (
-              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>Aucun utilisateur trouvé</div>
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>{t('noUserFound')}</div>
             )}
           </div>
         )}
@@ -332,7 +326,7 @@ export default function AdminPage() {
         {activeTab === 'activity' && (
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 16, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-s)' }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Activité récente · toutes fonctionnalités</p>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{t('recentActivityAll')}</p>
             </div>
             <div style={{ padding: '8px 20px' }}>
               {!activity ? Array.from({ length: 8 }).map((_, i) => (
@@ -344,7 +338,7 @@ export default function AdminPage() {
                   </div>
                 </div>
               )) : activity.length === 0 ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>Aucune activité</div>
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>{t('noActivity')}</div>
               ) : activity.map((entry, i) => {
                 const meta = ACTIVITY_META[entry.type]
                 return (

@@ -7,9 +7,21 @@ import { UserPicker, useUsers } from './UserPicker'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Task } from '@/lib/types'
 
-const STATUSES = ['Backlog', 'À faire', 'En cours', 'Review', 'Done']
+const STATUSES: { value: string; key: string }[] = [
+  { value: 'Backlog',   key: 'statusBacklog' },
+  { value: 'À faire',   key: 'todo' },
+  { value: 'En cours',  key: 'inProgress' },
+  { value: 'Review',    key: 'inReview' },
+  { value: 'Done',      key: 'done' },
+]
 const PRIORITIES = ['', 'P0', 'P1', 'P2']
-const MODULES = ['', 'Produit', 'Marketing', 'Prospection', 'Ops']
+const MODULES: { value: string; key: string }[] = [
+  { value: '',            key: '' },
+  { value: 'Produit',     key: 'moduleProduct' },
+  { value: 'Marketing',   key: 'moduleMarketing' },
+  { value: 'Prospection', key: 'moduleSales' },
+  { value: 'Ops',         key: 'moduleOps' },
+]
 
 const empty = (): Partial<Task> => ({ title: '', status: 'Backlog', priority: '', module: '', description: '', dateStart: '', dateEnd: '', assignedTo: '' })
 
@@ -29,6 +41,7 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(task ? { ...task } : { ...empty(), status: defaultStatus ?? 'Backlog' })
   }, [task, defaultStatus, isOpen])
 
@@ -62,7 +75,7 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label={t('status')}>
             <Select value={form.status ?? 'Backlog'} onChange={set('status')}>
-              {STATUSES.map(s => <option key={s}>{s}</option>)}
+              {STATUSES.map(s => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
             </Select>
           </Field>
           <Field label={t('taskPriority')}>
@@ -73,7 +86,7 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
         </div>
         <Field label={t('taskModule')}>
           <Select value={form.module ?? ''} onChange={set('module')}>
-            {MODULES.map(m => <option key={m} value={m}>{m || t('noneOption')}</option>)}
+            {MODULES.map(m => <option key={m.value} value={m.value}>{m.value ? t(m.key) : t('noneOption')}</option>)}
           </Select>
         </Field>
         <Field label={t('taskAssignee')}>

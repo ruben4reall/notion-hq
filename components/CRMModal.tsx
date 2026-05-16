@@ -7,10 +7,29 @@ import { UserPicker, useUsers } from './UserPicker'
 import { useLanguage } from '@/context/LanguageContext'
 import type { CRMEntry } from '@/lib/types'
 
-const STATUSES = ['À contacter', 'Contacté', 'RDV pris', 'Offre envoyée', 'Client', 'Refus']
-const CANAUX   = ['', 'Email', 'Téléphone', 'Salon', 'Terrain', 'Recommandation']
+const STATUSES: { value: string; key: string }[] = [
+  { value: 'À contacter',   key: 'crmToContact' },
+  { value: 'Contacté',      key: 'crmContacted' },
+  { value: 'RDV pris',      key: 'crmMeetingSet' },
+  { value: 'Offre envoyée', key: 'crmOfferSent' },
+  { value: 'Client',        key: 'crmClient' },
+  { value: 'Refus',         key: 'crmLost' },
+]
+const CANAUX: { value: string; key: string }[] = [
+  { value: '',               key: '' },
+  { value: 'Email',          key: 'canalEmail' },
+  { value: 'Téléphone',      key: 'canalPhone' },
+  { value: 'Salon',          key: 'canalSalon' },
+  { value: 'Terrain',        key: 'canalField' },
+  { value: 'Recommandation', key: 'canalReferral' },
+]
 const TYPES    = ['', 'Épicerie fine', 'Caviste', 'Traiteur', 'Concept store', 'Autre']
-const PRIORITIES = ['', 'Haute', 'Moyenne', 'Basse']
+const PRIORITIES: { value: string; key: string }[] = [
+  { value: '',       key: '' },
+  { value: 'Haute',  key: 'priorityHigh' },
+  { value: 'Moyenne',key: 'priorityMedium' },
+  { value: 'Basse',  key: 'priorityLow' },
+]
 
 const empty = (): Partial<CRMEntry> => ({
   enseigne: '', contact: '', email: '', phone: '', ville: '',
@@ -34,6 +53,7 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(entry ? { ...entry } : { ...empty(), status: defaultStatus ?? 'À contacter' })
   }, [entry, defaultStatus, isOpen])
 
@@ -67,12 +87,12 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label={t('crmPipelineStatus')}>
             <Select value={form.status ?? 'À contacter'} onChange={set('status')}>
-              {STATUSES.map(s => <option key={s}>{s}</option>)}
+              {STATUSES.map(s => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
             </Select>
           </Field>
           <Field label={t('priority')}>
             <Select value={form.priority ?? ''} onChange={set('priority')}>
-              {PRIORITIES.map(p => <option key={p} value={p}>{p || t('noneOption')}</option>)}
+              {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.value ? t(p.key) : t('noneOption')}</option>)}
             </Select>
           </Field>
         </div>
@@ -84,7 +104,7 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
           </Field>
           <Field label={t('channel')}>
             <Select value={form.canal ?? ''} onChange={set('canal')}>
-              {CANAUX.map(c => <option key={c} value={c}>{c || t('noneOption')}</option>)}
+              {CANAUX.map(c => <option key={c.value} value={c.value}>{c.value ? t(c.key) : t('noneOption')}</option>)}
             </Select>
           </Field>
         </div>

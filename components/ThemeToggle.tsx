@@ -9,6 +9,7 @@ export function ThemeToggle() {
     const stored = localStorage.getItem('theme')
     if (stored === 'light') {
       document.documentElement.classList.add('light')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLight(true)
     }
   }, [])

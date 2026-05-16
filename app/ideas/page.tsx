@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useLanguage } from '@/context/LanguageContext'
 
 const IdeasView = dynamic(() => import('@/components/IdeasView'), {
   ssr: false,
@@ -14,11 +15,12 @@ const IdeasView = dynamic(() => import('@/components/IdeasView'), {
 })
 
 export default function IdeasPage() {
+  const { t } = useLanguage()
   return (
     <div className="page-container">
       <div style={{ marginBottom: 24 }}>
-        <h1 className="page-title">Idées</h1>
-        <p className="page-subtitle">Votez pour faire remonter les meilleures idées</p>
+        <h1 className="page-title">{t('ideas')}</h1>
+        <p className="page-subtitle">{t('ideasSubtitle')}</p>
       </div>
       <IdeasView />
     </div>

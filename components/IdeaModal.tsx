@@ -7,9 +7,25 @@ import { UserPicker, useUsers } from './UserPicker'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Idea } from '@/lib/types'
 
-const STATUSES    = ['Brute', 'À explorer', 'Validée', 'Rejetée']
-const CATEGORIES  = ['', 'Produit', 'Marketing', 'Prospection', 'Ops']
-const EFFORTS     = ['', 'Faible', 'Moyen', 'Élevé']
+const STATUSES: { value: string; key: string }[] = [
+  { value: 'Brute',      key: 'ideaRaw' },
+  { value: 'À explorer', key: 'ideaExplore' },
+  { value: 'Validée',    key: 'ideaValidated' },
+  { value: 'Rejetée',    key: 'ideaRejected' },
+]
+const CATEGORIES: { value: string; key: string }[] = [
+  { value: '',            key: '' },
+  { value: 'Produit',     key: 'moduleProduct' },
+  { value: 'Marketing',   key: 'moduleMarketing' },
+  { value: 'Prospection', key: 'moduleSales' },
+  { value: 'Ops',         key: 'moduleOps' },
+]
+const EFFORTS: { value: string; key: string }[] = [
+  { value: '',       key: '' },
+  { value: 'Faible', key: 'effortLow' },
+  { value: 'Moyen',  key: 'effortMedium' },
+  { value: 'Élevé',  key: 'effortHigh' },
+]
 
 const empty = (): Partial<Idea> => ({ title: '', description: '', status: 'Brute', category: '', effort: '', votes: 0, assignedTo: '' })
 
@@ -28,6 +44,7 @@ export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(idea ? { ...idea } : empty())
   }, [idea, isOpen])
 
@@ -61,18 +78,18 @@ export function IdeaModal({ isOpen, onClose, idea, onSaved }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label={t('status')}>
             <Select value={form.status ?? 'Brute'} onChange={set('status')}>
-              {STATUSES.map(s => <option key={s}>{s}</option>)}
+              {STATUSES.map(s => <option key={s.value} value={s.value}>{t(s.key)}</option>)}
             </Select>
           </Field>
           <Field label={t('effort')}>
             <Select value={form.effort ?? ''} onChange={set('effort')}>
-              {EFFORTS.map(e => <option key={e} value={e}>{e || t('noneOption')}</option>)}
+              {EFFORTS.map(e => <option key={e.value} value={e.value}>{e.value ? t(e.key) : t('noneOption')}</option>)}
             </Select>
           </Field>
         </div>
         <Field label={t('category')}>
           <Select value={form.category ?? ''} onChange={set('category')}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c || t('noneOption')}</option>)}
+            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.value ? t(c.key) : t('noneOption')}</option>)}
           </Select>
         </Field>
         <Field label={t('ideaDescription')}>

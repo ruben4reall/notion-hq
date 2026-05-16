@@ -172,6 +172,7 @@ function TourTooltip({
   const { t } = useLanguage()
   const [screenH, setScreenH] = useState(800)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScreenH(window.innerHeight)
     const update = () => setScreenH(window.innerHeight)
     window.addEventListener('resize', update)
@@ -396,6 +397,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
 
   useEffect(() => {
     if (!step || isNavigating) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTargetRect(null)
       setTooltipReady(false)
       return
@@ -424,7 +426,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
     }
     pollRef.current = setTimeout(poll, 150)
     return () => { if (pollRef.current) clearTimeout(pollRef.current) }
-  }, [stepIndex, pathname, isNavigating])
+  }, [stepIndex, pathname, isNavigating, step])
 
   useEffect(() => {
     if (step && isNavigating) router.push(step.page)

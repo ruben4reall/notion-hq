@@ -11,6 +11,7 @@ import { StreakWatcher } from '@/components/StreakWatcher'
 import { Providers } from '@/components/Providers'
 import { PageTransition } from '@/components/PageTransition'
 import PageTracker from '@/components/PageTracker'
+import { Footer } from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Manager Dashboard',
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main>
             <PageTransition>{children}</PageTransition>
           </main>
+          <Footer />
           <BottomNav />
           <Chat />
           <OnboardingWatcher />

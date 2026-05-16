@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { playLoginSound } from '@/lib/sounds'
-import { LANG_LABELS, type Lang } from '@/lib/i18n'
+import { t as i18n, LANG_LABELS, type Lang } from '@/lib/i18n'
 
 const COLORS = ['#7c6af5', '#4f8ef7', '#0ec98c', '#f59e0b', '#ef4444', '#ec4899']
 const LANGS: Lang[] = ['en', 'fr', 'zh']
@@ -30,18 +30,24 @@ function AuthForm() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
-  const [selectedLang, setSelectedLang] = useState<Lang>('fr')
+  const [selectedLang, setSelectedLang] = useState<Lang>(() => {
+    if (typeof navigator === 'undefined') return 'fr'
+    const code = navigator.language.slice(0, 2)
+    if (code === 'en') return 'en'
+    if (code === 'zh') return 'zh'
+    return 'fr'
+  })
   const [registerStep, setRegisterStep] = useState<'form' | 'language'>('form')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [celebrating, setCelebrating] = useState(false)
-  const [celebText, setCelebText] = useState('Bienvenue !')
+  const [celebText, setCelebText] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then((res: Awaited<ReturnType<typeof supabase.auth.getSession>>) => {
       if (res.data.session) router.replace(redirect)
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,13 +55,13 @@ function AuthForm() {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError('Email ou mot de passe incorrect')
+      setError(i18n(selectedLang, 'loginError'))
       setLoading(false)
       return
     }
     playLoginSound()
     setLoading(false)
-    setCelebText('Bienvenue !')
+    setCelebText(i18n(selectedLang, 'welcomeBack'))
     setCelebrating(true)
     router.refresh()
     setTimeout(() => router.push(redirect), 1300)
@@ -64,7 +70,7 @@ function AuthForm() {
   const handleRegisterFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) {
-      setError('Mot de passe trop court (minimum 8 caractères)')
+      setError(i18n(selectedLang, 'passwordTooShort'))
       return
     }
     setError('')
@@ -95,7 +101,7 @@ function AuthForm() {
     }).catch(() => {})
     playLoginSound()
     setLoading(false)
-    setCelebText(LANG_LABELS[selectedLang].label === 'English' ? 'Account created!' : selectedLang === 'zh' ? '账户已创建！' : 'Compte créé !')
+    setCelebText(i18n(selectedLang, 'accountCreated'))
     setCelebrating(true)
     router.refresh()
     setTimeout(() => router.push(redirect), 1300)
@@ -167,18 +173,18 @@ function AuthForm() {
           display: 'flex', background: 'var(--bg-2)', borderRadius: 12,
           padding: 4, marginBottom: 24, border: '1px solid var(--border-s)',
         }}>
-          {(['login', 'register'] as const).map(t => (
+          {(['login', 'register'] as const).map(tabVal => (
             <button
-              key={t}
-              onClick={() => { setTab(t); setError('') }}
+              key={tabVal}
+              onClick={() => { setTab(tabVal); setError('') }}
               style={{
                 flex: 1, padding: '8px 0', borderRadius: 9, border: 'none',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                background: tab === t ? 'var(--accent)' : 'transparent',
-                color: tab === t ? 'white' : 'var(--t2)',
+                background: tab === tabVal ? 'var(--accent)' : 'transparent',
+                color: tab === tabVal ? 'white' : 'var(--t2)',
               }}
             >
-              {t === 'login' ? 'Connexion' : 'Créer un compte'}
+              {tabVal === 'login' ? i18n(selectedLang, 'signIn') : i18n(selectedLang, 'signUp')}
             </button>
           ))}
         </div>
@@ -188,29 +194,29 @@ function AuthForm() {
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Email
+                {i18n(selectedLang, 'email')}
               </label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
-                required placeholder="vous@exemple.com" style={inputStyle}
+                required placeholder={i18n(selectedLang, 'emailPlaceholder')} style={inputStyle}
                 autoComplete="email" autoFocus onFocus={focusIn} onBlur={focusOut}
               />
             </div>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Mot de passe
+                  {i18n(selectedLang, 'password')}
                 </label>
                 <a
                   href="/auth/forgot-password"
                   style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}
                 >
-                  Mot de passe oublié ?
+                  {i18n(selectedLang, 'forgotPassword')}
                 </a>
               </div>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)}
-                required placeholder="••••••••" style={inputStyle}
+                required placeholder={i18n(selectedLang, 'passwordCurrentPlaceholder')} style={inputStyle}
                 autoComplete="current-password" onFocus={focusIn} onBlur={focusOut}
               />
             </div>
@@ -236,10 +242,10 @@ function AuthForm() {
               {loading ? (
                 <>
                   <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
-                  Connexion…
+                  {i18n(selectedLang, 'signingIn')}
                   <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 </>
-              ) : 'Se connecter'}
+              ) : i18n(selectedLang, 'login')}
             </button>
           </form>
         )}
@@ -249,37 +255,37 @@ function AuthForm() {
           <form onSubmit={handleRegisterFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Nom complet
+                {i18n(selectedLang, 'fullName')}
               </label>
               <input
                 type="text" value={fullName} onChange={e => setFullName(e.target.value)}
-                required placeholder="Prénom Nom" style={inputStyle}
+                required placeholder={i18n(selectedLang, 'namePlaceholder')} style={inputStyle}
                 autoFocus onFocus={focusIn} onBlur={focusOut}
               />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Email
+                {i18n(selectedLang, 'email')}
               </label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
-                required placeholder="vous@exemple.com" style={inputStyle}
+                required placeholder={i18n(selectedLang, 'emailPlaceholder')} style={inputStyle}
                 autoComplete="email" onFocus={focusIn} onBlur={focusOut}
               />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Mot de passe
+                {i18n(selectedLang, 'password')}
               </label>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)}
-                required placeholder="Minimum 8 caractères" style={inputStyle}
+                required placeholder={i18n(selectedLang, 'passwordPlaceholder')} style={inputStyle}
                 autoComplete="new-password" onFocus={focusIn} onBlur={focusOut}
               />
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Couleur de profil
+                {i18n(selectedLang, 'profileColor')}
               </label>
               <div style={{ display: 'flex', gap: 10 }}>
                 {COLORS.map(c => (
@@ -314,7 +320,7 @@ function AuthForm() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              Continuer
+              {i18n(selectedLang, 'continue')}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </form>
@@ -324,8 +330,8 @@ function AuthForm() {
         {tab === 'register' && registerStep === 'language' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ textAlign: 'center', marginBottom: 4 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)', marginBottom: 4 }}>Choisissez votre langue</p>
-              <p style={{ fontSize: 12, color: 'var(--t2)' }}>Vous pourrez changer ça dans les paramètres</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)', marginBottom: 4 }}>{i18n(selectedLang, 'chooseLanguage')}</p>
+              <p style={{ fontSize: 12, color: 'var(--t2)' }}>{i18n(selectedLang, 'chooseLanguageSub')}</p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -382,7 +388,7 @@ function AuthForm() {
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Retour
+                {i18n(selectedLang, 'back')}
               </button>
               <button
                 onClick={handleRegister}
@@ -398,10 +404,10 @@ function AuthForm() {
                 {loading ? (
                   <>
                     <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
-                    Création…
+                    {i18n(selectedLang, 'creating')}
                     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                   </>
-                ) : 'Créer mon compte'}
+                ) : i18n(selectedLang, 'register')}
               </button>
             </div>
           </div>

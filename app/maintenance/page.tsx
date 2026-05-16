@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 export default function MaintenancePage() {
+  const { t } = useLanguage()
   const [dots, setDots] = useState('.')
 
   useEffect(() => {
@@ -51,15 +53,15 @@ export default function MaintenancePage() {
           letterSpacing: '-0.03em', marginBottom: 12,
           animation: 'floatIn 0.6s var(--ease-spring) 0.1s both',
         }}>
-          Maintenance en cours
+          {t('maintenanceTitle')}
         </h1>
 
         <p style={{
           fontSize: 16, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 40,
           animation: 'floatIn 0.6s var(--ease-spring) 0.2s both',
         }}>
-          L'application est temporairement indisponible.<br />
-          On revient très vite{dots}
+          {t('maintenanceMsg')}<br />
+          {t('maintenanceBack')}{dots}
         </p>
 
         {/* Progress bar */}

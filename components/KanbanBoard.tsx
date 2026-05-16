@@ -8,12 +8,12 @@ import { useCache } from '@/lib/useCache'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Task } from '@/lib/types'
 
-const COLUMNS: { id: Task['status']; color: string }[] = [
-  { id: 'Backlog',  color: '#6b7280' },
-  { id: 'À faire', color: '#4f8ef7' },
-  { id: 'En cours',color: '#7c6af5' },
-  { id: 'Review',  color: '#f59e0b' },
-  { id: 'Done',    color: '#0ec98c' },
+const COLUMNS: { id: Task['status']; color: string; labelKey: string }[] = [
+  { id: 'Backlog',  color: '#6b7280', labelKey: 'statusBacklog' },
+  { id: 'À faire', color: '#4f8ef7', labelKey: 'todo' },
+  { id: 'En cours',color: '#7c6af5', labelKey: 'inProgress' },
+  { id: 'Review',  color: '#f59e0b', labelKey: 'inReview' },
+  { id: 'Done',    color: '#0ec98c', labelKey: 'done' },
 ]
 
 const P_COLOR: Record<string, { c: string; bg: string }> = {
@@ -25,20 +25,14 @@ const M_COLOR: Record<string, string> = {
   Produit:'#7c6af5', Marketing:'#f59e0b', Prospection:'#4f8ef7', Ops:'#0ec98c',
 }
 
-function relTime(iso: string) {
-  if (!iso) return ''
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d/60)}h`
-  return `il y a ${Math.floor(d/1440)}j`
-}
 
 function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
   task: Task; onEdit: () => void; onDelete: () => void; isDragging: boolean
   users: { name: string; color: string }[]
 }) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const [menu, setMenu] = useState(false)
   const p = P_COLOR[task.priority] || null
   const mc = M_COLOR[task.module] || '#6b7280'
@@ -105,7 +99,7 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--t2)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-s)' }}>
         {task.dateEnd && (
           <span style={{ color: isOverdue ? 'var(--red)' : isDueToday ? 'var(--amber)' : 'var(--t2)' }}>
-            📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}
+            📅 {new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(task.dateEnd))}
           </span>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -143,6 +137,7 @@ export default function KanbanBoard() {
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fetchedTasks) setTasks(fetchedTasks)
   }, [fetchedTasks])
 
@@ -229,7 +224,7 @@ export default function KanbanBoard() {
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, padding: '0 2px' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>{col.id}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>{t(col.labelKey)}</span>
                   <span style={{ fontSize: 11, color: 'var(--t2)', background: 'var(--bg-2)', padding: '1px 7px', borderRadius: 100, marginLeft: 'auto' }}>{colTasks.length}</span>
                   <button
                     onClick={() => setModal({ open: true, task: null, defaultStatus: col.id })}

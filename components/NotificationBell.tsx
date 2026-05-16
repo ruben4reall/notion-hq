@@ -62,6 +62,7 @@ export function NotificationBell() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
     const interval = setInterval(load, 30000)
     return () => clearInterval(interval)
@@ -102,6 +103,7 @@ export function NotificationBell() {
     })
   }
 
+  // eslint-disable-next-line react-hooks/purity
   const cutoff = Date.now() - 24 * 60 * 60 * 1000
   const newNotifs = notifs.filter(n => !n.lu || new Date(n.createdAt).getTime() > cutoff)
   const oldNotifs = notifs.filter(n => n.lu && new Date(n.createdAt).getTime() <= cutoff)

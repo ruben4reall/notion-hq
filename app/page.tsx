@@ -21,9 +21,9 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
 
-function fmtDate(d: string) {
+function fmtDate(d: string, locale: string) {
   if (!d) return ''
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(d))
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(d))
 }
 
 function KPICard({
@@ -72,6 +72,8 @@ function KPICard({
 }
 
 function TaskRow({ task, highlight, noTitle }: { task: Task; highlight?: 'overdue' | 'today'; noTitle: string }) {
+  const { lang } = useLanguage()
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const sc = STATUS_COLORS[task.status] || '#6b7280'
   const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
   const dateColor = highlight === 'overdue' ? '#f43f5e' : highlight === 'today' ? '#f59e0b' : 'var(--t2)'
@@ -94,7 +96,7 @@ function TaskRow({ task, highlight, noTitle }: { task: Task; highlight?: 'overdu
           <span style={{ fontSize: 10, fontWeight: 600, color: pc }}>{task.priority}</span>
         )}
         {task.dateEnd && (
-          <span style={{ fontSize: 11, color: dateColor, fontWeight: highlight ? 600 : 400 }}>{fmtDate(task.dateEnd)}</span>
+          <span style={{ fontSize: 11, color: dateColor, fontWeight: highlight ? 600 : 400 }}>{fmtDate(task.dateEnd, locale)}</span>
         )}
       </div>
     </div>
@@ -191,7 +193,7 @@ export default function DashboardPage() {
       <KPICard
         label={t('kpiProspectsLabel')}
         value={data.activeProspects}
-        sub="Contacté → Offre envoyée"
+        sub={t('kpiCrmProgress')}
         color="#4f8ef7"
         badge={data.crmConversionRate > 0 ? { text: `${data.crmConversionRate}%`, positive: data.crmConversionRate >= 20 } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
@@ -211,7 +213,7 @@ export default function DashboardPage() {
       <KPICard
         label={t('kpiIdeasLabel')}
         value={data.validatedIdeas}
-        sub={`${data.taskVelocity} task/j`}
+        sub={`${data.taskVelocity} ${t('taskPerDayShort')}`}
         color="#f59e0b"
         badge={data.totalIdeas > 0 ? { text: `${Math.round((data.validatedIdeas/data.totalIdeas)*100)}%`, positive: data.validatedIdeas > 0 } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.686 2 6 4.686 6 8c0 2.21 1.118 4.156 2.83 5.315C9.517 13.867 10 14.612 10 15.5V16h4v-.5c0-.888.483-1.633 1.17-2.185C16.882 12.156 18 10.21 18 8c0-3.314-2.686-6-6-6z" stroke="currentColor" strokeWidth="1.5"/><path d="M10 19h4M9.5 22h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
@@ -226,11 +228,11 @@ export default function DashboardPage() {
           <p className="section-title" style={{ margin: 0 }}>{t('pipelineTasks')}</p>
           <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>→</Link>
         </div>
-        <ProgressBar label="Backlog"  value={tasksByStatus['Backlog'] || 0}  total={data.totalTasks} color="#6b7280" />
-        <ProgressBar label="À faire"  value={tasksByStatus['À faire'] || 0}  total={data.totalTasks} color="#4f8ef7" />
-        <ProgressBar label="En cours" value={tasksByStatus['En cours'] || 0} total={data.totalTasks} color="#7c6af5" />
-        <ProgressBar label="Review"   value={tasksByStatus['Review'] || 0}   total={data.totalTasks} color="#f59e0b" />
-        <ProgressBar label="Done"     value={tasksByStatus['Done'] || 0}     total={data.totalTasks} color="#0ec98c" />
+        <ProgressBar label={t('statusBacklog')} value={tasksByStatus['Backlog'] || 0}  total={data.totalTasks} color="#6b7280" />
+        <ProgressBar label={t('todo')}         value={tasksByStatus['À faire'] || 0}  total={data.totalTasks} color="#4f8ef7" />
+        <ProgressBar label={t('inProgress')}   value={tasksByStatus['En cours'] || 0} total={data.totalTasks} color="#7c6af5" />
+        <ProgressBar label={t('inReview')}     value={tasksByStatus['Review'] || 0}   total={data.totalTasks} color="#f59e0b" />
+        <ProgressBar label={t('done')}         value={tasksByStatus['Done'] || 0}     total={data.totalTasks} color="#0ec98c" />
       </div>
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -321,7 +323,7 @@ export default function DashboardPage() {
           <div className="card" style={{ padding: '20px', marginBottom: 20, borderColor: 'rgba(244,63,94,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <p className="section-title" style={{ margin: 0, color: '#f43f5e' }}>{t('urgentToday')}</p>
-              <a href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>Kanban →</a>
+              <a href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>{t('viewKanban')}</a>
             </div>
             {myUrgent.map(tk => (
               <TaskRow key={tk.id} task={tk} highlight={tk.dateEnd < todayStr ? 'overdue' : 'today'} noTitle={t('noTitle')} />

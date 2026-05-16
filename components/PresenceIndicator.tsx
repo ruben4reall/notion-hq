@@ -18,13 +18,13 @@ function initials(name: string) {
   return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function relTime(iso: string) {
+function relTime(iso: string, t: (k: string, v?: Record<string, string|number>) => string) {
   if (!iso) return ''
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `${d} min`
-  if (d < 1440) return `${Math.floor(d / 60)}h${d % 60 > 0 ? ` ${d % 60}min` : ''}`
-  return `${Math.floor(d / 1440)}j`
+  if (d < 1) return t('justNow')
+  if (d < 60) return t('minutesAgo', { n: d })
+  if (d < 1440) return t('hoursAgo', { n: Math.floor(d / 60) })
+  return t('daysAgo', { n: Math.floor(d / 1440) })
 }
 
 // ── Desktop hover tooltip ─────────────────────────────────────────────────────
@@ -53,9 +53,9 @@ function DesktopTooltip({ user }: { user: PresenceEntry }) {
         </span>
       </div>
       {user.online ? (
-        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('connectedSince')} {relTime(user.connectedAt)}</p>
+        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('connectedSince')} {relTime(user.connectedAt, t)}</p>
       ) : (
-        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('seenAgo')} {relTime(user.lastSeen)}</p>
+        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('seenAgo')} {relTime(user.lastSeen, t)}</p>
       )}
     </div>
   )
@@ -145,8 +145,8 @@ function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () =
               </p>
               <p style={{ fontSize: 12, color: user.online ? '#0ec98c' : 'var(--t2)' }}>
                 {user.online
-                  ? `${t('online')} · ${t('connectedSince')} ${relTime(user.connectedAt)}`
-                  : `${t('offline')} · ${t('seenAgo')} ${relTime(user.lastSeen)}`}
+                  ? `${t('online')} · ${t('connectedSince')} ${relTime(user.connectedAt, t)}`
+                  : `${t('offline')} · ${t('seenAgo')} ${relTime(user.lastSeen, t)}`}
               </p>
             </div>
 
@@ -186,16 +186,17 @@ export function PresenceIndicator() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  const sessionName = session?.name
   const ping = useCallback(async () => {
-    if (!session?.name) return
+    if (!sessionName) return
     try {
       await fetch('/api/presence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: session?.name }),
+        body: JSON.stringify({ username: sessionName }),
       })
     } catch {}
-  }, [session?.name])
+  }, [sessionName])
 
   const loadPresence = useCallback(async () => {
     if (document.hidden) return
@@ -213,6 +214,7 @@ export function PresenceIndicator() {
 
   useEffect(() => {
     ping()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPresence()
     const pingInterval = setInterval(ping, 30000)
     const loadInterval = setInterval(loadPresence, 15000)

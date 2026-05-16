@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useLanguage } from '@/context/LanguageContext'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '11px 14px',
@@ -13,6 +14,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function ForgotPasswordPage() {
   const supabase = createClient()
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -53,10 +55,10 @@ export default function ForgotPasswordPage() {
             </svg>
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em' }}>
-            Mot de passe oublié
+            {t('forgotPasswordTitle')}
           </h1>
           <p style={{ fontSize: 13, color: 'var(--t1)', marginTop: 6 }}>
-            {sent ? 'Email envoyé !' : 'On vous envoie un lien de réinitialisation'}
+            {sent ? t('emailSent') : t('forgotPasswordSub')}
           </p>
         </div>
 
@@ -67,23 +69,23 @@ export default function ForgotPasswordPage() {
               background: 'rgba(14,201,140,0.08)', border: '1px solid rgba(14,201,140,0.2)',
             }}>
               <p style={{ fontSize: 14, color: 'var(--green)', lineHeight: 1.6 }}>
-                Un lien de réinitialisation a été envoyé à <strong>{email}</strong>.<br/>
-                Vérifiez votre boîte mail (et les spams).
+                {t('resetLinkSentTo', { n: email })}<br/>
+                {t('checkSpam')}
               </p>
             </div>
             <Link href="/auth" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
-              ← Retour à la connexion
+              {t('backToLogin')}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Email
+                {t('email')}
               </label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
-                required placeholder="vous@exemple.com" style={inputStyle} autoFocus
+                required placeholder={t('emailPlaceholder')} style={inputStyle} autoFocus
                 onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border-m)' }}
               />
@@ -110,14 +112,14 @@ export default function ForgotPasswordPage() {
               {loading ? (
                 <>
                   <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
-                  Envoi…
+                  {t('sending')}
                   <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 </>
-              ) : 'Envoyer le lien'}
+              ) : t('sendLink')}
             </button>
             <div style={{ textAlign: 'center' }}>
               <Link href="/auth" style={{ fontSize: 13, color: 'var(--t2)', textDecoration: 'none' }}>
-                ← Retour à la connexion
+                {t('backToLogin')}
               </Link>
             </div>
           </form>

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useTimer } from '@/lib/timer-context'
+import { useLanguage } from '@/context/LanguageContext'
 
 const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
@@ -18,6 +19,7 @@ function fmt(sec: number) {
 
 export function GlobalTimerBar() {
   const { active, elapsed, setActive } = useTimer()
+  const { t } = useLanguage()
   const path = usePathname()
   const router = useRouter()
 
@@ -63,7 +65,7 @@ export function GlobalTimerBar() {
       </span>
 
       <span style={{ fontSize: 11, color: `${color}99` }}>
-        Tap pour gérer →
+        {t('tapToManage')}
       </span>
 
       {/* Stop button */}
@@ -75,7 +77,7 @@ export function GlobalTimerBar() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}
-        title="Arrêter"
+        title={t('stopTimer')}
       >
         <div style={{ width: 6, height: 6, background: 'white', borderRadius: 1 }} />
       </button>

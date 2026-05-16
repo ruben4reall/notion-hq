@@ -337,7 +337,6 @@ export interface PresenceEntry {
 
 export async function getPresence(filterUsernames?: string[]): Promise<PresenceEntry[]> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (getClient().from('presence') as any)
     .select('id, username, last_seen, connected_at, avatar_url')
     .gte('last_seen', thirtyDaysAgo)
@@ -347,7 +346,6 @@ export async function getPresence(filterUsernames?: string[]): Promise<PresenceE
   }
   const { data, error } = await query
   if (error) throw error
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((r: any) => {
     const online = Date.now() - new Date(r.last_seen).getTime() < 2 * 60 * 1000
     return {
@@ -387,13 +385,11 @@ export interface UserSettings {
 }
 
 export async function getUserSettings(name: string): Promise<UserSettings | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (getClient().from('presence') as any)
     .select('display_name, password_override, ical_feed_url, avatar_url, language')
     .eq('username', name)
     .maybeSingle()
   if (!data) return null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const d = data as any
   return {
     displayName: d.display_name ?? null,

@@ -15,8 +15,10 @@ interface Note {
   updatedAt: string
 }
 
+const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+
 // ── Discord-style markdown renderer ──────────────────────────────────────────
-function renderMarkdown(raw: string): string {
+function renderMarkdown(raw: string, revealText: string): string {
   const slots: string[] = []
   const slot = (html: string) => {
     const k = `\x02${slots.length}\x02`
@@ -80,7 +82,7 @@ function renderMarkdown(raw: string): string {
     .replace(/_([^_\n]+)_/g,          '<em>$1</em>')
     .replace(/~~(.+?)~~/g,            '<s>$1</s>')
     .replace(/\|\|(.+?)\|\|/g,        (_, c) => slot(
-      `<span class="md-spoiler" onclick="this.classList.toggle('md-revealed')" title="Cliquer pour révéler">${c}</span>`
+      `<span class="md-spoiler" onclick="this.classList.toggle('md-revealed')" title="${revealText}">${c}</span>`
     ))
 
   s = s.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) =>
@@ -97,53 +99,23 @@ function renderMarkdown(raw: string): string {
   return s.replace(/\x02(\d+)\x02/g, (_, i) => slots[+i])
 }
 
-function relTime(iso: string) {
+function relTime(iso: string, t: (k: string, v?: Record<string, string|number>) => string, locale: string) {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return 'À l\'instant'
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d / 60)}h`
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  if (d < 1) return t('justNow')
+  if (d < 60) return t('minutesAgo', { n: d })
+  if (d < 1440) return t('hoursAgo', { n: Math.floor(d / 60) })
+  return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
-
-const TOOLBAR = [
-  { label: 'B',  title: 'Gras (Ctrl+B)',       before: '**',    style: { fontWeight: 800 as const } },
-  { label: 'I',  title: 'Italique (Ctrl+I)',    before: '*',     style: { fontStyle: 'italic' as const } },
-  { label: 'U',  title: 'Souligner (Ctrl+U)',   before: '__',    style: { textDecoration: 'underline' as const } },
-  { label: 'S',  title: 'Barré',                before: '~~',    style: { textDecoration: 'line-through' as const } },
-]
-
-const TOOLBAR_ICON = [
-  {
-    title: 'Code inline',
-    before: '`', after: '`',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M12 5l-2 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  },
-  {
-    title: 'Bloc de code',
-    before: '```\n', after: '\n```',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/><path d="M2 9h20" stroke="currentColor" strokeWidth="1.8"/></svg>,
-  },
-  {
-    title: 'Spoiler (||)',
-    before: '||', after: '||',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
-  },
-  {
-    title: 'Citation (>)',
-    before: '> ', after: '',
-    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" stroke="currentColor" strokeWidth="1.8"/></svg>,
-  },
-]
 
 export default function NotesPage() {
   const { user: session } = useAuth()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const users = useUsers()
   const myName = session?.name || ''
   const { data: fetchedNotes } = useCache<Note[]>('/api/notes')
   const [notes, setNotes] = useState<Note[]>(fetchedNotes ?? [])
   const [active, setActive] = useState<Note | null>(null)
-  // isEditing=true → sidebar + editor; isEditing=false → full-width view mode
   const [isEditing, setIsEditing] = useState(false)
   const [preview, setPreview] = useState(false)
   const [splitView, setSplitView] = useState(true)
@@ -155,7 +127,15 @@ export default function NotesPage() {
   const saveAbort = useRef<AbortController | undefined>(undefined)
   const textareaRef = useRef<HTMLTextAreaElement | undefined>(undefined)
 
+  const TOOLBAR = [
+    { label: 'B', title: t('fmtBold'),      before: '**',  style: { fontWeight: 800 as const } },
+    { label: 'I', title: t('fmtItalic'),    before: '*',   style: { fontStyle: 'italic' as const } },
+    { label: 'U', title: t('fmtUnderline'), before: '__',  style: { textDecoration: 'underline' as const } },
+    { label: 'S', title: t('fmtStrike'),    before: '~~',  style: { textDecoration: 'line-through' as const } },
+  ]
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fetchedNotes) setNotes(fetchedNotes)
   }, [fetchedNotes])
 
@@ -267,17 +247,9 @@ export default function NotesPage() {
     flexShrink: 0,
   }
 
-  // ── Sidebar (note list) — hidden in view mode on desktop ──────────────────
-  const sidebar = (
-    <div style={{
-      width: active && isEditing ? 260 : active && !isEditing ? 0 : '100%',
-      maxWidth: active && isEditing ? 320 : 'none',
-      borderRight: active && isEditing ? '1px solid var(--border-s)' : 'none',
-      background: 'var(--bg-1)',
-      flexShrink: 0,
-      overflow: 'hidden',
-      transition: 'width 0.28s ease',
-    }} className={active && !isEditing ? 'hidden' : 'hidden lg:flex lg:flex-col'}>
+  // ── Shared sidebar content ────────────────────────────────────────────────
+  const sidebarContent = (
+    <>
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border-s)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h1 style={{ fontSize: 17, fontWeight: 700, color: 'var(--t0)' }}>{t('notes')}</h1>
@@ -295,7 +267,6 @@ export default function NotesPage() {
           style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border-s)', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: 'var(--t0)', outline: 'none', fontFamily: 'inherit' }}
         />
       </div>
-
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filtered.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center' }}>
@@ -336,12 +307,12 @@ export default function NotesPage() {
                   </button>
                 </div>
               ) : (
-                <span style={{ fontSize: 10, color: 'var(--t2)', flexShrink: 0 }}>{relTime(note.updatedAt)}</span>
+                <span style={{ fontSize: 10, color: 'var(--t2)', flexShrink: 0 }}>{relTime(note.updatedAt, t, locale)}</span>
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <p style={{ fontSize: 11, color: 'var(--t2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {note.contenu.replace(/[#*`_~\[\]()]/g, '').slice(0, 50) || 'Vide'}
+                {note.contenu.replace(/[#*`_~\[\]()]/g, '').slice(0, 50) || t('noteEmpty')}
               </p>
               {note.utilisateur !== myName && (
                 <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('sharedBadge')}</span>
@@ -355,14 +326,114 @@ export default function NotesPage() {
           </div>
         ))}
       </div>
+    </>
+  )
+
+  // ── Share picker ──────────────────────────────────────────────────────────
+  const sharePicker = showSharePicker && active?.utilisateur === myName && (
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowSharePicker(false)} />
+      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 10, padding: 8, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', animation: 'slideDown 0.18s var(--ease-spring) both' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8, padding: '0 4px' }}>{t('projectMembers')}</p>
+        {users.filter(u => u.name !== myName).length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--t2)', padding: 8, textAlign: 'center' }}>{t('inviteMembers')}</p>
+        ) : users.filter(u => u.name !== myName).map(u => {
+          const shared = active!.sharedWith.includes(u.name)
+          return (
+            <button key={u.name} onClick={() => toggleShare(u.name)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 7, background: shared ? 'var(--accent-bg)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}>
+              <UserAvatar name={u.name} color={u.color} size={26} />
+              <span style={{ fontSize: 13, color: 'var(--t0)', fontWeight: 500, flex: 1 }}>{u.name.split(' ')[0]}</span>
+              {shared
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                : <span style={{ fontSize: 10, color: 'var(--t2)' }}>{t('add')}</span>
+              }
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+
+  // ── Edit mode title bar ───────────────────────────────────────────────────
+  const editTitleBar = active && (
+    <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-1)', flexShrink: 0 }}>
+      <input
+        value={active.titre}
+        onChange={e => onChange('titre', e.target.value)}
+        placeholder={t('titlePlaceholder')}
+        style={{ flex: 1, background: 'none', border: 'none', fontSize: 17, fontWeight: 700, color: 'var(--t0)', outline: 'none', fontFamily: 'inherit' }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, position: 'relative' }}>
+        {saving && <span style={{ fontSize: 11, color: 'var(--t2)' }}>{t('saving')}</span>}
+
+        {active.utilisateur === myName && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowSharePicker(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-m)', background: active.sharedWith.length > 0 ? 'var(--accent-bg)' : 'var(--bg-2)', color: active.sharedWith.length > 0 ? 'var(--accent)' : 'var(--t1)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {active.sharedWith.length > 0 ? t('shareCount', { n: active.sharedWith.length }) : t('share')}
+            </button>
+            {sharePicker}
+          </div>
+        )}
+
+        {active.utilisateur !== myName && (
+          <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-3)', color: 'var(--t2)', border: '1px solid var(--border-s)' }}>
+            {t('sharedBy')} {active.utilisateur.split(' ')[0]}
+          </span>
+        )}
+
+        <button
+          onClick={() => setIsEditing(false)}
+          className="hidden lg:flex"
+          title={t('previewMode')}
+          style={{ ...btnStyle, alignItems: 'center', gap: 4, padding: '0 8px', width: 'auto', color: 'var(--t2)' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/></svg>
+        </button>
+
+        <div className="hidden lg:flex" style={{ gap: 4, alignItems: 'center' }}>
+          <button
+            onClick={() => setSplitView(v => !v)}
+            title={splitView ? t('editorOnly') : t('splitViewLabel')}
+            style={{ ...btnStyle, color: splitView ? 'var(--accent)' : 'var(--t2)', background: splitView ? 'var(--accent-bg)' : 'transparent' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="1.8"/></svg>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setPreview(v => !v)}
+          className="lg:hidden"
+          style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-m)', background: preview ? 'var(--accent-bg)' : 'var(--bg-2)', color: preview ? 'var(--accent)' : 'var(--t1)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {preview ? t('editMode') : t('previewMode')}
+        </button>
+
+        {active.utilisateur === myName && (
+          <button
+            onClick={() => remove(active.id)}
+            style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex' }}
+            title={t('delete')}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
+      </div>
     </div>
   )
 
+  const TOOLBAR_ICON = [
+    { title: t('fmtBold'), before: '`', after: '`', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M12 5l-2 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+    { title: 'Code block', before: '```\n', after: '\n```', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.8"/><path d="M2 9h20" stroke="currentColor" strokeWidth="1.8"/></svg> },
+    { title: 'Spoiler (||)', before: '||', after: '||', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg> },
+    { title: 'Quote (>)', before: '> ', after: '', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" stroke="currentColor" strokeWidth="1.8"/></svg> },
+  ]
+
   return (
     <div data-tour="notes-workspace" style={{ height: 'calc(100dvh - 56px)', display: 'flex', overflow: 'hidden' }}>
-
-      {/* Desktop sidebar */}
-      {sidebar}
 
       {/* ── Mobile header ── */}
       <div className="lg:hidden" style={{ position: 'absolute', top: 56, left: 0, right: 0, zIndex: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-1)', borderBottom: '1px solid var(--border-s)' }}>
@@ -377,244 +448,166 @@ export default function NotesPage() {
         </button>
       </div>
 
-      {/* ── VIEW MODE: full-width read-only preview (desktop) ── */}
-      {active && !isEditing && (
-        <div className="hidden lg:flex lg:flex-col" style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-0)' }}>
-          {/* View mode title bar */}
-          <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-1)', flexShrink: 0 }}>
-            <button
-              onClick={() => setActive(null)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: 13, padding: '4px 0', fontFamily: 'inherit', flexShrink: 0 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              {t('notes')}
-            </button>
-            <span style={{ color: 'var(--border-m)', flexShrink: 0 }}>/</span>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--t0)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {active.titre || t('noTitle')}
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              {active.utilisateur !== myName && (
-                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-3)', color: 'var(--t2)', border: '1px solid var(--border-s)' }}>
-                  {t('sharedBy')} {active.utilisateur.split(' ')[0]}
-                </span>
-              )}
-              <button
-                onClick={() => setIsEditing(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-m)', background: 'var(--bg-2)', color: 'var(--t1)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                {t('edit')}
-              </button>
-            </div>
-          </div>
-
-          {/* Full-width markdown content */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '40px 48px' }}>
-            <div style={{ maxWidth: 720, margin: '0 auto' }}>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--t0)', marginBottom: 24, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
-                {active.titre || t('noTitle')}
-              </h1>
-              {active.contenu ? (
-                <div
-                  style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--t0)' }}
-                  dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu)}</p>` }}
-                />
-              ) : (
-                <p style={{ color: 'var(--t2)', fontSize: 14, fontStyle: 'italic' }}>—</p>
-              )}
-            </div>
-          </div>
+      {/* ── DESKTOP: no note selected → full-width sidebar ── */}
+      {!active && (
+        <div className="hidden lg:flex lg:flex-col" style={{ flex: 1, background: 'var(--bg-1)', overflow: 'hidden' }}>
+          {sidebarContent}
         </div>
       )}
 
-      {/* ── EDIT MODE ── */}
-      {active && isEditing && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)', minWidth: 0 }}>
+      {/* ── DESKTOP: note selected → collapsible sidebar + content ── */}
+      {active && (
+        <>
+          {/* Sidebar (collapses in view mode) */}
+          <div className="hidden lg:flex lg:flex-col" style={{
+            width: isEditing ? 260 : 0,
+            flexShrink: 0,
+            overflow: 'hidden',
+            transition: 'width 0.28s ease',
+            borderRight: isEditing ? '1px solid var(--border-s)' : 'none',
+            background: 'var(--bg-1)',
+          }}>
+            {sidebarContent}
+          </div>
 
-          {/* Title bar */}
-          <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-1)', flexShrink: 0 }}>
-            <input
-              value={active.titre}
-              onChange={e => onChange('titre', e.target.value)}
-              placeholder="Titre"
-              style={{ flex: 1, background: 'none', border: 'none', fontSize: 17, fontWeight: 700, color: 'var(--t0)', outline: 'none', fontFamily: 'inherit' }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, position: 'relative' }}>
-              {saving && <span style={{ fontSize: 11, color: 'var(--t2)' }}>{t('saving')}</span>}
-
-              {active.utilisateur === myName && (
-                <div style={{ position: 'relative' }}>
+          {/* Content: view mode */}
+          {!isEditing && (
+            <div className="hidden lg:flex lg:flex-col" style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-0)' }}>
+              <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-1)', flexShrink: 0 }}>
+                <button
+                  onClick={() => setActive(null)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: 13, padding: '4px 0', fontFamily: 'inherit', flexShrink: 0 }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {t('notes')}
+                </button>
+                <span style={{ color: 'var(--border-m)', flexShrink: 0 }}>/</span>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--t0)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {active.titre || t('noTitle')}
+                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  {active.utilisateur !== myName && (
+                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-3)', color: 'var(--t2)', border: '1px solid var(--border-s)' }}>
+                      {t('sharedBy')} {active.utilisateur.split(' ')[0]}
+                    </span>
+                  )}
                   <button
-                    onClick={() => setShowSharePicker(v => !v)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-m)', background: active.sharedWith.length > 0 ? 'var(--accent-bg)' : 'var(--bg-2)', color: active.sharedWith.length > 0 ? 'var(--accent)' : 'var(--t1)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                    onClick={() => setIsEditing(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-m)', background: 'var(--bg-2)', color: 'var(--t1)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    {active.sharedWith.length > 0 ? t('shareCount', { n: active.sharedWith.length }) : t('share')}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    {t('edit')}
                   </button>
-                  {showSharePicker && (
-                    <>
-                      <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowSharePicker(false)} />
-                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 10, padding: 8, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', animation: 'slideDown 0.18s var(--ease-spring) both' }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8, padding: '0 4px' }}>{t('projectMembers')}</p>
-                        {users.filter(u => u.name !== myName).length === 0 ? (
-                          <p style={{ fontSize: 12, color: 'var(--t2)', padding: 8, textAlign: 'center' }}>{t('inviteMembers')}</p>
-                        ) : users.filter(u => u.name !== myName).map(u => {
-                          const shared = active.sharedWith.includes(u.name)
-                          return (
-                            <button key={u.name} onClick={() => toggleShare(u.name)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 7, background: shared ? 'var(--accent-bg)' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}>
-                              <UserAvatar name={u.name} color={u.color} size={26} />
-                              <span style={{ fontSize: 13, color: 'var(--t0)', fontWeight: 500, flex: 1 }}>{u.name.split(' ')[0]}</span>
-                              {shared
-                                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                : <span style={{ fontSize: 10, color: 'var(--t2)' }}>{t('add')}</span>
-                              }
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </>
+                </div>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '40px 48px' }}>
+                <div style={{ maxWidth: 720, margin: '0 auto' }}>
+                  <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--t0)', marginBottom: 24, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+                    {active.titre || t('noTitle')}
+                  </h1>
+                  {active.contenu ? (
+                    <div
+                      style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--t0)' }}
+                      dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu, t('revealSpoiler'))}</p>` }}
+                    />
+                  ) : (
+                    <p style={{ color: 'var(--t2)', fontSize: 14, fontStyle: 'italic' }}>—</p>
                   )}
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {active.utilisateur !== myName && (
-                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'var(--bg-3)', color: 'var(--t2)', border: '1px solid var(--border-s)' }}>
-                  {t('sharedBy')} {active.utilisateur.split(' ')[0]}
-                </span>
-              )}
+          {/* Content: edit mode (desktop only) */}
+          {isEditing && (
+            <div className="hidden lg:flex lg:flex-col" style={{ flex: 1, overflow: 'hidden', background: 'var(--bg-0)', minWidth: 0 }}>
+              {editTitleBar}
 
-              {/* View mode button */}
-              <button
-                onClick={() => setIsEditing(false)}
-                className="hidden lg:flex"
-                title={t('previewMode')}
-                style={{ ...btnStyle, alignItems: 'center', gap: 4, padding: '0 8px', width: 'auto', color: 'var(--t2)' }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/></svg>
-              </button>
-
-              {/* Split view toggle */}
-              <div className="hidden lg:flex" style={{ gap: 4, alignItems: 'center' }}>
-                <button
-                  onClick={() => setSplitView(v => !v)}
-                  title={splitView ? t('editorOnly') : t('splitViewLabel')}
-                  style={{ ...btnStyle, color: splitView ? 'var(--accent)' : 'var(--t2)', background: splitView ? 'var(--accent-bg)' : 'transparent' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" strokeWidth="1.8"/></svg>
+              {/* Formatting toolbar */}
+              <div style={{ padding: '5px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-1)', flexShrink: 0, flexWrap: 'wrap' }}>
+                {TOOLBAR.map(btn => (
+                  <button
+                    key={btn.label}
+                    onMouseDown={e => { e.preventDefault(); insertFormat(btn.before) }}
+                    title={btn.title}
+                    style={{ ...btnStyle, ...btn.style }}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+                <div style={{ width: 1, height: 16, background: 'var(--border-m)', margin: '0 3px', flexShrink: 0 }} />
+                {TOOLBAR_ICON.map(btn => (
+                  <button
+                    key={btn.title}
+                    onMouseDown={e => { e.preventDefault(); insertFormat(btn.before, btn.after) }}
+                    title={btn.title}
+                    style={btnStyle}
+                  >
+                    {btn.icon}
+                  </button>
+                ))}
+                <div style={{ width: 1, height: 16, background: 'var(--border-m)', margin: '0 3px', flexShrink: 0 }} />
+                <button onMouseDown={e => { e.preventDefault(); insertFormat('1. ', '') }} title="Numbered list" style={btnStyle}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="10" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="10" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="10" y1="18" x2="21" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M4 6h1v4M4 10h2M4 14h1.5a.5.5 0 010 1H4a.5.5 0 000 1h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
                 </button>
+                <button onMouseDown={e => { e.preventDefault(); insertFormat('- ', '') }} title="Bullet list" style={btnStyle}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="9" y1="6" x2="20" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="18" x2="20" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
+                </button>
+                <button onMouseDown={e => { e.preventDefault(); insertFormat('- [ ] ', '') }} title="Checkbox" style={btnStyle}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8"/><path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--t2)', whiteSpace: 'nowrap' }}>
+                  {t('markdownHint')}
+                </div>
               </div>
 
-              {/* Mobile preview toggle */}
-              <button
-                onClick={() => setPreview(v => !v)}
-                className="lg:hidden"
-                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-m)', background: preview ? 'var(--accent-bg)' : 'var(--bg-2)', color: preview ? 'var(--accent)' : 'var(--t1)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                {preview ? t('editMode') : t('previewMode')}
-              </button>
-
-              {active.utilisateur === myName && (
-                <button
-                  onClick={() => remove(active.id)}
-                  style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex' }}
-                  title={t('delete')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              )}
+              {/* Content area */}
+              <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+                <textarea
+                  ref={el => { textareaRef.current = el ?? undefined }}
+                  value={active.contenu}
+                  onChange={e => onChange('contenu', e.target.value)}
+                  onKeyDown={e => {
+                    if (e.metaKey || e.ctrlKey) {
+                      if (e.key === 'b') { e.preventDefault(); insertFormat('**') }
+                      if (e.key === 'i') { e.preventDefault(); insertFormat('*') }
+                      if (e.key === 'u') { e.preventDefault(); insertFormat('__') }
+                    }
+                    if (e.key === 'Tab') {
+                      e.preventDefault()
+                      const ta = e.currentTarget
+                      const start = ta.selectionStart
+                      const end = ta.selectionEnd
+                      const val = ta.value
+                      const newVal = val.slice(0, start) + '  ' + val.slice(end)
+                      onChange('contenu', newVal)
+                      setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 2 }, 0)
+                    }
+                  }}
+                  placeholder={t('startWriting')}
+                  style={{
+                    flex: preview ? 0 : 1,
+                    display: preview ? 'none' : 'block',
+                    resize: 'none', background: 'var(--bg-0)', border: 'none',
+                    padding: '24px 32px', fontSize: 14, lineHeight: 1.8, color: 'var(--t0)',
+                    outline: 'none', fontFamily: '"SF Mono", "Fira Code", monospace',
+                    borderRight: splitView ? '1px solid var(--border-s)' : 'none',
+                  }}
+                />
+                {splitView && (
+                  <div
+                    style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', fontSize: 14, lineHeight: 1.7, color: 'var(--t0)' }}
+                    dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu, t('revealSpoiler'))}</p>` }}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Formatting toolbar */}
-          <div className="hidden lg:flex" style={{ padding: '5px 20px', borderBottom: '1px solid var(--border-s)', alignItems: 'center', gap: 2, background: 'var(--bg-1)', flexShrink: 0, flexWrap: 'wrap' }}>
-            {TOOLBAR.map(btn => (
-              <button
-                key={btn.label}
-                onMouseDown={e => { e.preventDefault(); insertFormat(btn.before) }}
-                title={btn.title}
-                style={{ ...btnStyle, ...btn.style }}
-              >
-                {btn.label}
-              </button>
-            ))}
-            <div style={{ width: 1, height: 16, background: 'var(--border-m)', margin: '0 3px', flexShrink: 0 }} />
-            {TOOLBAR_ICON.map(btn => (
-              <button
-                key={btn.title}
-                onMouseDown={e => { e.preventDefault(); insertFormat(btn.before, btn.after) }}
-                title={btn.title}
-                style={btnStyle}
-              >
-                {btn.icon}
-              </button>
-            ))}
-            <div style={{ width: 1, height: 16, background: 'var(--border-m)', margin: '0 3px', flexShrink: 0 }} />
-            <button onMouseDown={e => { e.preventDefault(); insertFormat('1. ', '') }} title="Liste numérotée" style={btnStyle}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="10" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="10" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="10" y1="18" x2="21" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M4 6h1v4M4 10h2M4 14h1.5a.5.5 0 010 1H4a.5.5 0 000 1h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-            </button>
-            <button onMouseDown={e => { e.preventDefault(); insertFormat('- ', '') }} title="Liste à puces" style={btnStyle}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><line x1="9" y1="6" x2="20" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><line x1="9" y1="18" x2="20" y2="18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
-            </button>
-            <button onMouseDown={e => { e.preventDefault(); insertFormat('- [ ] ', '') }} title="Case à cocher" style={btnStyle}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8"/><path d="M8 12l3 3 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--t2)', whiteSpace: 'nowrap' }}>
-              **gras** *italique* __souligné__ ~~barré~~ ||spoiler|| `code`
-            </div>
-          </div>
-
-          {/* Content area */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
-            <textarea
-              ref={el => { textareaRef.current = el ?? undefined }}
-              value={active.contenu}
-              onChange={e => onChange('contenu', e.target.value)}
-              onKeyDown={e => {
-                if (e.metaKey || e.ctrlKey) {
-                  if (e.key === 'b') { e.preventDefault(); insertFormat('**') }
-                  if (e.key === 'i') { e.preventDefault(); insertFormat('*') }
-                  if (e.key === 'u') { e.preventDefault(); insertFormat('__') }
-                }
-                if (e.key === 'Tab') {
-                  e.preventDefault()
-                  const ta = e.currentTarget
-                  const start = ta.selectionStart
-                  const end = ta.selectionEnd
-                  const val = ta.value
-                  const newVal = val.slice(0, start) + '  ' + val.slice(end)
-                  onChange('contenu', newVal)
-                  setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 2 }, 0)
-                }
-              }}
-              placeholder={'Commence à écrire…\n\n# Titre 1\n## Titre 2  ### Titre 3  -# Subtext\n**Gras**  *Italique*  __Souligné__  ~~Barré~~\n||spoiler||  `code inline`\n> Citation\n- Liste  1. Numérotée  - [ ] Checkbox\n```js\ncode block\n```'}
-              style={{
-                flex: preview ? 0 : (splitView ? 1 : 1),
-                display: preview ? 'none' : 'block',
-                resize: 'none', background: 'var(--bg-0)', border: 'none',
-                padding: '24px 32px', fontSize: 14, lineHeight: 1.8, color: 'var(--t0)',
-                outline: 'none', fontFamily: '"SF Mono", "Fira Code", monospace',
-                borderRight: splitView ? '1px solid var(--border-s)' : 'none',
-              }}
-              className={preview ? 'lg:block' : ''}
-            />
-
-            {(splitView || preview) && (
-              <div
-                style={{
-                  flex: 1, overflowY: 'auto', padding: '24px 32px',
-                  fontSize: 14, lineHeight: 1.7, color: 'var(--t0)',
-                  display: preview && !splitView ? 'block' : undefined,
-                }}
-                dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu)}</p>` }}
-              />
-            )}
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* ── Empty state (no note selected) — desktop ── */}
-      {!active && (
+      {/* ── DESKTOP: empty state (no note selected, no notes exist) ── */}
+      {!active && notes.length === 0 && (
         <div style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }} className="hidden lg:flex">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--border-l)' }}>
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5"/>
@@ -625,18 +618,18 @@ export default function NotesPage() {
         </div>
       )}
 
-      {/* ── Mobile: note content (edit mode on mobile) ── */}
+      {/* ── MOBILE: note content (edit/preview) ── */}
       {active && (
         <div className="lg:hidden" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginTop: 56 }}>
           {preview ? (
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', fontSize: 14, lineHeight: 1.7, color: 'var(--t0)' }}
-              dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu)}</p>` }}
+              dangerouslySetInnerHTML={{ __html: `<p style="margin:8px 0">${renderMarkdown(active.contenu, t('revealSpoiler'))}</p>` }}
             />
           ) : (
             <textarea
               value={active.contenu}
               onChange={e => onChange('contenu', e.target.value)}
-              placeholder="Commence à écrire…"
+              placeholder={t('startWriting')}
               style={{ flex: 1, resize: 'none', background: 'var(--bg-0)', border: 'none', padding: '20px 16px', fontSize: 14, lineHeight: 1.8, color: 'var(--t0)', outline: 'none', fontFamily: 'inherit' }}
             />
           )}
@@ -648,7 +641,7 @@ export default function NotesPage() {
         </div>
       )}
 
-      {/* ── Mobile: note list ── */}
+      {/* ── MOBILE: note list ── */}
       {!active && (
         <div className="lg:hidden" style={{ flex: 1, overflowY: 'auto', marginTop: 56 }}>
           <div style={{ padding: '12px 16px 8px' }}>
@@ -676,7 +669,7 @@ export default function NotesPage() {
                   {(note.utilisateur !== myName || note.sharedWith.length > 0) && (
                     <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: note.utilisateur !== myName ? 'var(--accent-bg)' : 'var(--bg-3)', color: note.utilisateur !== myName ? 'var(--accent)' : 'var(--t2)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('sharedBadge')}</span>
                   )}
-                  <span style={{ fontSize: 11, color: 'var(--t2)' }}>{relTime(note.updatedAt)}</span>
+                  <span style={{ fontSize: 11, color: 'var(--t2)' }}>{relTime(note.updatedAt, t, locale)}</span>
                 </div>
               </div>
               <p style={{ fontSize: 12, color: 'var(--t2)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

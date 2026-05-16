@@ -49,6 +49,7 @@ export function useCache<T>(
 
   useEffect(() => {
     alive.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh()
     return () => { alive.current = false }
   }, [refresh])

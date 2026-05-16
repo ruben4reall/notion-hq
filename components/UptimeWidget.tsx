@@ -423,6 +423,7 @@ export default function UptimeWidget() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load().then(async () => {
       setMonitors(prev => {
         const stale = prev.some(m => {

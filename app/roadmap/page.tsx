@@ -19,14 +19,20 @@ const MODULE_COLOR: Record<string, string> = {
   Prospection: '#4f8ef7',
   Ops:         '#0ec98c',
 }
+const MODULE_KEY: Record<string, string> = {
+  Produit: 'moduleProduct', Marketing: 'moduleMarketing', Prospection: 'moduleSales', Ops: 'moduleOps',
+}
+const STATUS_KEY: Record<string, string> = {
+  Backlog: 'statusBacklog', 'À faire': 'todo', 'En cours': 'inProgress', Review: 'inReview', Done: 'done',
+}
 
-function getWeekLabel(date: Date) {
+function getWeekLabel(date: Date, locale: string, weekOfLabel: string) {
   const monday = new Date(date)
   monday.setDate(date.getDate() - ((date.getDay() + 6) % 7))
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
-  const fmt = (d: Date) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-  return `Semaine du ${fmt(monday)} → ${fmt(sunday)}`
+  const fmt = (d: Date) => d.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+  return `${weekOfLabel} ${fmt(monday)} → ${fmt(sunday)}`
 }
 
 function getWeekKey(date: Date) {
@@ -46,12 +52,15 @@ function daysBetween(a: string, b: string) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
 }
 
-function fmtDate(d: string) {
+function fmtDate(d: string, locale: string) {
   if (!d) return ''
-  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(d).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 function TaskPill({ task, overdueBadge, noTitle }: { task: Task; overdueBadge: string; noTitle: string }) {
+  const { lang, t } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const sc = STATUS_COLOR[task.status] || '#6b7280'
   const mc = MODULE_COLOR[task.module] || '#6b7280'
   const overdue = task.status !== 'Done' && isOverdue(task.dateEnd)
@@ -85,11 +94,11 @@ function TaskPill({ task, overdueBadge, noTitle }: { task: Task; overdueBadge: s
 
       <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
         <span style={{ fontSize: 10, fontWeight: 600, color: sc, background: `${sc}18`, padding: '2px 6px', borderRadius: 6 }}>
-          {task.status}
+          {STATUS_KEY[task.status] ? t(STATUS_KEY[task.status]) : task.status}
         </span>
         {task.module && (
           <span style={{ fontSize: 10, color: mc, background: `${mc}18`, padding: '2px 6px', borderRadius: 6 }}>
-            {task.module}
+            {MODULE_KEY[task.module] ? t(MODULE_KEY[task.module]) : task.module}
           </span>
         )}
         {task.priority && (
@@ -109,9 +118,9 @@ function TaskPill({ task, overdueBadge, noTitle }: { task: Task; overdueBadge: s
             <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
             <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
-          {task.dateStart && fmtDate(task.dateStart)}
+          {task.dateStart && fmtDate(task.dateStart, locale)}
           {task.dateStart && task.dateEnd && ' → '}
-          {task.dateEnd && fmtDate(task.dateEnd)}
+          {task.dateEnd && fmtDate(task.dateEnd, locale)}
           {days && <span style={{ color: 'var(--t2)' }}>({days}j)</span>}
         </div>
       )}
@@ -124,7 +133,9 @@ const ALL_STATUSES = ['Backlog', 'À faire', 'En cours', 'Review', 'Done'] as co
 
 export default function RoadmapPage() {
   const { data, loading } = useCache<Task[]>('/api/tasks')
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const tasks = data ?? []
   const [moduleFilter, setModuleFilter] = useState<string>(t('allMasc'))
   const [statusFilter, setStatusFilter] = useState<string>(t('allMasc'))
@@ -150,7 +161,7 @@ export default function RoadmapPage() {
     const refDate = new Date(task.dateEnd || task.dateStart)
     const key = getWeekKey(refDate)
     if (!weekMap.has(key)) {
-      weekMap.set(key, { label: getWeekLabel(refDate), tasks: [], weekStart: refDate })
+      weekMap.set(key, { label: getWeekLabel(refDate, locale, t('weekOf')), tasks: [], weekStart: refDate })
     }
     weekMap.get(key)!.tasks.push(task)
   }
@@ -248,7 +259,7 @@ export default function RoadmapPage() {
               background: moduleFilter === m ? 'var(--accent)' : 'transparent',
               color: moduleFilter === m ? 'white' : 'var(--t1)',
               border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-            }}>{m}</button>
+            }}>{MODULE_KEY[m] ? t(MODULE_KEY[m]) : m}</button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
@@ -258,7 +269,7 @@ export default function RoadmapPage() {
               background: statusFilter === s ? (STATUS_COLOR[s] ?? 'var(--accent)') : 'transparent',
               color: statusFilter === s ? 'white' : 'var(--t1)',
               border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-            }}>{s}</button>
+            }}>{STATUS_KEY[s] ? t(STATUS_KEY[s]) : s}</button>
           ))}
         </div>
       </div>

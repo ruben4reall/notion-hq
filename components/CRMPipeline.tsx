@@ -8,32 +8,28 @@ import { UserAvatar, useUsers } from './UserPicker'
 import { useLanguage } from '@/context/LanguageContext'
 import type { CRMEntry } from '@/lib/types'
 
-const STAGES: { id: CRMEntry['status']; color: string }[] = [
-  { id: 'À contacter',   color: '#6b7280' },
-  { id: 'Contacté',      color: '#4f8ef7' },
-  { id: 'RDV pris',      color: '#7c6af5' },
-  { id: 'Offre envoyée', color: '#f59e0b' },
-  { id: 'Client',        color: '#0ec98c' },
-  { id: 'Refus',         color: '#f43f5e' },
+const STAGES: { id: CRMEntry['status']; color: string; labelKey: string }[] = [
+  { id: 'À contacter',   color: '#6b7280', labelKey: 'crmToContact' },
+  { id: 'Contacté',      color: '#4f8ef7', labelKey: 'crmContacted' },
+  { id: 'RDV pris',      color: '#7c6af5', labelKey: 'crmMeetingSet' },
+  { id: 'Offre envoyée', color: '#f59e0b', labelKey: 'crmOfferSent' },
+  { id: 'Client',        color: '#0ec98c', labelKey: 'crmClient' },
+  { id: 'Refus',         color: '#f43f5e', labelKey: 'crmLost' },
 ]
 
 const P_COLOR: Record<string, string> = { Haute: '#f43f5e', Moyenne: '#f59e0b', Basse: '#6b7280' }
 const CANAL_ICON: Record<string, string> = { Email:'✉', Téléphone:'📞', Salon:'🏛', Terrain:'🚗', Recommandation:'🤝' }
+const CANAL_KEY: Record<string, string> = { Email:'canalEmail', Téléphone:'canalPhone', Salon:'canalSalon', Terrain:'canalField', Recommandation:'canalReferral' }
+const PRIORITY_KEY: Record<string, string> = { Haute: 'priorityHigh', Moyenne: 'priorityMedium', Basse: 'priorityLow' }
 
-function relTime(iso: string) {
-  if (!iso) return ''
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d/60)}h`
-  return `il y a ${Math.floor(d/1440)}j`
-}
 
 function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
   entry: CRMEntry; onEdit: () => void; onDelete: () => void; isDragging: boolean
   users: { name: string; color: string }[]
 }) {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const [menu, setMenu] = useState(false)
   const pc = P_COLOR[entry.priority] || null
   const assignee = users.find(u => u.name === entry.assignedTo)
@@ -50,14 +46,14 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
           {(entry.ville || entry.canal) && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {entry.ville && <span style={{ fontSize: 11, color: 'var(--t1)' }}>📍 {entry.ville}</span>}
-              {entry.canal && <span style={{ fontSize: 11, color: 'var(--t1)' }}>{CANAL_ICON[entry.canal] || '•'} {entry.canal}</span>}
+              {entry.canal && <span style={{ fontSize: 11, color: 'var(--t1)' }}>{CANAL_ICON[entry.canal] || '•'} {CANAL_KEY[entry.canal] ? t(CANAL_KEY[entry.canal]) : entry.canal}</span>}
             </div>
           )}
           {entry.contact && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>👤 {entry.contact}</p>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border-s)' }}>
             {entry.nextFollowup && (
               <span style={{ fontSize: 10, color: 'var(--t2)' }}>
-                📅 {new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(entry.nextFollowup))}
+                📅 {new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(new Date(entry.nextFollowup))}
               </span>
             )}
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -97,6 +93,7 @@ export default function CRMPipeline() {
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fetchedEntries) setEntries(fetchedEntries)
   }, [fetchedEntries])
 
@@ -137,7 +134,7 @@ export default function CRMPipeline() {
     .filter(e => !search || e.enseigne.toLowerCase().includes(search.toLowerCase()) || (e.contact || '').toLowerCase().includes(search.toLowerCase()))
 
   const P_COLORS: Record<string, string> = { Haute: '#f43f5e', Moyenne: '#f59e0b', Basse: '#6b7280' }
-  const CANAUX = ['Email', 'Téléphone', 'Salon', 'Terrain', 'Recommandation']
+  const CANAUX: { value: string }[] = [{ value: 'Email' }, { value: 'Téléphone' }, { value: 'Salon' }, { value: 'Terrain' }, { value: 'Recommandation' }]
   const activeFilters = (filterUser ? 1 : 0) + (filterPriority ? 1 : 0) + (filterCanal ? 1 : 0) + (search ? 1 : 0)
 
   return (
@@ -156,10 +153,10 @@ export default function CRMPipeline() {
         <div style={{ width: 1, height: 18, background: 'var(--border-s)', flexShrink: 0 }} />
 
         {/* Priority */}
-        {['Haute', 'Moyenne', 'Basse'].map(p => (
+        {(['Haute', 'Moyenne', 'Basse'] as const).map(p => (
           <button key={p} onClick={() => setFilterPriority(v => v === p ? '' : p)}
             style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterPriority === p ? 700 : 400, background: filterPriority === p ? `${P_COLORS[p]}20` : 'var(--bg-2)', color: filterPriority === p ? P_COLORS[p] : 'var(--t2)', border: `1px solid ${filterPriority === p ? P_COLORS[p] + '50' : 'var(--border-s)'}`, cursor: 'pointer' }}>
-            {p}
+            {t(PRIORITY_KEY[p])}
           </button>
         ))}
 
@@ -167,9 +164,9 @@ export default function CRMPipeline() {
 
         {/* Canal */}
         {CANAUX.map(c => (
-          <button key={c} onClick={() => setFilterCanal(v => v === c ? '' : c)}
-            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCanal === c ? 700 : 400, background: filterCanal === c ? 'var(--accent-bg)' : 'var(--bg-2)', color: filterCanal === c ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${filterCanal === c ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {CANAL_ICON[c] || ''} {c}
+          <button key={c.value} onClick={() => setFilterCanal(v => v === c.value ? '' : c.value)}
+            style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCanal === c.value ? 700 : 400, background: filterCanal === c.value ? 'var(--accent-bg)' : 'var(--bg-2)', color: filterCanal === c.value ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${filterCanal === c.value ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {CANAL_ICON[c.value] || ''} {t(CANAL_KEY[c.value])}
           </button>
         ))}
 
@@ -201,7 +198,7 @@ export default function CRMPipeline() {
               <div key={stage.id} style={{ minWidth: 232, flex: '0 0 232px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, padding: '0 2px' }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: stage.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--t0)', whiteSpace: 'nowrap' }}>{stage.id}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--t0)', whiteSpace: 'nowrap' }}>{t(stage.labelKey)}</span>
                   <span style={{ fontSize: 11, color: 'var(--t2)', background: 'var(--bg-2)', padding: '1px 7px', borderRadius: 100, marginLeft: 'auto' }}>{stageEntries.length}</span>
                   <button
                     onClick={() => setModal({ open: true, entry: null, defaultStatus: stage.id })}

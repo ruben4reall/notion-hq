@@ -17,12 +17,12 @@ interface TimeSession {
 }
 
 const CATEGORIES = [
-  { id: 'Travail',   color: '#7c6af5', emoji: '💼' },
-  { id: 'Meeting',   color: '#4f8ef7', emoji: '🤝' },
-  { id: 'Code',      color: '#0ec98c', emoji: '💻' },
-  { id: 'Design',    color: '#a855f7', emoji: '🎨' },
-  { id: 'Prospection', color: '#f59e0b', emoji: '📞' },
-  { id: 'Pause',     color: '#6b7280', emoji: '☕' },
+  { id: 'Travail',     color: '#7c6af5', emoji: '💼', key: 'timeCatWork' },
+  { id: 'Meeting',     color: '#4f8ef7', emoji: '🤝', key: 'timeCatMeeting' },
+  { id: 'Code',        color: '#0ec98c', emoji: '💻', key: 'timeCatCode' },
+  { id: 'Design',      color: '#a855f7', emoji: '🎨', key: 'timeCatDesign' },
+  { id: 'Prospection', color: '#f59e0b', emoji: '📞', key: 'timeCatSales' },
+  { id: 'Pause',       color: '#6b7280', emoji: '☕', key: 'timeCatBreak' },
 ]
 
 function fmt(min: number) {
@@ -56,7 +56,9 @@ function getCatEmoji(cat: string) {
 
 export default function TimePage() {
   const { setActive: setTimerCtx } = useTimer()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
   const [days, setDays] = useState(7)
   const [filterCat, setFilterCat] = useState('')
   const { data: timeData, loading, refresh } = useCache<{ sessions: TimeSession[]; active: TimeSession | null }>(`/api/time?days=${days}`, { ttl: 15_000 })
@@ -69,6 +71,7 @@ export default function TimePage() {
 
   useEffect(() => {
     if (timeData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSessions(timeData.sessions || [])
       const a = timeData.active || null
       setActive(a)
@@ -83,6 +86,7 @@ export default function TimePage() {
       tick()
       tickRef.current = setInterval(tick, 1000)
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed(0)
     }
     return () => clearInterval(tickRef.current)
@@ -119,7 +123,7 @@ export default function TimePage() {
     const diff = Math.floor((now.setHours(0,0,0,0) - d.setHours(0,0,0,0)) / 86400000)
     if (diff === 0) return t('today')
     if (diff === 1) return t('yesterday')
-    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })
+    return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' })
   }
 
   const completed = sessions.filter(s => s.fin)
@@ -177,7 +181,7 @@ export default function TimePage() {
           </div>
           {active && (
             <p style={{ fontSize: 13, color: 'var(--t1)', marginTop: 4 }}>
-              {getCatEmoji(active.categorie)} {active.categorie} · {t('startedAt')} {new Date(active.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              {getCatEmoji(active.categorie)} {t(CATEGORIES.find(c => c.id === active.categorie)?.key ?? 'timeCatWork')} · {t('startedAt')} {new Date(active.debut).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
         </div>
@@ -198,7 +202,7 @@ export default function TimePage() {
                 transition: 'all 0.15s',
               }}
             >
-              {cat.emoji} {cat.id}
+              {cat.emoji} {t(cat.key)}
             </button>
           ))}
         </div>
@@ -309,7 +313,7 @@ export default function TimePage() {
           {CATEGORIES.map(cat => (
             <button key={cat.id} onClick={() => setFilterCat(v => v === cat.id ? '' : cat.id)}
               style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCat === cat.id ? 700 : 400, background: filterCat === cat.id ? `${cat.color}20` : 'var(--bg-2)', color: filterCat === cat.id ? cat.color : 'var(--t2)', border: `1px solid ${filterCat === cat.id ? cat.color + '50' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {cat.emoji} {cat.id}
+              {cat.emoji} {t(cat.key)}
             </button>
           ))}
           {filterCat && <button onClick={() => setFilterCat('')} style={{ padding: '3px 8px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>×</button>}
@@ -341,10 +345,10 @@ export default function TimePage() {
                       background: getCatColor(s.categorie),
                     }} />
                     <span style={{ fontSize: 12, color: 'var(--t2)', width: 48, flexShrink: 0 }}>
-                      {new Date(s.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(s.debut).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <span style={{ fontSize: 13, color: 'var(--t1)', flex: 1 }}>
-                      {getCatEmoji(s.categorie)} {s.categorie}
+                      {getCatEmoji(s.categorie)} {t(CATEGORIES.find(c => c.id === s.categorie)?.key ?? 'timeCatWork')}
                       {s.note && <span style={{ color: 'var(--t2)', marginLeft: 8 }}>— {s.note}</span>}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', fontVariantNumeric: 'tabular-nums' }}>

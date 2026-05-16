@@ -692,11 +692,11 @@ export default function OrgPage() {
     if (status === 'unauthenticated') { router.replace('/auth'); return }
     if (status !== 'authenticated') return
     load()
-  }, [status])
+  }, [status, router])
 
   const selectProject = (id: string) => {
     setSelecting(id)
-    document.cookie = `current_org_id=${id}; path=/; max-age=${60 * 60 * 24 * 30}`
+    document.cookie = `current_org_id=${id}; path=/; max-age=${60 * 60 * 24 * 30}`  // eslint-disable-line react-hooks/immutability
     router.push('/')
   }
 

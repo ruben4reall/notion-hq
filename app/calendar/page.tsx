@@ -15,6 +15,9 @@ const TYPE_COLOR: Record<string, string> = {
   Deadline: '#f43f5e',
   Autre:    '#6b7280',
 }
+const TYPE_KEY: Record<string, string> = {
+  RDV: 'eventRDV', Réunion: 'eventMeeting', Appel: 'eventCall', Deadline: 'eventDeadline', Autre: 'eventOther',
+}
 const STATUS_COLOR: Record<string, string> = {
   Backlog:    '#6b7280',
   'À faire':  '#4f8ef7',
@@ -22,9 +25,23 @@ const STATUS_COLOR: Record<string, string> = {
   Review:     '#f59e0b',
   Done:       '#0ec98c',
 }
-const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
-const DAYS_FR   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
-const DAYS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche']
+const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+
+function getMonths(locale: string) {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, i, 1))
+  )
+}
+function getDaysShort(locale: string) {
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, 1 + i))
+  )
+}
+function getDaysFull(locale: string) {
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(new Date(2024, 0, 1 + i))
+  )
+}
 
 type CalView = 'month' | 'week' | 'day'
 
@@ -60,6 +77,7 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
 
   useEffect(() => {
     if (state.event) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitle(state.event.title)
       setType(state.event.type)
       setDateStart(state.event.dateStart)
@@ -113,7 +131,7 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
               color: type === tp ? TYPE_COLOR[tp] : 'var(--t1)',
               border: `1px solid ${type === tp ? TYPE_COLOR[tp] : 'var(--border-s)'}`,
               cursor: 'pointer',
-            }}>{tp}</button>
+            }}>{t(TYPE_KEY[tp])}</button>
           ))}
         </div>
       </Field>
@@ -192,12 +210,13 @@ function EventChip({ chip, onClick, small }: { chip: ItemChip; onClick?: () => v
   )
 }
 
-function MonthView({ year, month, items, todayStr, setModal, moreLabel }: {
+function MonthView({ year, month, items, todayStr, setModal, moreLabel, daysShort }: {
   year: number; month: number
   items: (dateStr: string) => DayItems
   todayStr: string
   setModal: (s: ModalState) => void
   moreLabel: (n: number) => string
+  daysShort: string[]
 }) {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
@@ -211,7 +230,7 @@ function MonthView({ year, month, items, todayStr, setModal, moreLabel }: {
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-s)' }}>
-        {DAYS_FR.map(d => (
+        {daysShort.map(d => (
           <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>
             {d}
           </div>
@@ -265,11 +284,12 @@ function MonthView({ year, month, items, todayStr, setModal, moreLabel }: {
   )
 }
 
-function WeekView({ weekStart, items, todayStr, setModal }: {
+function WeekView({ weekStart, items, todayStr, setModal, daysShort }: {
   weekStart: Date
   items: (dateStr: string) => DayItems
   todayStr: string
   setModal: (s: ModalState) => void
+  daysShort: string[]
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -292,7 +312,7 @@ function WeekView({ weekStart, items, todayStr, setModal }: {
               }}
             >
               <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.04em', marginBottom: 4 }}>
-                {DAYS_FR[i]}
+                {daysShort[i]}
               </p>
               <div style={{
                 width: 30, height: 30, borderRadius: '50%',
@@ -335,12 +355,14 @@ function DayView({ date, items, setModal, noEventsLabel, addEventLabel }: {
   noEventsLabel: string
   addEventLabel: string
 }) {
+  const { t } = useLanguage()
   const dateStr = isoDate(date)
   const { dayTasks, dayEvents, dayExternal } = items(dateStr)
 
+  const STATUS_KEY: Record<string, string> = { Backlog: 'statusBacklog', 'À faire': 'todo', 'En cours': 'inProgress', Review: 'inReview', Done: 'done' }
   const allItems: { title: string; color: string; label: string; event?: CalendarEvent }[] = [
-    ...dayEvents.map(e => ({ title: e.title || '', color: TYPE_COLOR[e.type] || '#6b7280', label: e.type, event: e })),
-    ...dayTasks.map(tk => ({ title: tk.title || '', color: STATUS_COLOR[tk.status] || '#6b7280', label: tk.status })),
+    ...dayEvents.map(e => ({ title: e.title || '', color: TYPE_COLOR[e.type] || '#6b7280', label: TYPE_KEY[e.type] ? t(TYPE_KEY[e.type]) : e.type, event: e })),
+    ...dayTasks.map(tk => ({ title: tk.title || '', color: STATUS_COLOR[tk.status] || '#6b7280', label: STATUS_KEY[tk.status] ? t(STATUS_KEY[tk.status]) : tk.status })),
     ...dayExternal.map(e => ({ title: e.title || '', color: '#12c98a', label: 'iCal' })),
   ]
 
@@ -392,7 +414,11 @@ function DayView({ date, items, setModal, noEventsLabel, addEventLabel }: {
 
 function CalendarContent() {
   const { user: session } = useAuth()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
+  const MONTHS = getMonths(locale)
+  const DAYS_FR = getDaysShort(locale)
+  const DAYS_FULL = getDaysFull(locale)
   const { data: fetchedTasks, loading: tasksLoading, refresh: refreshTasks } = useCache<Task[]>('/api/tasks')
   const { data: fetchedEvents, loading: eventsLoading, refresh: refreshEvents } = useCache<CalendarEvent[]>('/api/events')
   const [tasks, setTasks] = useState<Task[]>(fetchedTasks ?? [])
@@ -419,7 +445,9 @@ function CalendarContent() {
   const [month, setMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState(today)
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (fetchedTasks) setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []) }, [fetchedTasks])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (fetchedEvents) setEvents(Array.isArray(fetchedEvents) ? fetchedEvents : []) }, [fetchedEvents])
 
   const load = useCallback(async () => {
@@ -487,15 +515,15 @@ function CalendarContent() {
   const icalUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/calendar.ics` : '/api/calendar.ics'
 
   function getHeaderLabel() {
-    if (view === 'month') return `${MONTHS_FR[month]} ${year}`
+    if (view === 'month') return `${MONTHS[month]} ${year}`
     if (view === 'week') {
       const ws = getWeekStart(selectedDate)
       const we = addDays(ws, 6)
-      if (ws.getMonth() === we.getMonth()) return `${ws.getDate()}–${we.getDate()} ${MONTHS_FR[ws.getMonth()]} ${ws.getFullYear()}`
-      return `${ws.getDate()} ${MONTHS_FR[ws.getMonth()]} – ${we.getDate()} ${MONTHS_FR[we.getMonth()]} ${we.getFullYear()}`
+      if (ws.getMonth() === we.getMonth()) return `${ws.getDate()}–${we.getDate()} ${MONTHS[ws.getMonth()]} ${ws.getFullYear()}`
+      return `${ws.getDate()} ${MONTHS[ws.getMonth()]} – ${we.getDate()} ${MONTHS[we.getMonth()]} ${we.getFullYear()}`
     }
     const dow = (selectedDate.getDay() + 6) % 7
-    return `${DAYS_FULL[dow]} ${selectedDate.getDate()} ${MONTHS_FR[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
+    return `${DAYS_FULL[dow]} ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
   }
 
   const viewLabels: Record<CalView, string> = {
@@ -625,10 +653,10 @@ function CalendarContent() {
         </div>
 
         {view === 'month' && (
-          <MonthView year={year} month={month} items={getItemsForDay} todayStr={todayStr} setModal={setModal} moreLabel={n => t('moreItems', { n })} />
+          <MonthView year={year} month={month} items={getItemsForDay} todayStr={todayStr} setModal={setModal} moreLabel={n => t('moreItems', { n })} daysShort={DAYS_FR} />
         )}
         {view === 'week' && (
-          <WeekView weekStart={weekStart} items={getItemsForDay} todayStr={todayStr} setModal={setModal} />
+          <WeekView weekStart={weekStart} items={getItemsForDay} todayStr={todayStr} setModal={setModal} daysShort={DAYS_FR} />
         )}
         {view === 'day' && (
           <DayView date={selectedDate} items={getItemsForDay} setModal={setModal} noEventsLabel={t('noEventsDay')} addEventLabel={t('addEventAction')} />
@@ -638,7 +666,7 @@ function CalendarContent() {
       <div className="card" style={{ marginTop: 20, padding: '16px 20px' }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 10 }}>{t('calendarSubscription')}</p>
         <p style={{ fontSize: 12, color: 'var(--t1)', marginBottom: 12, lineHeight: 1.6 }}>
-          Copiez cette URL dans Google Calendar → "Autres agendas" → "Via une URL" ou dans Apple Calendar → Fichier → Nouvel abonnement.
+          {t('calendarSubscriptionHelp')}
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-3)', borderRadius: 8, padding: '8px 12px', border: '1px solid var(--border-s)' }}>
           <code style={{ fontSize: 11, color: 'var(--accent)', flex: 1, wordBreak: 'break-all' }}>{icalUrl}</code>

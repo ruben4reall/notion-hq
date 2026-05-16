@@ -7,14 +7,14 @@ const PUBLIC = ['/auth', '/login', '/org']
 
 export default function PageTracker() {
   const path      = usePathname()
-  const enterRef  = useRef<number>(Date.now())
+  const enterRef  = useRef<number | undefined>(undefined)
   const prevRef   = useRef<string>(path)
 
   useEffect(() => {
     if (PUBLIC.some(p => path.startsWith(p))) return
 
     const flush = (leavingPage: string) => {
-      const duration = Math.round((Date.now() - enterRef.current) / 1000)
+      const duration = Math.round((Date.now() - (enterRef.current ?? Date.now())) / 1000)
       if (duration < 2) return
       navigator.sendBeacon(
         '/api/analytics/track',
@@ -26,6 +26,8 @@ export default function PageTracker() {
     if (prevRef.current !== path) {
       flush(prevRef.current)
       prevRef.current  = path
+      enterRef.current = Date.now()
+    } else if (enterRef.current === undefined) {
       enterRef.current = Date.now()
     }
 

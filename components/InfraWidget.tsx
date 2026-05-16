@@ -320,6 +320,7 @@ export default function InfraWidget() {
           {/* Deploy sparkline */}
           {data.vercelDeployments.length > 0 && (() => {
             const buckets: Record<string, number> = {}
+            // eslint-disable-next-line react-hooks/purity
             for (let i=0;i<14;i++) buckets[new Date(Date.now()-i*86400000).toISOString().slice(0,10)] = 0
             data.vercelDeployments.forEach(d => { const k=new Date(d.created).toISOString().slice(0,10); if(k in buckets) buckets[k]++ })
             const vals = Object.entries(buckets).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v)

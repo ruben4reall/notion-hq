@@ -8,7 +8,7 @@ export default [
       'no-restricted-syntax': [
         'warn',
         {
-          selector: "JSXText[value=/[\\u00C0-\\u024F]/]",
+          selector: "JSXText[value=/[\\u00C0-\\u00D6\\u00D8-\\u024F]/]",
           message: "Hardcoded accented text in JSX — use t('key') from useLanguage() instead.",
         },
       ],

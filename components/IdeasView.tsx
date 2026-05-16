@@ -8,8 +8,8 @@ import { UserAvatar, useUsers } from './UserPicker'
 import { useLanguage } from '@/context/LanguageContext'
 import type { Idea } from '@/lib/types'
 
-const STATUS_TABS = ['Toutes', 'Brute', 'À explorer', 'Validée', 'Rejetée'] as const
-type Filter = typeof STATUS_TABS[number]
+const STATUS_TABS = ['Brute', 'À explorer', 'Validée', 'Rejetée'] as const
+type Filter = null | typeof STATUS_TABS[number]
 
 const STATUS_CFG: Record<string, { c: string; bg: string }> = {
   Brute:       { c: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
@@ -17,17 +17,11 @@ const STATUS_CFG: Record<string, { c: string; bg: string }> = {
   Validée:     { c: '#0ec98c', bg: 'rgba(14,201,140,0.12)' },
   Rejetée:     { c: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
 }
+const STATUS_KEY: Record<string, string> = { Brute: 'ideaRaw', 'À explorer': 'ideaExplore', Validée: 'ideaValidated', Rejetée: 'ideaRejected' }
 const EFFORT_CFG: Record<string, string> = { Faible: '#0ec98c', Moyen: '#f59e0b', Élevé: '#f43f5e' }
 const CAT_COLOR: Record<string, string> = { Produit:'#7c6af5', Marketing:'#f59e0b', Prospection:'#4f8ef7', Ops:'#0ec98c' }
+const CAT_KEY: Record<string, string> = { Produit: 'moduleProduct', Marketing: 'moduleMarketing', Prospection: 'moduleSales', Ops: 'moduleOps' }
 
-function relTime(iso: string) {
-  if (!iso) return ''
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d/60)}h`
-  return `il y a ${Math.floor(d/1440)}j`
-}
 
 function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
   idea: Idea; onEdit: () => void; onDelete: () => void; onVote: (delta: number) => void
@@ -96,7 +90,7 @@ export default function IdeasView() {
   const { t } = useLanguage()
   const { data: fetchedIdeas, loading, refresh } = useCache<Idea[]>('/api/ideas')
   const [ideas, setIdeas] = useState<Idea[]>(fetchedIdeas ?? [])
-  const [filter, setFilter] = useState<Filter>('Toutes')
+  const [filter, setFilter] = useState<Filter>(null)
   const [filterUser, setFilterUser] = useState('')
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
@@ -105,6 +99,7 @@ export default function IdeasView() {
   const users = useUsers()
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (fetchedIdeas) setIdeas(fetchedIdeas)
   }, [fetchedIdeas])
 
@@ -128,7 +123,7 @@ export default function IdeasView() {
   const CATEGORIES_IDEAS = ['Produit', 'Marketing', 'Prospection', 'Ops']
 
   const filtered = ideas
-    .filter(i => filter === 'Toutes' || i.status === filter)
+    .filter(i => filter === null || i.status === filter)
     .filter(i => !filterUser || i.assignedTo === filterUser)
     .filter(i => !filterCat || i.category === filterCat)
     .filter(i => !search || i.title.toLowerCase().includes(search.toLowerCase()))
@@ -145,12 +140,13 @@ export default function IdeasView() {
       {/* Toolbar */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {STATUS_TABS.map(tab => {
+          {([null, ...STATUS_TABS] as Filter[]).map(tab => {
             const active = filter === tab
-            const count = tab === 'Toutes' ? ideas.length : ideas.filter(i => i.status === tab).length
+            const label = tab === null ? t('allFem') : t(STATUS_KEY[tab])
+            const count = tab === null ? ideas.length : ideas.filter(i => i.status === tab).length
             return (
-              <button key={tab} onClick={() => setFilter(tab)} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: active ? 600 : 400, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-s)'}`, background: active ? 'var(--accent-bg)' : 'transparent', color: active ? 'var(--accent)' : 'var(--t1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                {tab}
+              <button key={tab ?? '__all'} onClick={() => setFilter(tab)} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: active ? 600 : 400, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-s)'}`, background: active ? 'var(--accent-bg)' : 'transparent', color: active ? 'var(--accent)' : 'var(--t1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                {label}
                 <span style={{ fontSize: 10, background: active ? 'rgba(124,106,245,0.2)' : 'var(--bg-2)', color: active ? 'var(--accent)' : 'var(--t2)', padding: '0 5px', borderRadius: 100 }}>{count}</span>
               </button>
             )
@@ -171,7 +167,7 @@ export default function IdeasView() {
           {CATEGORIES_IDEAS.map(c => (
             <button key={c} onClick={() => setFilterCat(v => v === c ? '' : c)}
               style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCat === c ? 700 : 400, background: filterCat === c ? 'var(--accent-bg)' : 'var(--bg-2)', color: filterCat === c ? 'var(--accent)' : 'var(--t2)', border: `1px solid ${filterCat === c ? 'rgba(var(--accent-rgb),0.3)' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {c}
+              {CAT_KEY[c] ? t(CAT_KEY[c]) : c}
             </button>
           ))}
 

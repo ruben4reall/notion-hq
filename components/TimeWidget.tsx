@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTimer } from '@/lib/timer-context'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
@@ -20,6 +21,7 @@ function fmtShort(sec: number) {
 export function TimeWidget() {
   const { user: session } = useAuth()
   const { active, elapsed, setActive } = useTimer()
+  const { t } = useLanguage()
 
   const stop = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -58,7 +60,7 @@ export function TimeWidget() {
           border: 'none', cursor: 'pointer', display: 'flex',
           alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}
-        title="Arrêter"
+        title={t('stopTimer')}
       >
         <div style={{ width: 5, height: 5, background: 'white', borderRadius: 1 }} />
       </button>
