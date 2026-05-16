@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Suspense } from 'react'
 import type { Task, CalendarEvent } from '@/lib/types'
+import { Modal, Field, Input, Textarea } from '@/components/Modal'
 
 const TYPE_COLOR: Record<string, string> = {
   RDV:      '#4f8ef7',
@@ -57,12 +58,11 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
     }
   }, [state])
 
-  if (!state.open) return null
-
   const isEdit = !!state.event
 
   const handleSave = async () => {
     if (!title.trim()) return
+    if (dateEnd && dateStart && dateEnd < dateStart) return
     setSaving(true)
     const body = { title, type, dateStart, dateEnd, description, modifiedBy: currentUser }
     if (isEdit) {
@@ -82,88 +82,57 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
     onClose()
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '9px 12px',
-    background: 'var(--bg-3)', border: '1px solid var(--border-m)',
-    borderRadius: 8, color: 'var(--t0)', fontSize: 13, outline: 'none',
-  }
+  const dateError = dateEnd && dateStart && dateEnd < dateStart
 
   return (
-    <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 100 }} onClick={onClose} />
-      <div style={{
-        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-        zIndex: 101, background: 'var(--bg-1)', border: '1px solid var(--border-m)',
-        borderRadius: 16, padding: 24, width: '100%', maxWidth: 440,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)' }}>
-            {isEdit ? 'Modifier l\'évènement' : 'Nouvel évènement'}
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: 20 }}>×</button>
+    <Modal isOpen={state.open} onClose={onClose} title={isEdit ? "Modifier l'évènement" : 'Nouvel évènement'} maxWidth={440}>
+      <Field label="Titre">
+        <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nom de l'évènement" autoFocus />
+      </Field>
+
+      <Field label="Type">
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(['RDV','Réunion','Appel','Deadline','Autre'] as const).map(t => (
+            <button key={t} type="button" onClick={() => setType(t)} style={{
+              padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: type === t ? 700 : 400,
+              background: type === t ? `${TYPE_COLOR[t]}22` : 'var(--bg-2)',
+              color: type === t ? TYPE_COLOR[t] : 'var(--t1)',
+              border: `1px solid ${type === t ? TYPE_COLOR[t] : 'var(--border-s)'}`,
+              cursor: 'pointer',
+            }}>{t}</button>
+          ))}
         </div>
+      </Field>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 5 }}>TITRE</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nom de l'évènement" style={inputStyle} autoFocus />
-          </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Début">
+          <Input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} />
+        </Field>
+        <Field label="Fin">
+          <Input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)}
+            style={{ borderColor: dateError ? 'var(--red)' : undefined }} />
+        </Field>
+      </div>
+      {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>La date de fin doit être après le début.</p>}
 
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 5 }}>TYPE</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {(['RDV','Réunion','Appel','Deadline','Autre'] as const).map(t => (
-                <button key={t} onClick={() => setType(t)} style={{
-                  padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: type === t ? 700 : 400,
-                  background: type === t ? `${TYPE_COLOR[t]}22` : 'var(--bg-3)',
-                  color: type === t ? TYPE_COLOR[t] : 'var(--t1)',
-                  border: `1px solid ${type === t ? TYPE_COLOR[t] : 'var(--border-s)'}`,
-                  cursor: 'pointer',
-                }}>{t}</button>
-              ))}
-            </div>
-          </div>
+      <Field label="Description">
+        <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes…" rows={3} />
+      </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 5 }}>DÉBUT</label>
-              <input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 5 }}>FIN</label>
-              <input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} style={inputStyle} />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 5 }}>DESCRIPTION</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes..." rows={3}
-              style={{ ...inputStyle, resize: 'vertical' }} />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'space-between' }}>
-          {isEdit && (
-            <button onClick={handleDelete} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'rgba(244,63,94,0.12)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>
-              Supprimer
-            </button>
-          )}
-          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-            <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, background: 'var(--bg-3)', color: 'var(--t1)', border: '1px solid var(--border-m)', cursor: 'pointer' }}>
-              Annuler
-            </button>
-            <button onClick={handleSave} disabled={saving || !title.trim()} style={{
-              padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              background: saving ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
-              color: 'white', border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-            }}>
-              {saving ? 'Enregistrement…' : isEdit ? 'Mettre à jour' : 'Créer'}
-            </button>
-          </div>
+      <div style={{ display: 'flex', gap: 8, paddingTop: 16, borderTop: '1px solid var(--border-s)', justifyContent: 'space-between' }}>
+        {isEdit && (
+          <button type="button" onClick={handleDelete} className="btn" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)' }}>
+            Supprimer
+          </button>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          <button type="button" onClick={onClose} className="btn btn-ghost">Annuler</button>
+          <button type="button" onClick={handleSave} disabled={saving || !title.trim() || !!dateError} className="btn btn-primary" style={{ opacity: saving || !title.trim() || !!dateError ? 0.6 : 1 }}>
+            {saving ? 'Enregistrement…' : isEdit ? 'Mettre à jour' : 'Créer'}
+          </button>
         </div>
       </div>
-    </>
+    </Modal>
   )
 }
 
@@ -176,8 +145,14 @@ function CalendarContent() {
   const [externalConnected, setExternalConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState>({ open: false })
-  const [showExternal, setShowExternal] = useState(true)
-  const [showTasks, setShowTasks] = useState(true)
+  const [showExternal, setShowExternal] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('cal_showExternal') !== 'false'
+  })
+  const [showTasks, setShowTasks] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('cal_showTasks') !== 'false'
+  })
 
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
@@ -284,11 +259,11 @@ function CalendarContent() {
           {externalConnected ? (
             <div style={{
               padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              background: 'rgba(14,201,140,0.1)', color: '#0ec98c',
-              border: '1px solid rgba(14,201,140,0.3)',
+              background: 'var(--green-bg)', color: 'var(--green)',
+              border: '1px solid rgba(18,201,138,0.3)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ec98c', display: 'inline-block' }} />
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
               iCal connecté
             </div>
           ) : (
@@ -318,7 +293,7 @@ function CalendarContent() {
       {/* Filtres légende */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>AFFICHER :</span>
-        <button onClick={() => setShowTasks(v => !v)} style={{
+        <button onClick={() => setShowTasks(v => { localStorage.setItem('cal_showTasks', String(!v)); return !v })} style={{
           padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showTasks ? 700 : 400,
           background: showTasks ? 'rgba(124,106,245,0.15)' : 'var(--bg-2)',
           color: showTasks ? 'var(--accent)' : 'var(--t2)',
@@ -329,14 +304,14 @@ function CalendarContent() {
           Tâches
         </button>
         {externalConnected && (
-          <button onClick={() => setShowExternal(v => !v)} style={{
+          <button onClick={() => setShowExternal(v => { localStorage.setItem('cal_showExternal', String(!v)); return !v })} style={{
             padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showExternal ? 700 : 400,
-            background: showExternal ? 'rgba(14,201,140,0.12)' : 'var(--bg-2)',
-            color: showExternal ? '#0ec98c' : 'var(--t2)',
-            border: `1px solid ${showExternal ? 'rgba(14,201,140,0.3)' : 'var(--border-s)'}`,
+            background: showExternal ? 'var(--green-bg)' : 'var(--bg-2)',
+            color: showExternal ? 'var(--green)' : 'var(--t2)',
+            border: `1px solid ${showExternal ? 'rgba(18,201,138,0.3)' : 'var(--border-s)'}`,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0ec98c', display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
             Calendrier externe
           </button>
         )}
@@ -418,7 +393,7 @@ function CalendarContent() {
                     const isGoogleItem = item.source === 'external'
                     const isTaskItem = 'status' in item && item.source !== 'external'
                     const color = isGoogleItem
-                      ? '#0ec98c'
+                      ? '#12c98a'
                       : isTaskItem
                         ? STATUS_COLOR[(item as Task).status] || '#6b7280'
                         : TYPE_COLOR[(item as CalendarEvent).type] || '#6b7280'

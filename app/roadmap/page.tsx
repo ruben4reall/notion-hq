@@ -97,7 +97,7 @@ function TaskPill({ task }: { task: Task }) {
         )}
       </div>
 
-      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', lineHeight: 1.3 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {task.title || 'Sans titre'}
       </p>
 
@@ -215,7 +215,7 @@ export default function RoadmapPage() {
             <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{completionPct}%</span>
           </div>
           <div style={{ height: 6, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${completionPct}%`, background: 'linear-gradient(90deg, #7c6af5, #0ec98c)', borderRadius: 100, transition: 'width 0.8s ease' }} />
+            <div style={{ height: '100%', width: `${completionPct}%`, background: 'linear-gradient(90deg, var(--accent), rgba(var(--accent-rgb), 0.5))', borderRadius: 100, transition: 'width 0.8s ease' }} />
           </div>
         </div>
       </div>

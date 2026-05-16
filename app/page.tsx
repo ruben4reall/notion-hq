@@ -6,15 +6,15 @@ import { useAuth } from '@/context/AuthContext'
 import type { KPIData, Task } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  Backlog:  '#6b7280',
-  'À faire':'#4f8ef7',
-  'En cours':'#7c6af5',
-  Review:   '#f59e0b',
-  Done:     '#0ec98c',
+  Backlog:  'var(--t2)',
+  'À faire':'var(--blue)',
+  'En cours':'var(--accent)',
+  Review:   'var(--amber)',
+  Done:     'var(--green)',
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
-  P0: '#f43f5e', P1: '#f59e0b', P2: '#6b7280',
+  P0: 'var(--red)', P1: 'var(--amber)', P2: 'var(--t2)',
 }
 
 function fmtDate(d: string) {

@@ -85,15 +85,24 @@ export function TaskModal({ isOpen, onClose, task, defaultStatus, onSaved }: Pro
         <Field label="Description">
           <Textarea value={form.description ?? ''} onChange={set('description')} placeholder="Détails optionnels…" />
         </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Date de début">
-            <Input type="date" value={form.dateStart ?? ''} onChange={set('dateStart')} />
-          </Field>
-          <Field label="Date de fin">
-            <Input type="date" value={form.dateEnd ?? ''} onChange={set('dateEnd')} />
-          </Field>
-        </div>
-        <FormActions onCancel={onClose} loading={loading} label={task ? 'Mettre à jour' : 'Créer'} />
+        {(() => {
+          const dateError = form.dateEnd && form.dateStart && form.dateEnd < form.dateStart
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Date de début">
+                  <Input type="date" value={form.dateStart ?? ''} onChange={set('dateStart')} />
+                </Field>
+                <Field label="Date de fin">
+                  <Input type="date" value={form.dateEnd ?? ''} onChange={set('dateEnd')}
+                    style={{ borderColor: dateError ? 'var(--red)' : undefined }} />
+                </Field>
+              </div>
+              {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>La date de fin doit être après le début.</p>}
+              <FormActions onCancel={onClose} loading={loading || !!dateError} label={task ? 'Mettre à jour' : 'Créer'} />
+            </>
+          )
+        })()}
       </form>
     </Modal>
   )

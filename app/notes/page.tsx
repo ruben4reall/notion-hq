@@ -55,6 +55,7 @@ export default function NotesPage() {
   const [showSharePicker, setShowSharePicker] = useState(false)
   const [hoveredNote, setHoveredNote] = useState<string | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const saveAbort = useRef<AbortController | undefined>(undefined)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/notes')
@@ -77,14 +78,21 @@ export default function NotesPage() {
     }
   }
 
-  const save = useCallback(async (note: Note) => {
+  const save = useCallback(async (note: Note, signal: AbortSignal) => {
     setSaving(true)
-    await fetch(`/api/notes/${note.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titre: note.titre, contenu: note.contenu }),
-    })
-    setNotes(prev => prev.map(n => n.id === note.id ? { ...note, updatedAt: new Date().toISOString() } : n))
+    try {
+      const res = await fetch(`/api/notes/${note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titre: note.titre, contenu: note.contenu }),
+        signal,
+      })
+      if (!res.ok) throw new Error('save failed')
+      setNotes(prev => prev.map(n => n.id === note.id ? { ...note, updatedAt: new Date().toISOString() } : n))
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setSaving(false)
+      return
+    }
     setSaving(false)
   }, [])
 
@@ -93,7 +101,10 @@ export default function NotesPage() {
     const updated = { ...active, [field]: value }
     setActive(updated)
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => save(updated), 800)
+    saveAbort.current?.abort()
+    const ctrl = new AbortController()
+    saveAbort.current = ctrl
+    saveTimer.current = setTimeout(() => save(updated, ctrl.signal), 800)
   }
 
   const remove = async (id: string) => {

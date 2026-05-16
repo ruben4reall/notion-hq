@@ -102,14 +102,23 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
             <Input type="tel" value={form.phone ?? ''} onChange={set('phone')} placeholder="06 12 34 56 78" />
           </Field>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Dernier contact">
-            <Input type="date" value={form.lastContact ?? ''} onChange={set('lastContact')} />
-          </Field>
-          <Field label="Prochain suivi">
-            <Input type="date" value={form.nextFollowup ?? ''} onChange={set('nextFollowup')} />
-          </Field>
-        </div>
+        {(() => {
+          const dateError = form.nextFollowup && form.lastContact && form.nextFollowup < form.lastContact
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Dernier contact">
+                  <Input type="date" value={form.lastContact ?? ''} onChange={set('lastContact')} />
+                </Field>
+                <Field label="Prochain suivi">
+                  <Input type="date" value={form.nextFollowup ?? ''} onChange={set('nextFollowup')}
+                    style={{ borderColor: dateError ? 'var(--red)' : undefined }} />
+                </Field>
+              </div>
+              {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>Le suivi doit être après le dernier contact.</p>}
+            </>
+          )
+        })()}
         <Field label="Notes">
           <Textarea value={form.notes ?? ''} onChange={set('notes')} placeholder="Notes libres…" />
         </Field>

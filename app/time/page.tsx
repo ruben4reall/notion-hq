@@ -49,6 +49,14 @@ function getCatColor(cat: string) {
   return CATEGORIES.find(c => c.id === cat)?.color || '#7c6af5'
 }
 
+function hexAlpha(hex: string, alpha: number) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 function getCatEmoji(cat: string) {
   return CATEGORIES.find(c => c.id === cat)?.emoji || '⏱'
 }
@@ -59,6 +67,7 @@ export default function TimePage() {
   const [active, setActive] = useState<TimeSession | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [startError, setStartError] = useState(false)
   const [selectedCat, setSelectedCat] = useState('Travail')
   const [days, setDays] = useState(7)
   const tickRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -89,6 +98,7 @@ export default function TimePage() {
   }, [active])
 
   const start = async () => {
+    setStartError(false)
     const res = await fetch('/api/time', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -98,6 +108,8 @@ export default function TimePage() {
       const s = await res.json()
       setActive(s)
       setTimerCtx({ id: s.id, categorie: s.categorie, debut: s.debut })
+    } else {
+      setStartError(true)
     }
   }
 
@@ -196,12 +208,13 @@ export default function TimePage() {
             padding: '12px 40px', borderRadius: 100, border: 'none', cursor: 'pointer',
             background: active ? 'var(--red)' : getCatColor(selectedCat),
             color: 'white', fontSize: 15, fontWeight: 700,
-            boxShadow: `0 4px 24px ${active ? 'rgba(244,63,94,0.4)' : getCatColor(selectedCat) + '55'}`,
+            boxShadow: `0 4px 24px ${active ? 'rgba(244,63,94,0.4)' : hexAlpha(getCatColor(selectedCat), 0.33)}`,
             transition: 'all 0.2s var(--ease-spring)',
           }}
         >
           {active ? '⏹ Arrêter' : '▶ Démarrer'}
         </button>
+        {startError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 8 }}>Impossible de démarrer la session. Réessaie.</p>}
       </div>
 
       {/* ── Stats row ── */}
