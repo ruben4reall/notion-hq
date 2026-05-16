@@ -18,8 +18,8 @@ async function resolveIPv4(hostname) {
 async function migrate() {
   const connectionString = process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL
   if (!connectionString) {
-    console.error('❌  No POSTGRES_URL_NON_POOLING env var found.')
-    process.exit(1)
+    console.log('⏭  No POSTGRES_URL_NON_POOLING — skipping migrations (Vercel deploy, handled via Management API)')
+    process.exit(0)
   }
 
   // Parse the connection string and force IPv4
