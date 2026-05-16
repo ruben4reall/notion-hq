@@ -277,10 +277,11 @@ export interface Notification {
   createdAt: string
 }
 
-export async function getNotifications(): Promise<Notification[]> {
+export async function getNotifications(userName: string, userEmail: string): Promise<Notification[]> {
   const { data, error } = await getClient()
     .from('notifications')
     .select('*')
+    .or(`pour.eq.Tous,pour.eq.${userName},pour.eq.${userEmail}`)
     .order('created_at', { ascending: false })
     .limit(30)
   if (error) throw error
