@@ -136,35 +136,37 @@ export default function IdeasView() {
   return (
     <>
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 6, flex: 1, flexWrap: 'wrap' }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
           {STATUS_TABS.map(tab => {
             const active = filter === tab
             const count = tab === 'Toutes' ? ideas.length : ideas.filter(i => i.status === tab).length
             return (
-              <button key={tab} onClick={() => setFilter(tab)} style={{ padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: active ? 600 : 400, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-s)'}`, background: active ? 'var(--accent-bg)' : 'transparent', color: active ? 'var(--accent)' : 'var(--t1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <button key={tab} onClick={() => setFilter(tab)} style={{ padding: '7px 14px', borderRadius: 100, fontSize: 12, fontWeight: active ? 600 : 400, border: `1px solid ${active ? 'var(--accent)' : 'var(--border-s)'}`, background: active ? 'var(--accent-bg)' : 'transparent', color: active ? 'var(--accent)' : 'var(--t1)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                 {tab}
                 <span style={{ fontSize: 10, background: active ? 'rgba(124,106,245,0.2)' : 'var(--bg-2)', color: active ? 'var(--accent)' : 'var(--t2)', padding: '0 5px', borderRadius: 100 }}>{count}</span>
               </button>
             )
           })}
         </div>
-        {users.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {users.map(u => (
-              <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} title={u.name} style={{ width: 28, height: 28, borderRadius: '50%', background: filterUser === u.name ? u.color : `${u.color}30`, color: filterUser === u.name ? 'white' : u.color, border: `2px solid ${filterUser === u.name ? u.color : 'transparent'}`, cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          onClick={() => setModal({ open: true, idea: null })}
-          className="btn btn-primary"
-          style={{ padding: '6px 14px', fontSize: 12, flexShrink: 0 }}
-        >
-          + Nouvelle idée
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+          {users.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {users.map(u => (
+                <button key={u.name} onClick={() => setFilterUser(v => v === u.name ? '' : u.name)} title={u.name} style={{ width: 30, height: 30, borderRadius: '50%', background: filterUser === u.name ? u.color : `${u.color}30`, color: filterUser === u.name ? 'white' : u.color, border: `2px solid ${filterUser === u.name ? u.color : 'transparent'}`, cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                  {u.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => setModal({ open: true, idea: null })}
+            className="btn btn-primary"
+            style={{ padding: '7px 16px', fontSize: 12 }}
+          >
+            + Nouvelle idée
+          </button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (

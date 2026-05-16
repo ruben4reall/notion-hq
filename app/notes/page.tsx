@@ -142,12 +142,10 @@ export default function NotesPage() {
         width: active ? 260 : '100%',
         maxWidth: 320,
         borderRight: '1px solid var(--border-s)',
-        display: 'flex',
-        flexDirection: 'column',
         background: 'var(--bg-1)',
         flexShrink: 0,
-        transition: 'width 0.25s var(--ease-spring)',
-      }} className="lg:flex hidden lg:flex-col">
+        transition: 'width 0.25s ease',
+      }} className="hidden lg:flex lg:flex-col">
         {/* Header */}
         <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border-s)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -425,7 +423,7 @@ export default function NotesPage() {
           )}
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }} className="hidden lg:flex">
+        <div style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }} className="hidden lg:flex">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--border-l)' }}>
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>

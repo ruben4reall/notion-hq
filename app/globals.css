@@ -543,11 +543,6 @@ button:active:not(:disabled) {
     width: 100% !important;
   }
 
-  /* Grid adapts to single column */
-  .grid-cols-2 {
-    grid-template-columns: 1fr 1fr;
-  }
-
   /* Kanban column width on mobile */
   .kanban-col {
     min-width: 240px !important;
@@ -559,9 +554,14 @@ button:active:not(:disabled) {
     padding: 16px 14px 90px;
   }
 
+  /* Cards: slightly less padding on mobile */
+  .card {
+    border-radius: 14px !important;
+  }
+
   /* Touch-friendly tap targets */
   button, a {
-    min-height: 36px;
+    min-height: 40px;
   }
 
   /* Reduce card padding on mobile */
@@ -572,6 +572,16 @@ button:active:not(:disabled) {
   /* Input font size prevents iOS zoom */
   input, textarea, select {
     font-size: 16px !important;
+  }
+
+  /* Section titles slightly smaller */
+  .page-title {
+    font-size: 22px !important;
+  }
+
+  /* Badge tap targets */
+  .badge {
+    min-height: unset;
   }
 }
 

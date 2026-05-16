@@ -235,58 +235,57 @@ function CalendarContent() {
   return (
     <div className="page-container animate-in">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 className="page-title">Calendrier</h1>
-          <p className="page-subtitle">Tâches, RDV et évènements</p>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h1 className="page-title">Calendrier</h1>
+            <p className="page-subtitle">Tâches, RDV et évènements</p>
+          </div>
+          <button onClick={() => setModal({ open: true, date: todayStr })} style={{
+            padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+            background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer',
+            flexShrink: 0,
+          }}>
+            + Évènement
+          </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* iCal export */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <a href={icalUrl} target="_blank" rel="noreferrer" style={{
-            padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+            padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
             background: 'var(--bg-2)', color: 'var(--t1)',
             border: '1px solid var(--border-m)', textDecoration: 'none',
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 5,
           }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
               <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
             Export iCal
           </a>
-
-          {/* External calendar status */}
           {externalConnected ? (
             <div style={{
-              padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+              padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
               background: 'var(--green-bg)', color: 'var(--green)',
               border: '1px solid rgba(18,201,138,0.3)',
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
               iCal connecté
             </div>
           ) : (
             <a href="/settings" style={{
-              padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+              padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
               background: 'var(--bg-2)', color: 'var(--t1)',
               border: '1px solid var(--border-m)', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
                 <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
               Connecter un calendrier
             </a>
           )}
-
-          <button onClick={() => setModal({ open: true, date: todayStr })} style={{
-            padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-            background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer',
-          }}>
-            + Évènement
-          </button>
         </div>
       </div>
 

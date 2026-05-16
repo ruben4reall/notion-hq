@@ -178,6 +178,14 @@ const isPublic = pathname === '/login' || pathname.startsWith('/auth') || pathna
 | Org | `/org` | Sélecteur Netflix, modal création |
 | Auth | `/auth` | Login, register, animation ripple |
 
+### Audit visuel Playwright prod (session 2026-05-16)
+- ✅ Dashboard, Kanban, CRM, Calendrier, Roadmap, Idées, Time, Notes, Paramètres — aucune erreur serveur
+- ✅ Navigation TopNav cohérente sur toutes les pages
+- ✅ Thème dark + accent CSS variables appliqués partout
+- ✅ Empty states corrects sur toutes les pages
+- ✅ Modaux ouverture/fermeture testés (Kanban, CRM, Calendrier, Idées, Notes)
+- ℹ️ Kanban/CRM : overflow horizontal volontaire (scroll colonnes), pas un bug
+
 ### Fixes UI/UX déjà appliqués (session 2026-05-16)
 - ✅ EventModal calendrier → composant Modal partagé (zIndex 200, maxHeight 90dvh, close button)
 - ✅ Validation date start/end dans EventModal, TaskModal, CRMModal

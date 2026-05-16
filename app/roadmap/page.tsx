@@ -221,24 +221,24 @@ export default function RoadmapPage() {
       </div>
 
       {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexDirection: 'column' }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto', }}>
           {['Tous', ...ALL_MODULES].map(m => (
             <button key={m} onClick={() => setModuleFilter(m)} style={{
-              padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: moduleFilter === m ? 700 : 400,
+              padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: moduleFilter === m ? 700 : 400,
               background: moduleFilter === m ? 'var(--accent)' : 'transparent',
               color: moduleFilter === m ? 'white' : 'var(--t1)',
-              border: 'none', cursor: 'pointer',
+              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
             }}>{m}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto', }}>
           {['Tous', ...ALL_STATUSES].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)} style={{
-              padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: statusFilter === s ? 700 : 400,
+              padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400,
               background: statusFilter === s ? (STATUS_COLOR[s] ?? 'var(--accent)') : 'transparent',
               color: statusFilter === s ? 'white' : 'var(--t1)',
-              border: 'none', cursor: 'pointer',
+              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
             }}>{s}</button>
           ))}
         </div>
