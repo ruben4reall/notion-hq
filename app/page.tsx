@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import type { KPIData, Task } from '@/lib/types'
-
-const InfraWidget = lazy(() => import('@/components/InfraWidget'))
 
 const STATUS_COLORS: Record<string, string> = {
   Backlog:  'var(--t2)',
@@ -315,16 +313,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Infrastructure */}
-      <div style={{ marginTop: 28 }}>
-        <Suspense fallback={
-          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
-            {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 340, borderRadius: 14 }} />)}
-          </div>
-        }>
-          <InfraWidget />
-        </Suspense>
-      </div>
     </div>
   )
 }

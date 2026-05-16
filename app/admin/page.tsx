@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+
+const InfraWidget = lazy(() => import('@/components/InfraWidget'))
 
 interface Metrics {
   users: number
@@ -105,7 +107,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [activity, setActivity] = useState<ActivityEntry[] | null>(null)
   const [userSearch, setUserSearch] = useState('')
-  const [activeTab, setActiveTab] = useState<'users' | 'activity'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'activity' | 'infra'>('users')
 
   useEffect(() => {
     fetch('/api/admin/check')
@@ -225,19 +227,23 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 10, padding: 3, width: 'fit-content' }}>
-          {(['users', 'activity'] as const).map(tab => (
+        <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'var(--bg-1)', border: '1px solid var(--border-s)', borderRadius: 10, padding: 3, width: 'fit-content', flexWrap: 'wrap' }}>
+          {([
+            { id: 'users',    label: `Utilisateurs${users ? ` (${users.length})` : ''}` },
+            { id: 'activity', label: 'Activité récente' },
+            { id: 'infra',    label: '🔧 Infrastructure' },
+          ] as const).map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               style={{
                 padding: '7px 18px', borderRadius: 7, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                background: activeTab === tab ? 'var(--bg-3)' : 'transparent',
-                color: activeTab === tab ? 'var(--t0)' : 'var(--t2)',
+                background: activeTab === tab.id ? 'var(--bg-3)' : 'transparent',
+                color: activeTab === tab.id ? 'var(--t0)' : 'var(--t2)',
                 transition: 'all 0.15s',
               }}
             >
-              {tab === 'users' ? `Utilisateurs${users ? ` (${users.length})` : ''}` : 'Activité récente'}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -348,6 +354,18 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Infrastructure tab */}
+        {activeTab === 'infra' && (
+          <Suspense fallback={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 14 }} />)}
+            </div>
+          }>
+            <InfraWidget />
+          </Suspense>
+        )}
+
       </div>
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
