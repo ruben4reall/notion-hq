@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useOnboarding, SECTIONS } from '@/components/Onboarding'
@@ -21,9 +21,9 @@ const inputStyle: React.CSSProperties = {
   outline: 'none', transition: 'border-color 0.15s',
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, id }: { title: string; children: React.ReactNode; id?: string }) {
   return (
-    <div className="card" style={{ padding: '20px', marginBottom: 16 }}>
+    <div id={id} className="card" style={{ padding: '20px', marginBottom: 16 }}>
       <p className="section-title" style={{ marginBottom: 16 }}>{title}</p>
       {children}
     </div>
@@ -59,6 +59,7 @@ function Alert({ type, message }: { type: 'error' | 'success'; message: string }
 export default function SettingsPage() {
   const { user: session, signOut } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [superAdmin, setSuperAdmin] = useState(false)
 
@@ -75,6 +76,16 @@ export default function SettingsPage() {
   const [savingIcal, setSavingIcal] = useState(false)
   const [icalMsg, setIcalMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
   const exportUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/calendar.ics` : '/api/calendar.ics'
+
+  useEffect(() => {
+    const section = searchParams.get('section')
+    if (section) {
+      const el = document.getElementById(section)
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+      }
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetch('/api/settings')
@@ -252,7 +263,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Calendar */}
-      <Section title="Calendrier">
+      <Section title="Calendrier" id="calendar">
         <Field
           label="Importer un calendrier externe"
           hint="Collez l'URL iCal de votre Apple Calendar ou Google Calendar. Vos évènements apparaîtront dans l'app."

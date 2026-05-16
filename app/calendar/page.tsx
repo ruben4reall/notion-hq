@@ -538,7 +538,7 @@ function CalendarContent() {
               iCal connecté
             </div>
           ) : (
-            <a href="/settings" style={{
+            <a href="/settings?section=calendar" style={{
               padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
               background: 'var(--bg-2)', color: 'var(--t1)', border: '1px solid var(--border-m)',
               textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,

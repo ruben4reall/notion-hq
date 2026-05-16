@@ -59,7 +59,7 @@ export function TopNav() {
     >
       <div className="flex items-center h-full px-5 max-w-[1280px] mx-auto">
         {/* Brand */}
-        <div className="flex items-center gap-2.5 mr-8">
+        <Link href="/" className="flex items-center gap-2.5 mr-8" style={{ textDecoration: 'none' }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8, background: 'var(--accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -71,7 +71,7 @@ export function TopNav() {
           <span className="hidden sm:inline" style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--t0)' }}>
             Manager Dashboard
           </span>
-        </div>
+        </Link>
 
         {/* Desktop nav */}
         <nav className="hidden lg:flex items-center gap-1">
