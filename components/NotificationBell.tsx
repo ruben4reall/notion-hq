@@ -31,13 +31,13 @@ const TYPE_BG: Record<string, string> = {
   error:   'rgba(244,63,94,0.1)',
 }
 
-function relTime(iso: string) {
+function relTime(iso: string, t: (key: string, vars?: Record<string, string | number>) => string) {
   if (!iso) return ''
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d/60)}h`
-  return `il y a ${Math.floor(d/1440)}j`
+  if (d < 1) return t('justNow')
+  if (d < 60) return t('minutesAgo', { n: d })
+  if (d < 1440) return t('hoursAgo', { n: Math.floor(d/60) })
+  return t('daysAgo', { n: Math.floor(d/1440) })
 }
 
 export function NotificationBell() {
@@ -130,14 +130,14 @@ export function NotificationBell() {
           <p style={{ fontSize: 12, color: n.lu ? 'var(--t1)' : 'var(--t0)', lineHeight: 1.5 }}>{n.message}</p>
           <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
             {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
-            <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
+            <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt, t)}</span>
             {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>{t('seeArrow')}</span>}
           </div>
         </div>
         <button
           onClick={e => { e.stopPropagation(); deleteNotifs([n.id]) }}
           style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: '0 2px', fontSize: 14, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
-          title="Supprimer"
+          title={t('delete')}
         >×</button>
       </div>
     )

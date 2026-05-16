@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface OnlineUser { display_name: string; username: string; last_seen: string; connected_at: string }
 interface PageStat   { page: string; visits: number; avg_sec: number; total_sec: number }
@@ -31,7 +32,18 @@ interface InfraData {
   hasVercelToken: boolean
 }
 
-// ── Utils ──────────────────────────────────────────────────────
+// ── Utils ──────────────────────────────────────────────
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+function makeRelTime(t: TFn) {
+  return (ts: string | number) => {
+    const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60_000)
+    if (m < 1) return t('justNow')
+    if (m < 60) return t('minutesAgo', { n: m })
+    return t('hoursAgo', { n: Math.floor(m/60) })
+  }
+}
+
 function fmt(bytes: number) {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
   if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
@@ -48,23 +60,8 @@ function fmtNum(n: number) {
   if (n >= 1_000)     return `${(n/1_000).toFixed(0)}K`
   return String(n)
 }
-function relTime(ts: string | number) {
-  const diff = Date.now() - new Date(ts).getTime()
-  const m = Math.floor(diff / 60_000)
-  if (m < 1) return "à l'instant"
-  if (m < 60) return `il y a ${m}m`
-  return `il y a ${Math.floor(m/60)}h`
-}
-function pageName(path: string) {
-  const map: Record<string, string> = {
-    '/': 'Dashboard', '/kanban': 'Kanban', '/crm': 'CRM',
-    '/calendar': 'Calendrier', '/roadmap': 'Roadmap', '/ideas': 'Idées',
-    '/time': 'Time', '/notes': 'Notes', '/settings': 'Paramètres',
-  }
-  return map[path] ?? path
-}
 
-// ── Sparkline ─────────────────────────────────────────────────
+// ── Sparkline ─────────────────────────────────────────
 function Sparkline({ data, color, height = 44 }: { data: number[]; color: string; height?: number }) {
   if (data.length < 2) return <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ fontSize:11, color:'var(--t2)' }}>—</span></div>
   const max = Math.max(...data, 1); const min = Math.min(...data, 0); const range = max - min || 1
@@ -92,7 +89,7 @@ function Sparkline({ data, color, height = 44 }: { data: number[]; color: string
   )
 }
 
-// ── Bar ───────────────────────────────────────────────────────
+// ── Bar ───────────────────────────────────────────────
 function UsageBar({ label, used, limit, fmtFn = fmt, sub }: { label: string; used: number; limit: number; fmtFn?: (n:number)=>string; sub?: string }) {
   const pct = limit > 0 ? Math.min((used/limit)*100, 100) : 0
   const color = pct > 80 ? '#f43f5e' : pct > 60 ? '#f59e0b' : '#0ec98c'
@@ -112,14 +109,14 @@ function UsageBar({ label, used, limit, fmtFn = fmt, sub }: { label: string; use
   )
 }
 
-// ── Hourly heatmap ────────────────────────────────────────────
+// ── Hourly heatmap ────────────────────────────────────
 function HourlyHeatmap({ data }: { data: HourStat[] }) {
   const max = Math.max(...data.map(d=>d.visits), 1)
   return (
     <div>
       <div style={{ display:'flex', gap:2 }}>
         {data.map(d => (
-          <div key={d.hour} title={`${d.hour}h — ${d.visits} visite${d.visits>1?'s':''}`}
+          <div key={d.hour} title={`${d.hour}h — ${d.visits}`}
             style={{ flex:1, height:28, borderRadius:3, background: d.visits === 0 ? 'var(--bg-3)' : `rgba(var(--accent-rgb),${0.1 + (d.visits/max)*0.85})`, cursor:'default', transition:'background 0.2s' }}/>
         ))}
       </div>
@@ -132,7 +129,7 @@ function HourlyHeatmap({ data }: { data: HourStat[] }) {
   )
 }
 
-// ── Status pill ───────────────────────────────────────────────
+// ── Status pill ───────────────────────────────────────
 function Pill({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600,
@@ -148,14 +145,26 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <p style={{ fontSize:11, color:'var(--t2)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>{children}</p>
 }
 
-// ── Main ──────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────
 export default function InfraWidget() {
+  const { t } = useLanguage()
   const [data, setData] = useState<InfraData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/infra').then(r=>r.ok?r.json():null).then(d=>{if(d)setData(d)}).finally(()=>setLoading(false))
   }, [])
+
+  const relTime = makeRelTime(t)
+
+  function pageName(path: string) {
+    const map: Record<string, string> = {
+      '/': t('dashboard'), '/kanban': t('kanban'), '/crm': t('crm'),
+      '/calendar': t('calendar'), '/roadmap': t('roadmap'), '/ideas': t('ideas'),
+      '/time': t('time'), '/notes': t('notes'), '/settings': t('settings'),
+    }
+    return map[path] ?? path
+  }
 
   if (loading) return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
@@ -166,7 +175,14 @@ export default function InfraWidget() {
 
   const lastDeploy  = data.vercelDeployments[0]
   const maxPageVisits = Math.max(...data.pageStats.map(p=>p.visits), 1)
-  const maxTableBytes = Math.max(...(data.sbMetrics?.table_sizes.map(t=>t.bytes)??[]), 1)
+  const maxTableBytes = Math.max(...(data.sbMetrics?.table_sizes.map(tk=>tk.bytes)??[]), 1)
+
+  const TABLE_LABELS: Record<string,string> = {
+    tasks: t('kanban'), crm: t('crm'), ideas: t('ideas'),
+    events: 'Events', notes: t('notes'), time_sessions: 'Sessions',
+    notifications: 'Notifs', presence: t('online'),
+    chat_messages: 'Chat', organizations: 'Orgs', org_members: t('memberRole'),
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
@@ -174,16 +190,16 @@ export default function InfraWidget() {
       {/* ── ROW 1: Live + Stats globaux ──────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap:16 }}>
 
-        {/* Users en ligne */}
+        {/* Users online */}
         <div className="card" style={{ padding:20 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>Utilisateurs en ligne</span>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>{t('usersOnlineLabel')}</span>
             <span style={{ fontSize:20, fontWeight:800, color: data.onlineUsers.length>0?'#0ec98c':'var(--t2)' }}>
               {data.onlineUsers.length}
             </span>
           </div>
           {data.onlineUsers.length === 0
-            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'12px 0' }}>Aucun utilisateur actif</p>
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'12px 0' }}>{t('noActiveUsers')}</p>
             : data.onlineUsers.map(u => (
               <div key={u.username} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border-s)' }}>
                 <span style={{ width:8, height:8, borderRadius:'50%', background:'#0ec98c', boxShadow:'0 0 6px #0ec98c', flexShrink:0 }}/>
@@ -198,13 +214,13 @@ export default function InfraWidget() {
 
         {/* Stats globaux analytics */}
         <div className="card" style={{ padding:20 }}>
-          <p style={{ fontSize:13, fontWeight:700, color:'var(--t0)', marginBottom:14 }}>Analytics 30 jours</p>
+          <p style={{ fontSize:13, fontWeight:700, color:'var(--t0)', marginBottom:14 }}>{t('analytics30d')}</p>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             {[
-              { label:'Visites totales', value: fmtNum(data.totalVisits), color:'var(--accent)' },
-              { label:'Durée moy.', value: data.avgSessionSec > 0 ? fmtDuration(data.avgSessionSec) : '—', color:'#4f8ef7' },
-              { label:'Lignes en DB', value: fmtNum(data.totalRows), color:'#0ec98c' },
-              { label:'Ping DB', value: `${data.ping}ms`, color: data.ping < 100 ? '#0ec98c' : data.ping < 300 ? '#f59e0b' : '#f43f5e' },
+              { label: t('totalVisitsLabel'), value: fmtNum(data.totalVisits), color:'var(--accent)' },
+              { label: t('avgDurationLabel'), value: data.avgSessionSec > 0 ? fmtDuration(data.avgSessionSec) : '—', color:'#4f8ef7' },
+              { label: t('totalRowsLabel'), value: fmtNum(data.totalRows), color:'#0ec98c' },
+              { label: t('pingDbLabel'), value: `${data.ping}ms`, color: data.ping < 100 ? '#0ec98c' : data.ping < 300 ? '#f59e0b' : '#f43f5e' },
             ].map(s => (
               <div key={s.label} style={{ background:'var(--bg-2)', borderRadius:8, padding:'10px 12px' }}>
                 <p style={{ fontSize:10, color:'var(--t2)', fontWeight:500 }}>{s.label}</p>
@@ -222,17 +238,17 @@ export default function InfraWidget() {
           </div>
           {data.sbMetrics ? (
             <>
-              <UsageBar label="Base de données" used={data.sbMetrics.db_bytes} limit={data.sbLimits.db_size}/>
+              <UsageBar label={t('dbLabel')} used={data.sbMetrics.db_bytes} limit={data.sbLimits.db_size}/>
               <UsageBar label="Storage" used={data.sbMetrics.storage_bytes} limit={data.sbLimits.storage}/>
-              <UsageBar label="Comptes plateforme (tous orgs)" used={data.sbMetrics.auth_users} limit={data.sbLimits.auth_users} fmtFn={fmtNum}/>
+              <UsageBar label={t('platformAccountsLabel')} used={data.sbMetrics.auth_users} limit={data.sbLimits.auth_users} fmtFn={fmtNum}/>
               <div style={{ display:'flex', gap:16, marginTop:8 }}>
-                <span style={{ fontSize:10, color:'var(--t2)' }}>Sessions actives <b style={{ color:'var(--t0)' }}>{data.sbMetrics.active_sessions}</b></span>
+                <span style={{ fontSize:10, color:'var(--t2)' }}>{t('activeSessionsLabel')} <b style={{ color:'var(--t0)' }}>{data.sbMetrics.active_sessions}</b></span>
                 <span style={{ fontSize:10, color:'var(--t2)' }}>PG <b style={{ color:'var(--t0)' }}>{data.sbMetrics.pg_version}</b></span>
               </div>
             </>
           ) : (
             <p style={{ fontSize:11, color:'var(--t2)', lineHeight:1.6 }}>
-              💡 Ajoute <code style={{ background:'var(--bg-3)', padding:'1px 5px', borderRadius:4, fontSize:10 }}>SUPABASE_ACCESS_TOKEN</code> pour les métriques réelles
+              💡 {t('supabaseMetricsHint')}
             </p>
           )}
         </div>
@@ -243,14 +259,14 @@ export default function InfraWidget() {
 
         {/* Top pages */}
         <div className="card lg:col-span-1" style={{ padding:20 }}>
-          <SectionTitle>Pages les plus visitées (30j)</SectionTitle>
+          <SectionTitle>{t('topPages30d')}</SectionTitle>
           {data.pageStats.length === 0
-            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>Pas encore de données — les visites s'enregistrent en temps réel</p>
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>{t('noDataYet')}</p>
             : data.pageStats.map(p => (
               <div key={p.page} style={{ marginBottom:10 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                   <span style={{ fontSize:12, color:'var(--t0)', fontWeight:500 }}>{pageName(p.page)}</span>
-                  <span style={{ fontSize:11, color:'var(--t2)' }}>{p.visits}v · {fmtDuration(p.avg_sec)} moy</span>
+                  <span style={{ fontSize:11, color:'var(--t2)' }}>{p.visits}v · {fmtDuration(p.avg_sec)} {t('avgAbbr')}</span>
                 </div>
                 <div style={{ height:4, background:'var(--bg-3)', borderRadius:100, overflow:'hidden' }}>
                   <div style={{ height:'100%', width:`${(p.visits/maxPageVisits)*100}%`, background:'var(--accent)', borderRadius:100 }}/>
@@ -262,25 +278,25 @@ export default function InfraWidget() {
 
         {/* Heatmap horaire + sparkline */}
         <div className="card" style={{ padding:20 }}>
-          <SectionTitle>Activité horaire (7 derniers jours)</SectionTitle>
+          <SectionTitle>{t('hourlyActivity7d')}</SectionTitle>
           <HourlyHeatmap data={data.hourlyActivity}/>
           <div style={{ marginTop:20 }}>
-            <SectionTitle>Croissance lignes DB (14j)</SectionTitle>
+            <SectionTitle>{t('dbGrowth14d')}</SectionTitle>
             <Sparkline data={data.sbMetrics?.db_history.length ? data.sbMetrics.db_history : data.rowHistory.map(r=>r.value)} color="var(--accent)" height={48}/>
           </div>
         </div>
 
         {/* Top utilisateurs */}
         <div className="card" style={{ padding:20 }}>
-          <SectionTitle>Utilisateurs les plus actifs (30j)</SectionTitle>
+          <SectionTitle>{t('mostActiveUsers30d')}</SectionTitle>
           {data.topUsers.length === 0
-            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>Pas encore de données</p>
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>{t('noDataShort')}</p>
             : data.topUsers.map((u, i) => (
               <div key={u.username} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border-s)' }}>
                 <span style={{ fontSize:11, fontWeight:700, color:'var(--t2)', width:16, textAlign:'center', flexShrink:0 }}>#{i+1}</span>
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:12, fontWeight:600, color:'var(--t0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.username}</p>
-                  <p style={{ fontSize:10, color:'var(--t2)' }}>{u.visits} visites · {fmtDuration(u.total_sec)} total</p>
+                  <p style={{ fontSize:10, color:'var(--t2)' }}>{t('visitCount', { n: u.visits })} · {fmtDuration(u.total_sec)} total</p>
                 </div>
               </div>
             ))
@@ -296,7 +312,7 @@ export default function InfraWidget() {
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
             <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>▲ Vercel</span>
             {lastDeploy
-              ? <Pill ok={lastDeploy.state==='READY'} label={lastDeploy.state==='READY'?`Déployé · ${relTime(lastDeploy.created)}`:'Erreur'}/>
+              ? <Pill ok={lastDeploy.state==='READY'} label={lastDeploy.state==='READY' ? `${t('deployedLabel')} · ${relTime(lastDeploy.created)}` : t('monitorError')}/>
               : <Pill ok label="Production"/>
             }
           </div>
@@ -309,7 +325,7 @@ export default function InfraWidget() {
             const vals = Object.entries(buckets).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v)
             return (
               <div style={{ marginBottom:14 }}>
-                <SectionTitle>Déploiements (14j)</SectionTitle>
+                <SectionTitle>{t('deploymentsChart')}</SectionTitle>
                 <Sparkline data={vals} color="#7c6af5" height={36}/>
               </div>
             )
@@ -331,15 +347,15 @@ export default function InfraWidget() {
 
           {!data.hasVercelToken && (
             <p style={{ fontSize:11, color:'var(--t2)', marginTop:10, lineHeight:1.6 }}>
-              💡 Ajoute <code style={{ background:'var(--bg-3)', padding:'1px 5px', borderRadius:4, fontSize:10 }}>VERCEL_TOKEN</code> pour les déploiements
+              💡 {t('vercelTokenHint')}
             </p>
           )}
 
           {/* Limits reminder */}
           <div style={{ marginTop:14, padding:'10px 12px', background:'var(--bg-2)', borderRadius:8 }}>
-            <span style={{ fontSize:10, color:'var(--t2)', fontWeight:600, display:'block', marginBottom:6 }}>PLAN HOBBY — LIMITES</span>
+            <span style={{ fontSize:10, color:'var(--t2)', fontWeight:600, display:'block', marginBottom:6 }}>{t('hobbyPlanTitle')}</span>
             <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-              {[['Bandwidth','100 GB/mois'],['Build','6 000 min/mois'],['Deploys','100/jour'],['Fonctions','100 GB-h']].map(([l,v])=>(
+              {[['Bandwidth','100 GB/mo'],['Build','6,000 min/mo'],['Deploys','100/day'],['Functions','100 GB-h']].map(([l,v])=>(
                 <span key={l} style={{ fontSize:10, color:'var(--t2)' }}>{l} <b style={{ color:'var(--t1)' }}>{v}</b></span>
               ))}
             </div>
@@ -348,29 +364,28 @@ export default function InfraWidget() {
 
         {/* Table disk sizes */}
         <div className="card" style={{ padding:20 }}>
-          <SectionTitle>Taille des tables ({data.sbMetrics ? fmt(data.sbMetrics.db_bytes) : '—'} total)</SectionTitle>
+          <SectionTitle>{t('tableSizesLabel')} ({data.sbMetrics ? fmt(data.sbMetrics.db_bytes) : '—'} total)</SectionTitle>
           {data.sbMetrics?.table_sizes.length
-            ? data.sbMetrics.table_sizes.map(t => (
-              <div key={t.tablename} style={{ marginBottom:8 }}>
+            ? data.sbMetrics.table_sizes.map(tk => (
+              <div key={tk.tablename} style={{ marginBottom:8 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                  <span style={{ fontSize:11, color:'var(--t1)' }}>{t.tablename}</span>
-                  <span style={{ fontSize:11, color:'var(--t0)', fontWeight:600 }}>{fmt(t.bytes)}</span>
+                  <span style={{ fontSize:11, color:'var(--t1)' }}>{tk.tablename}</span>
+                  <span style={{ fontSize:11, color:'var(--t0)', fontWeight:600 }}>{fmt(tk.bytes)}</span>
                 </div>
                 <div style={{ height:4, background:'var(--bg-3)', borderRadius:100, overflow:'hidden' }}>
-                  <div style={{ height:'100%', width:`${(t.bytes/maxTableBytes)*100}%`, background:'rgba(var(--accent-rgb),0.6)', borderRadius:100 }}/>
+                  <div style={{ height:'100%', width:`${(tk.bytes/maxTableBytes)*100}%`, background:'rgba(var(--accent-rgb),0.6)', borderRadius:100 }}/>
                 </div>
               </div>
             ))
             : (
               <>
-                <SectionTitle>Lignes par table</SectionTitle>
+                <SectionTitle>{t('rowsPerTableLabel')}</SectionTitle>
                 {(() => {
                   const maxR = Math.max(...Object.values(data.tableCounts), 1)
-                  const LABELS: Record<string,string> = { tasks:'Tâches', crm:'CRM', ideas:'Idées', events:'Events', notes:'Notes', time_sessions:'Sessions', notifications:'Notifs', presence:'Présence', chat_messages:'Chat', organizations:'Orgs', org_members:'Membres' }
-                  return Object.entries(data.tableCounts).filter(([,v])=>v>0).sort(([,a],[,b])=>b-a).map(([t,c])=>(
-                    <div key={t} style={{ marginBottom:8 }}>
+                  return Object.entries(data.tableCounts).filter(([,v])=>v>0).sort(([,a],[,b])=>b-a).map(([tk,c])=>(
+                    <div key={tk} style={{ marginBottom:8 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                        <span style={{ fontSize:11, color:'var(--t1)' }}>{LABELS[t]??t}</span>
+                        <span style={{ fontSize:11, color:'var(--t1)' }}>{TABLE_LABELS[tk]??tk}</span>
                         <span style={{ fontSize:11, color:'var(--t0)', fontWeight:600 }}>{c}</span>
                       </div>
                       <div style={{ height:4, background:'var(--bg-3)', borderRadius:100 }}>

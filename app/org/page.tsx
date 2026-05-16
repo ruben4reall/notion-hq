@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Project {
   id: string
@@ -45,6 +46,7 @@ function ProjectCard({ project, delay, onSelect, onManage }: {
   onSelect: () => void
   onManage: (e: React.MouseEvent) => void
 }) {
+  const { t } = useLanguage()
   const [hovered, setHovered] = useState(false)
   const color = projectColor(project.id)
   return (
@@ -81,7 +83,7 @@ function ProjectCard({ project, delay, onSelect, onManage }: {
       <div style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)', marginBottom: 2 }}>{project.name}</p>
         <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 6 }}>
-          {project.member_count} membre{project.member_count > 1 ? 's' : ''} · {project.role === 'admin' ? 'Admin' : 'Membre'}
+          {t('memberCountN', { n: project.member_count })} · {project.role === 'admin' ? 'Admin' : t('memberRole')}
         </p>
         <button
           onClick={onManage}
@@ -92,7 +94,7 @@ function ProjectCard({ project, delay, onSelect, onManage }: {
             opacity: hovered ? 1 : 0.6, transition: 'opacity 0.2s',
           }}
         >
-          Gérer
+          {t('manage')}
         </button>
       </div>
     </div>
@@ -100,6 +102,7 @@ function ProjectCard({ project, delay, onSelect, onManage }: {
 }
 
 function AddCard({ delay, onClick, disabled }: { delay: number; onClick: () => void; disabled: boolean }) {
+  const { t } = useLanguage()
   const [hovered, setHovered] = useState(false)
   return (
     <button
@@ -129,9 +132,9 @@ function AddCard({ delay, onClick, disabled }: { delay: number; onClick: () => v
       </div>
       <div style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: hovered && !disabled ? 'var(--accent)' : 'var(--t2)', transition: 'color 0.2s' }}>
-          Nouveau
+          {t('newProjectLabel')}
         </p>
-        {disabled && <p style={{ fontSize: 10, color: 'var(--t2)' }}>Max 5 projets</p>}
+        {disabled && <p style={{ fontSize: 10, color: 'var(--t2)' }}>{t('maxProjects')}</p>}
       </div>
     </button>
   )
@@ -139,14 +142,21 @@ function AddCard({ delay, onClick, disabled }: { delay: number; onClick: () => v
 
 // ── Typeform creation modal ───────────────────────────────────────────────────
 
-const USAGE_OPTIONS = [
-  { id: 'startup', label: 'Startup', icon: '🚀', desc: 'Équipe en phase de lancement' },
-  { id: 'agency', label: 'Agence', icon: '🎨', desc: 'Studio ou agence créative' },
-  { id: 'freelance', label: 'Freelance', icon: '💼', desc: 'Projets clients solo' },
-  { id: 'team', label: 'Équipe', icon: '👥', desc: 'Département ou groupe interne' },
+const USAGE_ICONS = [
+  { id: 'startup', icon: '🚀' },
+  { id: 'agency', icon: '🎨' },
+  { id: 'freelance', icon: '💼' },
+  { id: 'team', icon: '👥' },
 ]
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const { t } = useLanguage()
+  const USAGE_OPTIONS = [
+    { id: 'startup', label: 'Startup', icon: '🚀', desc: t('orgTypeStartup') },
+    { id: 'agency', label: t('orgTypeAgency'), icon: '🎨', desc: t('orgTypeAgencyDesc') },
+    { id: 'freelance', label: 'Freelance', icon: '💼', desc: t('orgTypeFreelanceDesc') },
+    { id: 'team', label: t('teamLabel'), icon: '👥', desc: t('orgTypeTeamDesc') },
+  ]
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [usage, setUsage] = useState('')
@@ -175,7 +185,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
       body: JSON.stringify({ name: name.trim(), usage: selectedUsage }),
     })
     const data = await res.json()
-    if (!res.ok) { setError(data.error || 'Erreur'); setSaving(false); return }
+    if (!res.ok) { setError(data.error || t('genericError')); setSaving(false); return }
     onCreated(data.id)
   }
 
@@ -208,8 +218,8 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         <div style={{ padding: '48px 40px 40px', minHeight: 300, position: 'relative', overflow: 'hidden' }}>
           <div key={`s0-${animKey}`} style={slideStyle(0)}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Question 1 / 2</p>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.2 }}>Comment s'appelle<br />votre projet ?</h2>
-            <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 32 }}>Choisissez un nom qui représente votre projet ou équipe.</p>
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.2 }}>{t('orgCreateQuestion1')}<br />{t('orgCreateQuestion1b')}</h2>
+            <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 32 }}>{t('orgProjectNameHint')}</p>
             <input
               ref={inputRef} value={name} onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && name.trim()) goStep(1); if (e.key === 'Escape') onClose() }}
@@ -221,19 +231,19 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
               }}
             />
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={onClose} style={{ height: 46, padding: '0 20px', borderRadius: 12, border: '1px solid var(--border-m)', background: 'transparent', color: 'var(--t2)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={onClose} style={{ height: 46, padding: '0 20px', borderRadius: 12, border: '1px solid var(--border-m)', background: 'transparent', color: 'var(--t2)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('cancel')}</button>
               <button onClick={() => name.trim() && goStep(1)} disabled={!name.trim()} style={{ height: 46, padding: '0 28px', borderRadius: 12, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 14, fontWeight: 700, cursor: name.trim() ? 'pointer' : 'not-allowed', opacity: name.trim() ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity 0.2s' }}>
-                Continuer
+                {t('continue')}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 14 }}>Appuyez sur <kbd style={{ background: 'var(--bg-3)', padding: '1px 5px', borderRadius: 4, fontSize: 10 }}>Entrée ↵</kbd> pour continuer</p>
+            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 14 }}>{t('orgEnterHint')}</p>
           </div>
 
           <div key={`s1-${animKey}`} style={slideStyle(1)}>
             <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Question 2 / 2</p>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.2 }}>C'est pour quel<br />type de projet ?</h2>
-            <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>Sélectionnez ce qui correspond le mieux à <strong style={{ color: 'var(--t1)' }}>{name}</strong>.</p>
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--t0)', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.2 }}>{t('orgCreateQuestion2')}<br />{t('orgCreateQuestion2b')}</h2>
+            <p style={{ fontSize: 14, color: 'var(--t2)', marginBottom: 28 }}>{t('orgSelectType')} <strong style={{ color: 'var(--t1)' }}>{name}</strong>.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
               {USAGE_OPTIONS.map((opt, i) => (
                 <button key={opt.id} onClick={() => { setUsage(opt.id); create(opt.id) }} disabled={saving}
@@ -256,7 +266,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             {error && <p style={{ fontSize: 12, color: '#f43f5e', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
             <button onClick={() => goStep(0)} style={{ background: 'none', border: 'none', color: 'var(--t2)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Retour
+              {t('back')}
             </button>
           </div>
 
@@ -266,8 +276,8 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--t0)', marginBottom: 4 }}>Création en cours…</p>
-                <p style={{ fontSize: 13, color: 'var(--t2)' }}>On prépare votre projet</p>
+                <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--t0)', marginBottom: 4 }}>{t('creatingProject')}</p>
+                <p style={{ fontSize: 13, color: 'var(--t2)' }}>{t('preparingProject')}</p>
               </div>
             </div>
           )}
@@ -286,6 +296,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 interface AppUser { id: string; name: string; email: string; color: string }
 
 function ManageModal({ project, onClose, onDeleted }: { project: Project; onClose: () => void; onDeleted: () => void }) {
+  const { t } = useLanguage()
   const [members, setMembers] = useState<Member[]>([])
   const [pendingInvites, setPendingInvites] = useState<{ id: string; invited_email: string }[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
@@ -353,7 +364,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
     })
     const data = await res.json()
     if (!res.ok) { setInviteError(data.error); setInviting(false); return }
-    setInviteSuccess('Invitation envoyée !')
+    setInviteSuccess(t('inviteSent'))
     setInviteEmail('')
     setPendingInvites(p => [...p, { id: Date.now().toString(), invited_email: inviteEmail.trim() }])
     setInviting(false)
@@ -388,7 +399,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
           </div>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--t0)', marginBottom: 2 }}>{project.name}</h2>
-            <p style={{ fontSize: 12, color: 'var(--t2)' }}>{project.role === 'admin' ? 'Administrateur' : 'Membre'}</p>
+            <p style={{ fontSize: 12, color: 'var(--t2)' }}>{project.role === 'admin' ? t('administratorRole') : t('memberRole')}</p>
           </div>
           <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', padding: 4 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -397,7 +408,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
 
         <div style={{ padding: '20px 28px' }}>
           {/* Members */}
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>Membres</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>{t('teamLabel')}</p>
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
               <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--border-m)', borderTopColor: 'var(--accent)', animation: 'spin 0.7s linear infinite' }} />
@@ -411,10 +422,10 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</p>
-                    <p style={{ fontSize: 11, color: 'var(--t2)' }}>{m.role === 'admin' ? 'Admin' : 'Membre'}</p>
+                    <p style={{ fontSize: 11, color: 'var(--t2)' }}>{m.role === 'admin' ? 'Admin' : t('memberRole')}</p>
                   </div>
                   {project.role === 'admin' && m.role !== 'admin' && (
-                    <button onClick={() => removeMember(m.id)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 12, padding: '2px 8px' }}>Retirer</button>
+                    <button onClick={() => removeMember(m.id)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 12, padding: '2px 8px' }}>{t('removeBtn')}</button>
                   )}
                 </div>
               ))}
@@ -424,13 +435,13 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
           {/* Pending invitations */}
           {pendingInvites.length > 0 && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>En attente</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>{t('pendingLabel')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
                 {pendingInvites.map(inv => (
                   <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-2)', borderRadius: 10, opacity: 0.7 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--t2)', flexShrink: 0 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="1.8"/><polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.8"/></svg>
                     <p style={{ fontSize: 12, color: 'var(--t1)', flex: 1 }}>{inv.invited_email}</p>
-                    <span style={{ fontSize: 10, color: 'var(--t2)', background: 'var(--bg-3)', padding: '2px 6px', borderRadius: 4 }}>En attente</span>
+                    <span style={{ fontSize: 10, color: 'var(--t2)', background: 'var(--bg-3)', padding: '2px 6px', borderRadius: 4 }}>{t('pendingLabel')}</span>
                   </div>
                 ))}
               </div>
@@ -440,7 +451,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
           {/* Invite form (admin only) */}
           {project.role === 'admin' && (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Inviter un membre</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>{t('inviteSection')}</p>
               <div ref={inviteRef} style={{ position: 'relative', marginBottom: 8 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {selectedUser ? (
@@ -464,7 +475,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
                     onClick={invite} disabled={inviting || !inviteEmail.trim()}
                     style={{ padding: '10px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: inviting ? 'not-allowed' : 'pointer', opacity: (inviting || !inviteEmail.trim()) ? 0.5 : 1, whiteSpace: 'nowrap' }}
                   >
-                    {inviting ? '…' : 'Inviter'}
+                    {inviting ? '…' : t('inviteBtn')}
                   </button>
                 </div>
 
@@ -501,15 +512,15 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border-s)' }}>
               {!confirmDelete ? (
                 <button onClick={() => setConfirmDelete(true)} style={{ width: '100%', padding: '10px', background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 10, color: 'var(--red)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Supprimer le projet
+                  {t('deleteProjectBtn')}
                 </button>
               ) : (
                 <div style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 10, padding: 16 }}>
-                  <p style={{ fontSize: 13, color: 'var(--t0)', marginBottom: 12, fontWeight: 600 }}>Supprimer "{project.name}" ?</p>
-                  <p style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 14 }}>Cette action est irréversible. Toutes les données du projet seront perdues.</p>
+                  <p style={{ fontSize: 13, color: 'var(--t0)', marginBottom: 12, fontWeight: 600 }}>{t('deleteProjectConfirmTitle', { n: project.name })}</p>
+                  <p style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 14 }}>{t('orgDeleteWarning')}</p>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '8px', background: 'var(--bg-3)', border: 'none', borderRadius: 8, color: 'var(--t1)', fontSize: 13, cursor: 'pointer' }}>Annuler</button>
-                    <button onClick={deleteProject} style={{ flex: 1, padding: '8px', background: 'var(--red)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Supprimer</button>
+                    <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '8px', background: 'var(--bg-3)', border: 'none', borderRadius: 8, color: 'var(--t1)', fontSize: 13, cursor: 'pointer' }}>{t('cancel')}</button>
+                    <button onClick={deleteProject} style={{ flex: 1, padding: '8px', background: 'var(--red)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('delete')}</button>
                   </div>
                 </div>
               )}
@@ -525,6 +536,7 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
 // ── Invitation button (top-right) ─────────────────────────────────────────────
 
 function InvitationButton({ invitations, onHandled }: { invitations: Invitation[]; onHandled: () => void }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [handling, setHandling] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement | undefined>(undefined)
@@ -589,10 +601,10 @@ function InvitationButton({ invitations, onHandled }: { invitations: Invitation[
           overflow: 'hidden', animation: 'slideDown 0.18s ease both',
         }}>
           <div style={{ padding: '13px 16px 10px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Invitations</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('invitationsTitle')}</p>
             {count > 0 && (
               <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 20 }}>
-                {count} en attente
+                {t('invitePendingN', { n: count })}
               </span>
             )}
           </div>
@@ -603,7 +615,7 @@ function InvitationButton({ invitations, onHandled }: { invitations: Invitation[
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="1.5"/>
                 <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.5"/>
               </svg>
-              <p style={{ fontSize: 13, color: 'var(--t2)' }}>Aucune invitation en attente</p>
+              <p style={{ fontSize: 13, color: 'var(--t2)' }}>{t('noInvitations')}</p>
             </div>
           ) : (
             <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
@@ -627,7 +639,7 @@ function InvitationButton({ invitations, onHandled }: { invitations: Invitation[
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inv.project_name}</p>
-                      <p style={{ fontSize: 11, color: 'var(--t2)' }}>Invitation en attente</p>
+                      <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('invitationPending')}</p>
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
@@ -638,7 +650,7 @@ function InvitationButton({ invitations, onHandled }: { invitations: Invitation[
                         onClick={() => handle(inv.id, 'accept')} disabled={handling === inv.id}
                         style={{ padding: '0 10px', height: 28, background: color, border: 'none', borderRadius: 7, color: 'white', fontSize: 11, cursor: handling === inv.id ? 'not-allowed' : 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
                       >
-                        {handling === inv.id ? '…' : 'Rejoindre'}
+                        {handling === inv.id ? '…' : t('joinBtn')}
                       </button>
                     </div>
                   </div>
@@ -656,6 +668,7 @@ function InvitationButton({ invitations, onHandled }: { invitations: Invitation[
 
 export default function OrgPage() {
   const { user, status } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
@@ -706,9 +719,9 @@ export default function OrgPage() {
         <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 8px 32px var(--accent-glow)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
         </div>
-        <h1 style={{ fontSize: 30, fontWeight: 900, color: 'var(--t0)', letterSpacing: '-0.03em', marginBottom: 8 }}>Mes projets</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 900, color: 'var(--t0)', letterSpacing: '-0.03em', marginBottom: 8 }}>{t('myProjectsTitle')}</h1>
         <p style={{ fontSize: 14, color: 'var(--t2)' }}>
-          Connecté en tant que <strong style={{ color: 'var(--t1)' }}>{user?.name}</strong>
+          {t('connectedAs')} <strong style={{ color: 'var(--t1)' }}>{user?.name}</strong>
         </p>
       </div>
 
@@ -736,7 +749,7 @@ export default function OrgPage() {
 
       {projects.length === 0 && !loading && (
         <p style={{ marginTop: 16, fontSize: 13, color: 'var(--t2)', animation: 'fadeIn 0.4s ease both' }}>
-          Créez votre premier projet ou attendez une invitation.
+          {t('orgNoProjectsHint')}
         </p>
       )}
 

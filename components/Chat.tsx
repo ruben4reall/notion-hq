@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { playNotifSound } from '@/lib/sounds'
 import { useUsers } from './UserPicker'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface ChatMessage {
   id: string
@@ -34,12 +35,12 @@ function initials(name: string) {
   return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function relTime(iso: string) {
+function relTime(iso: string, t: (key: string, vars?: Record<string, string | number>) => string) {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (d < 1) return "à l'instant"
-  if (d < 60) return `il y a ${d}m`
-  if (d < 1440) return `il y a ${Math.floor(d / 60)}h`
-  return `il y a ${Math.floor(d / 1440)}j`
+  if (d < 1) return t('justNow')
+  if (d < 60) return t('minutesAgo', { n: d })
+  if (d < 1440) return t('hoursAgo', { n: Math.floor(d / 60) })
+  return t('daysAgo', { n: Math.floor(d / 1440) })
 }
 
 const ACCENT_COLORS = ['#7c6af5', '#4f8ef7', '#0ec98c', '#f59e0b', '#a855f7', '#f43f5e']
@@ -56,6 +57,7 @@ function convKey(type: 'group' | 'dm', withUser?: string) {
 // ── GIF Picker ───────────────────────────────────────────────────────────────
 
 function GifPicker({ onSelect, onClose }: { onSelect: (url: string) => void; onClose: () => void }) {
+  const { t } = useLanguage()
   const [query, setQuery] = useState('')
   const [gifs, setGifs] = useState<Gif[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,7 +97,7 @@ function GifPicker({ onSelect, onClose }: { onSelect: (url: string) => void; onC
           autoFocus
           value={query}
           onChange={e => onSearch(e.target.value)}
-          placeholder="Chercher un GIF…"
+          placeholder={t('gifSearchPlaceholder')}
           style={{
             flex: 1, background: 'none', border: 'none', outline: 'none',
             color: 'var(--t0)', fontSize: 12, fontFamily: 'inherit',
@@ -117,7 +119,7 @@ function GifPicker({ onSelect, onClose }: { onSelect: (url: string) => void; onC
             ))}
           </div>
         ) : gifs.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--t2)', fontSize: 12, padding: 16 }}>Aucun résultat</p>
+          <p style={{ textAlign: 'center', color: 'var(--t2)', fontSize: 12, padding: 16 }}>{t('noResults')}</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
             {gifs.map(gif => (
@@ -155,6 +157,7 @@ function ConvList({
   lastRead: React.MutableRefObject<Record<string, number>>
   onSelect: (type: 'group' | 'dm', withUser?: string) => void
 }) {
+  const { t } = useLanguage()
   const appUsers = useUsers()
   const groupMsgs = allMessages.filter(m => !m.destinataire)
   const lastGroup = groupMsgs[groupMsgs.length - 1]
@@ -203,7 +206,7 @@ function ConvList({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>Général</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)' }}>{t('generalChat')}</span>
             {groupUnread > 0 && (
               <span style={{
                 minWidth: 18, height: 18, borderRadius: 9, background: 'var(--accent)',
@@ -266,7 +269,7 @@ function ConvList({
                   {user.username.split(' ')[0]}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {last && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(last.createdAt)}</span>}
+                  {last && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(last.createdAt, t)}</span>}
                   {dmUnread > 0 && (
                     <span style={{
                       minWidth: 18, height: 18, borderRadius: 9, background: 'var(--accent)',
@@ -277,9 +280,9 @@ function ConvList({
                 </div>
               </div>
               <p style={{ fontSize: 11, color: user.online ? 'var(--green)' : 'var(--t2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.online ? 'En ligne' : last
+                {user.online ? t('online') : last
                   ? (last.message.startsWith('gif::') ? '🖼 GIF' : last.message)
-                  : `Hors ligne · ${relTime(user.lastSeen)}`}
+                  : `${t('statusOfflineLabel')} · ${relTime(user.lastSeen, t)}`}
               </p>
             </div>
           </button>
@@ -288,7 +291,7 @@ function ConvList({
 
       {others.length === 0 && (
         <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--t2)' }}>Aucun autre utilisateur</p>
+          <p style={{ fontSize: 12, color: 'var(--t2)' }}>{t('noOtherUsers')}</p>
         </div>
       )}
     </div>
@@ -298,6 +301,7 @@ function ConvList({
 // ── Message Bubble ────────────────────────────────────────────────────────────
 
 function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; showMeta: boolean }) {
+  const { t } = useLanguage()
   const isGif = msg.message.startsWith('gif::')
   const gifUrl = isGif ? msg.message.slice(5) : null
   const color = authorColor(msg.author)
@@ -316,7 +320,7 @@ function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; show
             </div>
           )}
           <span style={{ fontSize: 10, color: 'var(--t2)' }}>
-            {isMe ? 'Vous' : msg.author.split(' ')[0]} · {relTime(msg.createdAt)}
+            {isMe ? t('youLabel') : msg.author.split(' ')[0]} · {relTime(msg.createdAt, t)}
           </span>
         </div>
       )}
@@ -352,6 +356,7 @@ function Bubble({ msg, isMe, showMeta }: { msg: ChatMessage; isMe: boolean; show
 
 export function Chat() {
   const { user: session, status } = useAuth()
+  const { t } = useLanguage()
   const myName = session?.name || ''
 
   const [open, setOpen] = useState(false)
@@ -576,7 +581,7 @@ export function Chat() {
                   </svg>
                 </div>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', lineHeight: 1 }}>Général</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', lineHeight: 1 }}>{t('generalChat')}</p>
                   <p style={{ fontSize: 10, color: 'var(--t2)', marginTop: 1 }}>{presence.filter(u => u.online).length} en ligne</p>
                 </div>
               </div>
@@ -603,7 +608,7 @@ export function Chat() {
                     {activeConv?.with?.split(' ')[0]}
                   </p>
                   <p style={{ fontSize: 10, color: activeUser?.online ? 'var(--green)' : 'var(--t2)', marginTop: 1 }}>
-                    {activeUser?.online ? 'En ligne' : activeUser ? `Vu ${relTime(activeUser.lastSeen)}` : 'Hors ligne'}
+                    {activeUser?.online ? t('online') : activeUser ? t('seenAt', { time: relTime(activeUser.lastSeen, t) }) : t('statusOfflineLabel')}
                   </p>
                 </div>
               </div>
@@ -629,7 +634,7 @@ export function Chat() {
                       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                     <p style={{ fontSize: 12, color: 'var(--t2)' }}>
-                      {activeConv?.type === 'dm' ? `Envoyer un message à ${activeConv.with?.split(' ')[0]}` : 'Démarrez la conversation'}
+                      {activeConv?.type === 'dm' ? t('sendMessageTo', { name: activeConv.with?.split(' ')[0] ?? '' }) : t('startConversation')}
                     </p>
                   </div>
                 ) : (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useLanguage } from '@/context/LanguageContext'
 
 export type SectionId = 'dashboard' | 'kanban' | 'crm' | 'notes' | 'calendar' | 'ideas' | 'time'
 
@@ -16,88 +17,14 @@ type TourStep = {
   color: string
 }
 
-export const SECTIONS: { id: SectionId; label: string; emoji: string; color: string }[] = [
-  { id: 'dashboard', label: 'Dashboard',  emoji: '🏠', color: '#7c6af5' },
-  { id: 'kanban',    label: 'Kanban',     emoji: '📋', color: '#4f8ef7' },
-  { id: 'crm',       label: 'CRM',        emoji: '🤝', color: '#0ec98c' },
-  { id: 'notes',     label: 'Notes',      emoji: '📝', color: '#f59e0b' },
-  { id: 'calendar',  label: 'Calendrier', emoji: '📅', color: '#06b6d4' },
-  { id: 'ideas',     label: 'Idées',      emoji: '💡', color: '#a855f7' },
-  { id: 'time',      label: 'Temps',      emoji: '⏱',  color: '#f43f5e' },
-]
-
-const STEPS: TourStep[] = [
-  {
-    section: 'dashboard', page: '/',
-    emoji: '🏠', color: '#7c6af5',
-    title: 'Bienvenue sur votre Dashboard',
-    desc: 'Votre hub central. Toutes vos métriques clés, tâches urgentes et pipeline CRM — tout d\'un coup d\'œil.',
-    tip: 'Cliquez sur ⚙ Personnaliser pour réorganiser les cartes et inverser les colonnes.',
-  },
-  {
-    section: 'dashboard', page: '/',
-    emoji: '📊', color: '#7c6af5',
-    title: 'Cartes KPI',
-    desc: 'Tâches en cours, prospects actifs, clients signés, idées validées — votre activité en temps réel.',
-    tip: 'Les badges ▲▼ montrent la tendance par rapport à la semaine précédente.',
-    targetSelector: '[data-tour="kpi-grid"]',
-  },
-  {
-    section: 'dashboard', page: '/',
-    emoji: '✅', color: '#7c6af5',
-    title: 'Tâches récentes',
-    desc: 'Vos dernières tâches avec leur statut. Les tâches en rouge sont en retard, amber = deadline aujourd\'hui.',
-    tip: 'Cliquez sur "Voir Kanban →" pour accéder au tableau complet.',
-    targetSelector: '[data-tour="recent-tasks"]',
-  },
-  {
-    section: 'kanban', page: '/kanban',
-    emoji: '📋', color: '#4f8ef7',
-    title: 'Tableau Kanban',
-    desc: 'Gérez toutes vos tâches en glissant les cartes de colonne en colonne : Backlog → À faire → En cours → Review → Done.',
-    tip: 'Glissez une carte pour changer son statut. Cliquez sur + pour créer une tâche dans une colonne.',
-    targetSelector: '[data-tour="kanban-board"]',
-  },
-  {
-    section: 'crm', page: '/crm',
-    emoji: '🤝', color: '#0ec98c',
-    title: 'Pipeline CRM',
-    desc: 'Suivez chaque prospect de la prise de contact jusqu\'à la signature. Vue Kanban avec drag & drop.',
-    tip: 'Assignez chaque prospect à un commercial et filtrez par assigné en haut du board.',
-    targetSelector: '[data-tour="crm-pipeline"]',
-  },
-  {
-    section: 'notes', page: '/notes',
-    emoji: '📝', color: '#f59e0b',
-    title: 'Espace Notes',
-    desc: 'Créez et partagez des notes avec votre équipe. Sélectionnez une note à gauche pour l\'éditer à droite.',
-    tip: 'Chaque note peut être partagée avec des membres de l\'équipe via l\'icône de partage.',
-    targetSelector: '[data-tour="notes-workspace"]',
-  },
-  {
-    section: 'calendar', page: '/calendar',
-    emoji: '📅', color: '#06b6d4',
-    title: 'Calendrier',
-    desc: 'Toutes vos tâches et événements sur un calendrier. Connectez Apple Calendar ou Google Calendar via iCal.',
-    tip: 'Va dans Paramètres → Calendrier pour coller ton URL iCal et synchroniser.',
-    targetSelector: '[data-tour="calendar-grid"]',
-  },
-  {
-    section: 'ideas', page: '/ideas',
-    emoji: '💡', color: '#a855f7',
-    title: 'Board d\'idées',
-    desc: 'Capturez vos idées, votez pour les meilleures, faites-les passer de Brute → En cours → Validée.',
-    tip: 'Le vote ▲ fait remonter les meilleures idées. Filtrez par statut et catégorie.',
-    targetSelector: '[data-tour="ideas-board"]',
-  },
-  {
-    section: 'time', page: '/time',
-    emoji: '⏱', color: '#f43f5e',
-    title: 'Time Tracker',
-    desc: 'Lancez un timer par catégorie (Travail, Code, Meeting…). Le leaderboard affiche les heures par personne.',
-    tip: 'Quand un timer tourne, une barre orange apparaît en haut sur toutes les pages.',
-    targetSelector: '[data-tour="time-tracker"]',
-  },
+export const SECTIONS: { id: SectionId; emoji: string; color: string }[] = [
+  { id: 'dashboard', emoji: '🏠', color: '#7c6af5' },
+  { id: 'kanban',    emoji: '📋', color: '#4f8ef7' },
+  { id: 'crm',       emoji: '🤝', color: '#0ec98c' },
+  { id: 'notes',     emoji: '📝', color: '#f59e0b' },
+  { id: 'calendar',  emoji: '📅', color: '#06b6d4' },
+  { id: 'ideas',     emoji: '💡', color: '#a855f7' },
+  { id: 'time',      emoji: '⏱',  color: '#f43f5e' },
 ]
 
 const OLD_KEY = 'onboarding_v1'
@@ -227,19 +154,22 @@ function SpotlightOverlay({ rect }: { rect: DOMRect | null }) {
 }
 
 function TourTooltip({
-  step, sectionStepIndex, sectionTotal, targetRect,
+  step, sectionStepIndex, sectionTotal, targetRect, totalSteps, currentStepGlobal,
   onNext, onPrev, onSkip, isFirst, isLast,
 }: {
   step: TourStep
   sectionStepIndex: number
   sectionTotal: number
   targetRect: DOMRect | null
+  totalSteps: number
+  currentStepGlobal: number
   onNext: () => void
   onPrev: () => void
   onSkip: () => void
   isFirst: boolean
   isLast: boolean
 }) {
+  const { t } = useLanguage()
   const [screenH, setScreenH] = useState(800)
   useEffect(() => {
     setScreenH(window.innerHeight)
@@ -290,7 +220,7 @@ function TourTooltip({
             {step.title}
           </p>
           <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>
-            {SECTIONS.find(s => s.id === step.section)?.label} · Étape {sectionStepIndex + 1}/{sectionTotal}
+            {t(step.section)} · {t('tourStep')} {sectionStepIndex + 1}/{sectionTotal}
           </p>
         </div>
         <button
@@ -323,7 +253,7 @@ function TourTooltip({
           }} />
         ))}
         <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--t2)' }}>
-          {STEPS.indexOf(step) + 1}/{STEPS.length}
+          {currentStepGlobal + 1}/{totalSteps}
         </span>
       </div>
 
@@ -337,7 +267,7 @@ function TourTooltip({
               color: 'var(--t1)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
           >
-            ← Retour
+            ← {t('back')}
           </button>
         )}
         <button
@@ -349,7 +279,7 @@ function TourTooltip({
             boxShadow: `0 4px 16px ${step.color}50`,
           }}
         >
-          {isLast ? 'Commencer 🚀' : 'Suivant →'}
+          {isLast ? t('tourBegin') : `${t('next')} →`}
         </button>
       </div>
     </div>
@@ -357,8 +287,83 @@ function TourTooltip({
 }
 
 export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => void; startSectionId?: SectionId | null }) {
+  const { t } = useLanguage()
   const router = useRouter()
   const pathname = usePathname()
+
+  const STEPS: TourStep[] = [
+    {
+      section: 'dashboard', page: '/',
+      emoji: '🏠', color: '#7c6af5',
+      title: t('tourDashboard1Title'),
+      desc: t('tourDashboard1Desc'),
+      tip: t('tourDashboard1Tip'),
+    },
+    {
+      section: 'dashboard', page: '/',
+      emoji: '📊', color: '#7c6af5',
+      title: t('tourDashboard2Title'),
+      desc: t('tourDashboard2Desc'),
+      tip: t('tourDashboard2Tip'),
+      targetSelector: '[data-tour="kpi-grid"]',
+    },
+    {
+      section: 'dashboard', page: '/',
+      emoji: '✅', color: '#7c6af5',
+      title: t('tourDashboard3Title'),
+      desc: t('tourDashboard3Desc'),
+      tip: t('tourDashboard3Tip'),
+      targetSelector: '[data-tour="recent-tasks"]',
+    },
+    {
+      section: 'kanban', page: '/kanban',
+      emoji: '📋', color: '#4f8ef7',
+      title: t('tourKanbanTitle'),
+      desc: t('tourKanbanDesc'),
+      tip: t('tourKanbanTip'),
+      targetSelector: '[data-tour="kanban-board"]',
+    },
+    {
+      section: 'crm', page: '/crm',
+      emoji: '🤝', color: '#0ec98c',
+      title: t('tourCrmTitle'),
+      desc: t('tourCrmDesc'),
+      tip: t('tourCrmTip'),
+      targetSelector: '[data-tour="crm-pipeline"]',
+    },
+    {
+      section: 'notes', page: '/notes',
+      emoji: '📝', color: '#f59e0b',
+      title: t('tourNotesTitle'),
+      desc: t('tourNotesDesc'),
+      tip: t('tourNotesTip'),
+      targetSelector: '[data-tour="notes-workspace"]',
+    },
+    {
+      section: 'calendar', page: '/calendar',
+      emoji: '📅', color: '#06b6d4',
+      title: t('tourCalendarTitle'),
+      desc: t('tourCalendarDesc'),
+      tip: t('tourCalendarTip'),
+      targetSelector: '[data-tour="calendar-grid"]',
+    },
+    {
+      section: 'ideas', page: '/ideas',
+      emoji: '💡', color: '#a855f7',
+      title: t('tourIdeasTitle'),
+      desc: t('tourIdeasDesc'),
+      tip: t('tourIdeasTip'),
+      targetSelector: '[data-tour="ideas-board"]',
+    },
+    {
+      section: 'time', page: '/time',
+      emoji: '⏱', color: '#f43f5e',
+      title: t('tourTimeTitle'),
+      desc: t('tourTimeDesc'),
+      tip: t('tourTimeTip'),
+      targetSelector: '[data-tour="time-tracker"]',
+    },
+  ]
 
   const getInitialStep = useCallback(() => {
     if (startSectionId) {
@@ -372,6 +377,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
       }
     }
     return 0
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startSectionId])
 
   const [stepIndex, setStepIndex] = useState(getInitialStep)
@@ -398,12 +404,10 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
     setTargetRect(null)
 
     if (!step.targetSelector) {
-      // No target to find — show tooltip immediately at center
       setTooltipReady(true)
       return
     }
 
-    // Wait for target element before showing tooltip to avoid position jump
     setTooltipReady(false)
     let attempts = 0
     const poll = () => {
@@ -415,7 +419,6 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
         attempts++
         pollRef.current = setTimeout(poll, 100)
       } else {
-        // Element not found — fall back to centered tooltip
         setTooltipReady(true)
       }
     }
@@ -462,6 +465,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
       if (startSectionId) { onComplete(); return }
     }
     setStepIndex(s => s + 1)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isLast, stepIndex, onComplete, markCurrentSectionDone, startSectionId])
 
   const prev = useCallback(() => {
@@ -475,7 +479,7 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
       <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-m)', borderRadius: 16, padding: '20px 28px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: step.color, animation: 'pulse-dot 1.2s ease infinite' }} />
-          <p style={{ fontSize: 14, color: 'var(--t1)', fontWeight: 500 }}>Navigation vers {SECTIONS.find(s => s.id === step.section)?.label}…</p>
+          <p style={{ fontSize: 14, color: 'var(--t1)', fontWeight: 500 }}>{t('navigatingTo')} {t(step.section)}…</p>
         </div>
       </div>
     )
@@ -490,6 +494,8 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
           sectionStepIndex={sectionIdx}
           sectionTotal={sectionStepsArr.length}
           targetRect={targetRect}
+          totalSteps={STEPS.length}
+          currentStepGlobal={stepIndex}
           onNext={next}
           onPrev={prev}
           onSkip={onComplete}

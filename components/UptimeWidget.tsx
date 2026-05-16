@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface Monitor {
   id: string
@@ -19,6 +20,21 @@ interface Monitor {
   avgMs24h: number | null
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+function makeRelTime(t: TFn) {
+  return (iso: string) => {
+    if (!iso) return '—'
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+    if (d < 60) return t('secondsAgo', { n: d })
+    if (d < 3600) return t('minutesAgo', { n: Math.floor(d / 60) })
+    if (d < 86400) return t('hoursAgo', { n: Math.floor(d / 3600) })
+    return t('daysAgo', { n: Math.floor(d / 86400) })
+  }
+}
+
 // ── Status helpers ────────────────────────────────────────────────────────────
 
 function statusColor(s: string | null | undefined) {
@@ -32,21 +48,6 @@ function statusBg(s: string | null | undefined) {
   if (s === 'degraded') return 'rgba(245,158,11,0.12)'
   if (s === 'down') return 'rgba(239,68,68,0.12)'
   return 'rgba(107,114,128,0.12)'
-}
-function statusLabel(s: string | null | undefined) {
-  if (s === 'up') return 'UP'
-  if (s === 'degraded') return 'DÉGRADÉ'
-  if (s === 'down') return 'DOWN'
-  return '—'
-}
-
-function relTime(iso: string) {
-  if (!iso) return '—'
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (d < 60) return `il y a ${d}s`
-  if (d < 3600) return `il y a ${Math.floor(d / 60)}m`
-  if (d < 86400) return `il y a ${Math.floor(d / 3600)}h`
-  return `il y a ${Math.floor(d / 86400)}j`
 }
 
 function uptimeColor(pct: number | null) {
@@ -66,7 +67,7 @@ function HeartbeatBar({ history }: { history: { status: string; response_ms?: nu
       {padded.map((p, i) => (
         <div
           key={i}
-          title={p ? `${p.status} — ${p.response_ms ?? '?'}ms — ${new Date(p.checked_at).toLocaleString('fr-FR')}` : 'Pas de données'}
+          title={p ? `${p.status} — ${p.response_ms ?? '?'}ms — ${new Date(p.checked_at).toLocaleString()}` : '—'}
           style={{
             flex: 1,
             height: p ? Math.max(10, Math.min(28, (p.response_ms || 200) / 20)) : 10,
@@ -109,12 +110,22 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
   onDelete: () => Promise<void>
   onToggle: () => Promise<void>
 }) {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
   const [checking, setChecking] = useState(false)
   const [menu, setMenu] = useState(false)
   const s = monitor.latestPing?.status
   const sc = statusColor(s)
   const sb = statusBg(s)
+
+  const relTime = makeRelTime(t)
+
+  function statusLabel(st: string | null | undefined) {
+    if (st === 'up') return 'UP'
+    if (st === 'degraded') return t('statusDegradedLabel').toUpperCase()
+    if (st === 'down') return 'DOWN'
+    return '—'
+  }
 
   const doCheck = async () => {
     setChecking(true)
@@ -169,7 +180,7 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
             background: monitor.enabled ? sb : 'var(--bg-3)',
             padding: '3px 8px', borderRadius: 6, flexShrink: 0,
           }}>
-            {monitor.enabled ? statusLabel(s) : 'DÉSACTIVÉ'}
+            {monitor.enabled ? statusLabel(s) : t('disabledStatus')}
           </span>
 
           {/* Menu */}
@@ -183,13 +194,13 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenu(false)} />
                 <div style={{ position: 'absolute', top: 26, right: 0, zIndex: 20, background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 8, padding: 4, minWidth: 150, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
                   <button onClick={() => { setMenu(false); doCheck() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>
-                    ▶ Vérifier maintenant
+                    {t('checkNow')}
                   </button>
                   <button onClick={() => { setMenu(false); onToggle() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>
-                    {monitor.enabled ? '⏸ Désactiver' : '▶ Activer'}
+                    {monitor.enabled ? t('disable') : t('enable')}
                   </button>
                   <button onClick={() => { setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>
-                    🗑 Supprimer
+                    🗑 {t('delete')}
                   </button>
                 </div>
               </>
@@ -212,24 +223,24 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
           )}
           {monitor.uptime7d !== null && (
             <div>
-              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>7 jours</p>
+              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>{t('days7')}</p>
               <p style={{ fontSize: 13, fontWeight: 700, color: uptimeColor(monitor.uptime7d) }}>{monitor.uptime7d}%</p>
             </div>
           )}
           {monitor.avgMs24h !== null && (
             <div>
-              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>Latence moy.</p>
+              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>{t('avgLatencyLabel')}</p>
               <p style={{ fontSize: 13, fontWeight: 700, color: monitor.avgMs24h > 1500 ? '#f59e0b' : 'var(--t0)' }}>{monitor.avgMs24h}ms</p>
             </div>
           )}
           {monitor.latestPing?.response_ms && (
             <div>
-              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>Dernier ping</p>
+              <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>{t('lastPingLabel')}</p>
               <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{monitor.latestPing.response_ms}ms</p>
             </div>
           )}
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-            <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>Dernière vérification</p>
+            <p style={{ fontSize: 10, color: 'var(--t2)', marginBottom: 1 }}>{t('lastCheck')}</p>
             <p style={{ fontSize: 11, color: 'var(--t2)' }}>{monitor.latestPing ? relTime(monitor.latestPing.checked_at) : '—'}</p>
           </div>
         </div>
@@ -240,39 +251,39 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
         <div style={{ borderTop: '1px solid var(--border-s)', padding: '14px 16px', background: 'var(--bg-2)' }}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Latence (30 derniers checks)</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{t('latencyChart30')}</p>
               <ResponseChart history={monitor.history} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--t2)' }}>plus ancien</span>
-                <span style={{ fontSize: 10, color: 'var(--t2)' }}>maintenant</span>
+                <span style={{ fontSize: 10, color: 'var(--t2)' }}>{t('oldestLabel')}</span>
+                <span style={{ fontSize: 10, color: 'var(--t2)' }}>{t('currentLabel')}</span>
               </div>
             </div>
             <div style={{ minWidth: 180 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Infos</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{t('infoSectionLabel')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>Type</span>
-                  <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 500 }}>{monitor.type === 'http' ? 'HTTP(S)' : 'Mot-clé'}</span>
+                  <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>{t('monitorTypeLabel')}</span>
+                  <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 500 }}>{monitor.type === 'http' ? 'HTTP(S)' : t('keywordInResponse')}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>Intervalle</span>
+                  <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>{t('monitorInterval')}</span>
                   <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 500 }}>{monitor.interval_min} min</span>
                 </div>
                 {monitor.latestPing?.status_code && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>Code HTTP</span>
+                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>{t('httpCodeLabel')}</span>
                     <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 500 }}>{monitor.latestPing.status_code}</span>
                   </div>
                 )}
                 {monitor.latestPing?.error && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>Erreur</span>
+                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>{t('monitorError')}</span>
                     <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 500, wordBreak: 'break-word' }}>{monitor.latestPing.error}</span>
                   </div>
                 )}
                 {monitor.keyword && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>Mot-clé</span>
+                    <span style={{ fontSize: 11, color: 'var(--t2)', width: 90, flexShrink: 0 }}>{t('monitorKeyword')}</span>
                     <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 500, fontFamily: 'monospace' }}>{monitor.keyword}</span>
                   </div>
                 )}
@@ -287,14 +298,14 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
               style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none', cursor: checking ? 'wait' : 'pointer', opacity: checking ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 5 }}
             >
               {checking ? (
-                <><div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} /> Vérification…</>
-              ) : '▶ Vérifier maintenant'}
+                <><div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} /> {t('verifyingBtn')}</>
+              ) : t('checkNow')}
             </button>
             <a href={monitor.url} target="_blank" rel="noopener noreferrer"
               style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--bg-3)', color: 'var(--t1)', border: '1px solid var(--border-m)', cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Ouvrir l'URL
+              {t('openUrlBtn')}
             </a>
           </div>
         </div>
@@ -306,6 +317,7 @@ function MonitorCard({ monitor, onCheck, onDelete, onToggle }: {
 // ── Add monitor form ──────────────────────────────────────────────────────────
 
 function AddMonitorForm({ onAdd }: { onAdd: (data: { name: string; url: string; type: string; keyword?: string; interval_min: number }) => Promise<void> }) {
+  const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
@@ -338,17 +350,17 @@ function AddMonitorForm({ onAdd }: { onAdd: (data: { name: string; url: string; 
         onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-m)')}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
-        Ajouter un monitor
+        {t('addMonitor')}
       </button>
     )
   }
 
   return (
     <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-m)', borderRadius: 14, padding: 20 }}>
-      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)', marginBottom: 16 }}>Nouveau monitor</p>
+      <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--t0)', marginBottom: 16 }}>{t('newMonitor')}</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Nom</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('monitorName')}</label>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Mon service" style={inp} autoFocus />
         </div>
         <div>
@@ -356,31 +368,31 @@ function AddMonitorForm({ onAdd }: { onAdd: (data: { name: string; url: string; 
           <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={inp} />
         </div>
         <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Type</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('monitorTypeLabel')}</label>
           <select value={type} onChange={e => setType(e.target.value)} style={{ ...inp, cursor: 'pointer' }}>
-            <option value="http">HTTP(S) — code 2xx</option>
-            <option value="keyword">Mot-clé dans la réponse</option>
+            <option value="http">HTTP(S) — 2xx</option>
+            <option value="keyword">{t('keywordInResponse')}</option>
           </select>
         </div>
         <div>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Intervalle (min)</label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('monitorInterval')} (min)</label>
           <select value={interval} onChange={e => setInterval(Number(e.target.value))} style={{ ...inp, cursor: 'pointer' }}>
             {[1, 2, 5, 10, 15, 30, 60].map(v => <option key={v} value={v}>{v} min</option>)}
           </select>
         </div>
         {type === 'keyword' && (
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mot-clé attendu</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('expectedKeyword')}</label>
             <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder='ex: "status":"ok"' style={inp} />
           </div>
         )}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
         <button onClick={submit} disabled={loading || !name || !url} className="btn btn-primary" style={{ fontSize: 12 }}>
-          {loading ? 'Ajout…' : 'Ajouter'}
+          {loading ? t('adding') : t('save')}
         </button>
         <button onClick={() => setOpen(false)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, background: 'var(--bg-2)', border: '1px solid var(--border-m)', color: 'var(--t1)', cursor: 'pointer' }}>
-          Annuler
+          {t('cancel')}
         </button>
       </div>
     </div>
@@ -390,10 +402,13 @@ function AddMonitorForm({ onAdd }: { onAdd: (data: { name: string; url: string; 
 // ── Main widget ───────────────────────────────────────────────────────────────
 
 export default function UptimeWidget() {
+  const { t } = useLanguage()
   const [monitors, setMonitors] = useState<Monitor[]>([])
   const [loading, setLoading] = useState(true)
   const [checkingAll, setCheckingAll] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+
+  const relTimeShort = makeRelTime(t)
 
   const load = useCallback(async () => {
     try {
@@ -409,7 +424,6 @@ export default function UptimeWidget() {
 
   useEffect(() => {
     load().then(async () => {
-      // Auto-check if no ping in the last 5 min (replaces Vercel cron on Hobby plan)
       setMonitors(prev => {
         const stale = prev.some(m => {
           if (!m.enabled) return false
@@ -440,7 +454,7 @@ export default function UptimeWidget() {
   }
 
   const deleteMonitor = async (id: string) => {
-    if (!confirm('Supprimer ce monitor ?')) return
+    if (!confirm(t('deleteMonitorConfirm'))) return
     setMonitors(prev => prev.filter(m => m.id !== id))
     await fetch(`/api/admin/monitors/${id}`, { method: 'DELETE' })
   }
@@ -466,7 +480,6 @@ export default function UptimeWidget() {
     }
   }
 
-  // Summary stats
   const enabled = monitors.filter(m => m.enabled)
   const down = enabled.filter(m => m.latestPing?.status === 'down')
   const degraded = enabled.filter(m => m.latestPing?.status === 'degraded')
@@ -509,14 +522,14 @@ export default function UptimeWidget() {
           </div>
           <div>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--t0)' }}>
-              {overallStatus === 'up' && `Tous les services en ligne`}
-              {overallStatus === 'down' && `${down.length} service${down.length > 1 ? 's' : ''} hors ligne`}
-              {overallStatus === 'degraded' && `${degraded.length} service${degraded.length > 1 ? 's' : ''} dégradé${degraded.length > 1 ? 's' : ''}`}
-              {!overallStatus && `${monitors.length} monitor${monitors.length > 1 ? 's' : ''} configuré${monitors.length > 1 ? 's' : ''}`}
+              {overallStatus === 'up' && t('allServicesOnline')}
+              {overallStatus === 'down' && t('servicesDownN', { n: down.length })}
+              {overallStatus === 'degraded' && t('servicesDegradedN', { n: degraded.length })}
+              {!overallStatus && t('monitorsCountN', { n: monitors.length })}
             </p>
             <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>
-              {up.length} en ligne · {down.length} hors ligne · {degraded.length} dégradé{degraded.length > 1 ? 's' : ''} · {unchecked.length} non vérifié{unchecked.length > 1 ? 's' : ''}
-              {lastRefresh && <span> · actualisé {relTime(lastRefresh.toISOString())}</span>}
+              {t('onlineCount', { n: up.length })} · {t('offlineCount', { n: down.length })} · {t('degradedCount', { n: degraded.length })} · {t('uncheckedCount', { n: unchecked.length })}
+              {lastRefresh && <span> · {t('refreshedLabel')} {relTimeShort(lastRefresh.toISOString())}</span>}
             </p>
           </div>
         </div>
@@ -526,16 +539,20 @@ export default function UptimeWidget() {
           style={{ padding: '8px 16px', borderRadius: 9, fontSize: 12, fontWeight: 600, background: 'var(--accent)', color: 'white', border: 'none', cursor: checkingAll ? 'wait' : 'pointer', opacity: checkingAll ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
         >
           {checkingAll ? (
-            <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />Vérification…</>
+            <><div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />{t('verifyingBtn')}</>
           ) : (
-            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>Tout vérifier</>
+            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>{t('checkAll')}</>
           )}
         </button>
       </div>
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
-        {[['up', 'En ligne'], ['degraded', 'Dégradé (>3s)'], ['down', 'Hors ligne']].map(([s, l]) => (
+        {([
+          ['up', t('statusOnlineLabel')],
+          ['degraded', t('legendDegraded3s')],
+          ['down', t('statusOfflineLabel')],
+        ] as [string, string][]).map(([s, l]) => (
           <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 8, height: 8, borderRadius: 2, background: statusColor(s) }} />
             <span style={{ fontSize: 11, color: 'var(--t2)' }}>{l}</span>
@@ -543,7 +560,7 @@ export default function UptimeWidget() {
         ))}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--bg-3)', opacity: 0.5 }} />
-          <span style={{ fontSize: 11, color: 'var(--t2)' }}>Pas de données</span>
+          <span style={{ fontSize: 11, color: 'var(--t2)' }}>{t('legendNoDataLabel')}</span>
         </div>
       </div>
 
@@ -562,7 +579,7 @@ export default function UptimeWidget() {
 
       {monitors.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--t2)', fontSize: 13 }}>
-          Aucun monitor configuré — ajoutez le premier ci-dessous
+          {t('addMonitorFirst')}
         </div>
       )}
 

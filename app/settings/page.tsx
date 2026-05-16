@@ -668,7 +668,7 @@ function OnboardingSettings() {
               <div style={{ width: 30, height: 30, borderRadius: 9, background: `${s.color}18`, border: `1px solid ${s.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
                 {s.emoji}
               </div>
-              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>{s.label}</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>{t(s.id)}</p>
             </div>
             <button
               onClick={() => resetSection(s.id)}
