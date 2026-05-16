@@ -114,11 +114,32 @@ function isAllDone(): boolean {
   return SECTIONS.every(s => done[s.id])
 }
 
+// Module-level store so all useOnboarding() instances share the same state
+let _show = false
+let _startSection: SectionId | null = null
+const _listeners = new Set<() => void>()
+
+function _setGlobal(show: boolean, startSection: SectionId | null) {
+  _show = show
+  _startSection = startSection
+  _listeners.forEach(fn => fn())
+}
+
 export function useOnboarding() {
-  const [show, setShow] = useState(false)
-  const [startSection, setStartSection] = useState<SectionId | null>(null)
+  const [show, setShow] = useState(() => _show)
+  const [startSection, setStartSection] = useState<SectionId | null>(() => _startSection)
 
   useEffect(() => {
+    const sync = () => {
+      setShow(_show)
+      setStartSection(_startSection)
+    }
+    _listeners.add(sync)
+    return () => { _listeners.delete(sync) }
+  }, [])
+
+  useEffect(() => {
+    if (_show) return
     if (isAllDone()) return
     fetch('/api/onboarding')
       .then(r => r.json())
@@ -126,11 +147,11 @@ export function useOnboarding() {
         if (done) {
           try { localStorage.setItem(OLD_KEY, '1') } catch {}
         } else {
-          setShow(true)
+          _setGlobal(true, null)
         }
       })
       .catch(() => {
-        try { if (!localStorage.getItem(OLD_KEY)) setShow(true) } catch {}
+        try { if (!localStorage.getItem(OLD_KEY)) _setGlobal(true, null) } catch {}
       })
   }, [])
 
@@ -141,8 +162,7 @@ export function useOnboarding() {
       SECTIONS.forEach(s => { sections[s.id] = true })
       localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections))
     } catch {}
-    setShow(false)
-    setStartSection(null)
+    _setGlobal(false, null)
     fetch('/api/onboarding', { method: 'POST' }).catch(() => {})
   }, [])
 
@@ -151,8 +171,7 @@ export function useOnboarding() {
       localStorage.removeItem(OLD_KEY)
       localStorage.removeItem(SECTIONS_KEY)
     } catch {}
-    setStartSection(null)
-    setShow(true)
+    _setGlobal(true, null)
     fetch('/api/onboarding', { method: 'DELETE' }).catch(() => {})
   }, [])
 
@@ -163,8 +182,7 @@ export function useOnboarding() {
       sections[sectionId] = false
       localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections))
     } catch {}
-    setStartSection(sectionId)
-    setShow(true)
+    _setGlobal(true, sectionId)
   }, [])
 
   return { show, complete, reset, resetSection, startSection }
