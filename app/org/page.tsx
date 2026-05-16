@@ -350,7 +350,6 @@ export default function OrgPage() {
       .then((data: Org[]) => {
         setOrgs(data)
         setLoading(false)
-        if (data.length === 1) selectOrg(data[0].id)
       })
       .catch(() => setLoading(false))
   }, [status])
