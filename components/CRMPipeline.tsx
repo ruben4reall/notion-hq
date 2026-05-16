@@ -5,6 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { CRMModal } from './CRMModal'
 import { useCache } from '@/lib/useCache'
 import { UserAvatar, useUsers } from './UserPicker'
+import { useLanguage } from '@/context/LanguageContext'
 import type { CRMEntry } from '@/lib/types'
 
 const STAGES: { id: CRMEntry['status']; color: string }[] = [
@@ -32,6 +33,7 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
   entry: CRMEntry; onEdit: () => void; onDelete: () => void; isDragging: boolean
   users: { name: string; color: string }[]
 }) {
+  const { t } = useLanguage()
   const [menu, setMenu] = useState(false)
   const pc = P_COLOR[entry.priority] || null
   const assignee = users.find(u => u.name === entry.assignedTo)
@@ -41,7 +43,7 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.enseigne || 'Sans nom'}</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.enseigne || t('noTitle')}</p>
             {pc && <div style={{ width: 6, height: 6, borderRadius: '50%', background: pc, flexShrink: 0 }} />}
           </div>
           {entry.type && <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 4 }}>{entry.type}</p>}
@@ -72,8 +74,8 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenu(false)} />
               <div style={{ position: 'absolute', top: 26, right: 0, zIndex: 20, background: 'var(--bg-3)', border: '1px solid var(--border-m)', borderRadius: 8, padding: 4, minWidth: 120, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                <button onClick={e => { e.stopPropagation(); setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ Modifier</button>
-                <button onClick={e => { e.stopPropagation(); setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 Supprimer</button>
+                <button onClick={e => { e.stopPropagation(); setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ {t('edit')}</button>
+                <button onClick={e => { e.stopPropagation(); setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 {t('delete')}</button>
               </div>
             </>
           )}
@@ -84,6 +86,7 @@ function CRMCard({ entry, onEdit, onDelete, isDragging, users }: {
 }
 
 export default function CRMPipeline() {
+  const { t } = useLanguage()
   const { data: fetchedEntries, loading, refresh } = useCache<CRMEntry[]>('/api/crm')
   const [entries, setEntries] = useState<CRMEntry[]>(fetchedEntries ?? [])
   const [modal, setModal] = useState<{ open: boolean; entry?: CRMEntry | null; defaultStatus?: CRMEntry['status'] }>({ open: false })
@@ -111,7 +114,7 @@ export default function CRMPipeline() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer ce prospect ?')) return
+    if (!confirm(t('deleteProspectConfirm'))) return
     setEntries(prev => prev.filter(e => e.id !== id))
     await fetch(`/api/crm/${id}`, { method: 'DELETE' })
   }
@@ -145,7 +148,7 @@ export default function CRMPipeline() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
             <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
-          <input placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
+          <input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)}
             style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 150 }} />
           {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
         </div>
@@ -186,7 +189,7 @@ export default function CRMPipeline() {
         {activeFilters > 0 && (
           <button onClick={() => { setSearch(''); setFilterUser(''); setFilterPriority(''); setFilterCanal('') }}
             style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer', marginLeft: 'auto' }}>
-            Effacer ({activeFilters})
+            {t('clearFiltersN', { n: activeFilters })}
           </button>
         )}
       </div>
@@ -203,7 +206,7 @@ export default function CRMPipeline() {
                   <button
                     onClick={() => setModal({ open: true, entry: null, defaultStatus: stage.id })}
                     style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--bg-2)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                    title="Ajouter un prospect"
+                    title={t('addProspect')}
                   >+</button>
                 </div>
                 <Droppable droppableId={stage.id}>
@@ -220,7 +223,7 @@ export default function CRMPipeline() {
                       ))}
                       {provided.placeholder}
                       {stageEntries.length === 0 && !snap.isDraggingOver && (
-                        <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--t2)', fontSize: 12 }}>Vide</div>
+                        <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--t2)', fontSize: 12 }}>{t('emptyCol')}</div>
                       )}
                     </div>
                   )}

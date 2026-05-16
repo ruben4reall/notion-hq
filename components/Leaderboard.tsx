@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface LeaderEntry {
   utilisateur: string
@@ -26,6 +27,7 @@ const MEDALS = ['🥇', '🥈', '🥉']
 
 export function Leaderboard() {
   const [period, setPeriod] = useState(7)
+  const { t } = useLanguage()
   const { data, loading } = useCache<LeaderEntry[]>(`/api/time/leaderboard?days=${period}`)
 
   const entries = data ?? []
@@ -34,7 +36,7 @@ export function Leaderboard() {
   return (
     <div className="card" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p className="section-title" style={{ margin: 0 }}>Leaderboard</p>
+        <p className="section-title" style={{ margin: 0 }}>{t('leaderboard')}</p>
         <div style={{ display: 'flex', gap: 4 }}>
           {[7, 30, 90].map(d => (
             <button
@@ -47,7 +49,7 @@ export function Leaderboard() {
                 color: period === d ? 'white' : 'var(--t1)',
               }}
             >
-              {d === 7 ? '7j' : d === 30 ? '30j' : '90j'}
+              {d}{t('dayShortUnit') || 'j'}
             </button>
           ))}
         </div>
@@ -59,7 +61,7 @@ export function Leaderboard() {
         </div>
       ) : entries.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>
-          Aucune session sur cette période
+          {t('noSessionsPeriod')}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -79,7 +81,7 @@ export function Leaderboard() {
                       {entry.utilisateur.split(' ')[0]}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
-                      {entry.sessions} session{entry.sessions > 1 ? 's' : ''} · moy. {fmt(entry.avgSession)}
+                      {entry.sessions} session{entry.sessions > 1 ? 's' : ''} · {t('avgShort')} {fmt(entry.avgSession)}
                     </p>
                   </div>
                   <p style={{ fontSize: 20, fontWeight: 800, color: topColor, letterSpacing: '-0.03em', flexShrink: 0 }}>
@@ -87,7 +89,6 @@ export function Leaderboard() {
                   </p>
                 </div>
 
-                {/* Progress bar */}
                 <div style={{ height: 4, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${pct}%`,
@@ -96,7 +97,6 @@ export function Leaderboard() {
                   }} />
                 </div>
 
-                {/* Category breakdown */}
                 {Object.keys(entry.byCategory).length > 1 && (
                   <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                     {Object.entries(entry.byCategory)

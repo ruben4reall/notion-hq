@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import { useTimer } from '@/lib/timer-context'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 
 interface TimeSession {
   id: string
@@ -37,15 +38,6 @@ function fmtLive(seconds: number) {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function dayLabel(dateStr: string) {
-  const d = new Date(dateStr)
-  const today = new Date()
-  const diff = Math.floor((today.setHours(0,0,0,0) - d.setHours(0,0,0,0)) / 86400000)
-  if (diff === 0) return 'Aujourd\'hui'
-  if (diff === 1) return 'Hier'
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })
-}
-
 function getCatColor(cat: string) {
   return CATEGORIES.find(c => c.id === cat)?.color || '#7c6af5'
 }
@@ -64,6 +56,7 @@ function getCatEmoji(cat: string) {
 
 export default function TimePage() {
   const { setActive: setTimerCtx } = useTimer()
+  const { t } = useLanguage()
   const [days, setDays] = useState(7)
   const [filterCat, setFilterCat] = useState('')
   const { data: timeData, loading, refresh } = useCache<{ sessions: TimeSession[]; active: TimeSession | null }>(`/api/time?days=${days}`, { ttl: 15_000 })
@@ -120,9 +113,16 @@ export default function TimePage() {
     refresh()
   }
 
-  // ── Stats ─────────────────────────────────────────────────
-  const completed = sessions.filter(s => s.fin)
+  function dayLabel(dateStr: string) {
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diff = Math.floor((now.setHours(0,0,0,0) - d.setHours(0,0,0,0)) / 86400000)
+    if (diff === 0) return t('today')
+    if (diff === 1) return t('yesterday')
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' })
+  }
 
+  const completed = sessions.filter(s => s.fin)
   const totalMin = completed.reduce((a, s) => a + (s.duree || 0), 0)
 
   const todayMin = completed.filter(s => {
@@ -136,7 +136,6 @@ export default function TimePage() {
     min: completed.filter(s => s.categorie === cat.id).reduce((a, s) => a + (s.duree || 0), 0),
   })).filter(c => c.min > 0).sort((a, b) => b.min - a.min)
 
-  // Group by day
   const byDay: Record<string, TimeSession[]> = {}
   completed.forEach(s => {
     const key = new Date(s.debut).toDateString()
@@ -148,10 +147,8 @@ export default function TimePage() {
     ss.reduce((a, s) => a + (s.duree || 0), 0)
   ), 1)
 
-  // allDayKeys used by bar chart (unfiltered)
   const allDayKeys = Object.keys(byDay).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
-  // filteredByDay used by session log
   const filteredCompleted = filterCat ? completed.filter(s => s.categorie === filterCat) : completed
   const filteredByDay: Record<string, TimeSession[]> = {}
   filteredCompleted.forEach(s => {
@@ -163,15 +160,12 @@ export default function TimePage() {
 
   return (
     <div className="page-container">
-      {/* ── Header ── */}
       <div style={{ marginBottom: 28 }}>
-        <h1 className="page-title">Time Tracker</h1>
-        <p className="page-subtitle">Suit ton temps de travail, par session et par catégorie</p>
+        <h1 className="page-title">{t('timeTitle')}</h1>
+        <p className="page-subtitle">{t('timeSubtitle')}</p>
       </div>
 
-      {/* ── Timer widget ── */}
       <div data-tour="time-tracker" className="card" style={{ padding: 28, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-        {/* Live display */}
         <div style={{ textAlign: 'center' }}>
           <div style={{
             fontSize: 56, fontWeight: 800, letterSpacing: '-0.04em',
@@ -183,12 +177,11 @@ export default function TimePage() {
           </div>
           {active && (
             <p style={{ fontSize: 13, color: 'var(--t1)', marginTop: 4 }}>
-              {getCatEmoji(active.categorie)} {active.categorie} · démarré à {new Date(active.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              {getCatEmoji(active.categorie)} {active.categorie} · {t('startedAt')} {new Date(active.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
         </div>
 
-        {/* Category selector */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
           {CATEGORIES.map(cat => (
             <button
@@ -210,7 +203,6 @@ export default function TimePage() {
           ))}
         </div>
 
-        {/* Start / Stop */}
         <button
           onClick={active ? stop : start}
           style={{
@@ -221,17 +213,16 @@ export default function TimePage() {
             transition: 'all 0.2s var(--ease-spring)',
           }}
         >
-          {active ? '⏹ Arrêter' : '▶ Démarrer'}
+          {active ? `⏹ ${t('stopTimer')}` : `▶ ${t('startTimer')}`}
         </button>
-        {startError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 8 }}>Impossible de démarrer la session. Réessaie.</p>}
+        {startError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 8 }}>{t('sessionStartError')}</p>}
       </div>
 
-      {/* ── Stats row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Aujourd'hui", value: fmt(todayMin), sub: `${completed.filter(s => new Date(s.debut).toDateString() === new Date().toDateString()).length} sessions` },
-          { label: `${days} derniers jours`, value: fmt(totalMin), sub: `${completed.length} sessions` },
-          { label: 'Moy. / jour', value: fmt(Math.round(totalMin / Math.max(days, 1))), sub: 'par jour travaillé' },
+          { label: t('today'), value: fmt(todayMin), sub: `${completed.filter(s => new Date(s.debut).toDateString() === new Date().toDateString()).length} sessions` },
+          { label: t('lastNDays', { n: days }), value: fmt(totalMin), sub: `${completed.length} sessions` },
+          { label: t('avgPerDay'), value: fmt(Math.round(totalMin / Math.max(days, 1))), sub: t('perWorkday') },
         ].map(stat => (
           <div key={stat.label} className="card" style={{ padding: '16px 18px' }}>
             <p style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{stat.label}</p>
@@ -242,12 +233,10 @@ export default function TimePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 20 }}>
-
-        {/* ── Category breakdown ── */}
         <div className="card" style={{ padding: 20 }}>
-          <p className="section-title" style={{ marginBottom: 16 }}>Par catégorie</p>
+          <p className="section-title" style={{ marginBottom: 16 }}>{t('byCategory')}</p>
           {byCategory.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>Aucune session</p>
+            <p style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>{t('noSessions')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {byCategory.map(cat => (
@@ -270,22 +259,21 @@ export default function TimePage() {
           )}
         </div>
 
-        {/* ── Daily bar chart ── */}
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <p className="section-title" style={{ margin: 0 }}>Par jour</p>
+            <p className="section-title" style={{ margin: 0 }}>{t('byDay')}</p>
             <select
               value={days}
               onChange={e => setDays(Number(e.target.value))}
               style={{ fontSize: 11, background: 'var(--bg-3)', border: '1px solid var(--border-s)', borderRadius: 6, color: 'var(--t1)', padding: '2px 6px', cursor: 'pointer' }}
             >
-              <option value={7}>7 jours</option>
-              <option value={14}>14 jours</option>
-              <option value={30}>30 jours</option>
+              {[7, 14, 30].map(d => (
+                <option key={d} value={d}>{t('daysN', { n: d })}</option>
+              ))}
             </select>
           </div>
           {allDayKeys.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>Aucune session</p>
+            <p style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>{t('noSessions')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {allDayKeys.slice(0, 7).map(key => {
@@ -315,10 +303,9 @@ export default function TimePage() {
         </div>
       </div>
 
-      {/* ── Session log ── */}
       <div className="card" style={{ marginTop: 20, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <p className="section-title" style={{ margin: 0, marginRight: 8 }}>Historique des sessions</p>
+          <p className="section-title" style={{ margin: 0, marginRight: 8 }}>{t('sessionHistory')}</p>
           {CATEGORIES.map(cat => (
             <button key={cat.id} onClick={() => setFilterCat(v => v === cat.id ? '' : cat.id)}
               style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: filterCat === cat.id ? 700 : 400, background: filterCat === cat.id ? `${cat.color}20` : 'var(--bg-2)', color: filterCat === cat.id ? cat.color : 'var(--t2)', border: `1px solid ${filterCat === cat.id ? cat.color + '50' : 'var(--border-s)'}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -333,7 +320,7 @@ export default function TimePage() {
           </div>
         ) : completed.length === 0 ? (
           <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>
-            Lance ton premier chrono !
+            {t('startFirstTimer')}
           </div>
         ) : (
           <div>
@@ -371,7 +358,6 @@ export default function TimePage() {
         )}
       </div>
 
-      {/* Leaderboard */}
       <div style={{ marginTop: 24 }}>
         <Leaderboard />
       </div>

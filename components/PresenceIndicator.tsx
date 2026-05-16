@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { playPresenceSound } from '@/lib/sounds'
 
 interface PresenceEntry {
@@ -29,6 +30,7 @@ function relTime(iso: string) {
 // ── Desktop hover tooltip ─────────────────────────────────────────────────────
 
 function DesktopTooltip({ user }: { user: PresenceEntry }) {
+  const { t } = useLanguage()
   return (
     <div style={{
       position: 'absolute', top: 'calc(100% + 8px)', right: 0,
@@ -47,13 +49,13 @@ function DesktopTooltip({ user }: { user: PresenceEntry }) {
           background: user.online ? '#0ec98c' : '#6b7280', flexShrink: 0,
         }} />
         <span style={{ fontSize: 11, color: user.online ? '#0ec98c' : 'var(--t2)' }}>
-          {user.online ? 'En ligne' : 'Hors ligne'}
+          {user.online ? t('online') : t('offline')}
         </span>
       </div>
       {user.online ? (
-        <p style={{ fontSize: 11, color: 'var(--t2)' }}>Connecté depuis {relTime(user.connectedAt)}</p>
+        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('connectedSince')} {relTime(user.connectedAt)}</p>
       ) : (
-        <p style={{ fontSize: 11, color: 'var(--t2)' }}>Vu il y a {relTime(user.lastSeen)}</p>
+        <p style={{ fontSize: 11, color: 'var(--t2)' }}>{t('seenAgo')} {relTime(user.lastSeen)}</p>
       )}
     </div>
   )
@@ -62,6 +64,7 @@ function DesktopTooltip({ user }: { user: PresenceEntry }) {
 // ── Mobile bottom sheet ───────────────────────────────────────────────────────
 
 function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () => void }) {
+  const { t } = useLanguage()
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
@@ -102,7 +105,7 @@ function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () =
           letterSpacing: '0.08em', textTransform: 'uppercase',
           padding: '0 20px', marginBottom: 8,
         }}>
-          Équipe en ligne
+          {t('teamOnline')}
         </p>
 
         {users.map((user, i) => (
@@ -142,8 +145,8 @@ function MobileSheet({ users, onClose }: { users: PresenceEntry[]; onClose: () =
               </p>
               <p style={{ fontSize: 12, color: user.online ? '#0ec98c' : 'var(--t2)' }}>
                 {user.online
-                  ? `En ligne · depuis ${relTime(user.connectedAt)}`
-                  : `Hors ligne · vu il y a ${relTime(user.lastSeen)}`}
+                  ? `${t('online')} · ${t('connectedSince')} ${relTime(user.connectedAt)}`
+                  : `${t('offline')} · ${t('seenAgo')} ${relTime(user.lastSeen)}`}
               </p>
             </div>
 

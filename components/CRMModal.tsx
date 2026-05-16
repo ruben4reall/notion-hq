@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Modal, Field, Input, Textarea, Select, FormActions } from './Modal'
 import { UserPicker, useUsers } from './UserPicker'
+import { useLanguage } from '@/context/LanguageContext'
 import type { CRMEntry } from '@/lib/types'
 
 const STATUSES = ['À contacter', 'Contacté', 'RDV pris', 'Offre envoyée', 'Client', 'Refus']
@@ -27,6 +28,7 @@ interface Props {
 
 export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Props) {
   const { user: session } = useAuth()
+  const { t } = useLanguage()
   const [form, setForm] = useState<Partial<CRMEntry>>(empty())
   const [loading, setLoading] = useState(false)
   const users = useUsers()
@@ -57,48 +59,48 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={entry ? 'Modifier le prospect' : 'Nouveau prospect'} maxWidth={560}>
+    <Modal isOpen={isOpen} onClose={onClose} title={entry ? t('editProspect') : t('newProspect')} maxWidth={560}>
       <form onSubmit={handleSubmit}>
-        <Field label="Enseigne *">
-          <Input value={form.enseigne ?? ''} onChange={set('enseigne')} placeholder="Nom de l'enseigne" required autoFocus />
+        <Field label={`${t('crmEnseigneLabel')} *`}>
+          <Input value={form.enseigne ?? ''} onChange={set('enseigne')} placeholder={t('crmEnseignePlaceholder')} required autoFocus />
         </Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Statut pipeline">
+          <Field label={t('crmPipelineStatus')}>
             <Select value={form.status ?? 'À contacter'} onChange={set('status')}>
               {STATUSES.map(s => <option key={s}>{s}</option>)}
             </Select>
           </Field>
-          <Field label="Priorité">
+          <Field label={t('priority')}>
             <Select value={form.priority ?? ''} onChange={set('priority')}>
-              {PRIORITIES.map(p => <option key={p} value={p}>{p || '— aucune —'}</option>)}
+              {PRIORITIES.map(p => <option key={p} value={p}>{p || t('noneOption')}</option>)}
             </Select>
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Type">
+          <Field label={t('type')}>
             <Select value={form.type ?? ''} onChange={set('type')}>
-              {TYPES.map(t => <option key={t} value={t}>{t || '— aucun —'}</option>)}
+              {TYPES.map(tp => <option key={tp} value={tp}>{tp || t('noneOption')}</option>)}
             </Select>
           </Field>
-          <Field label="Canal">
+          <Field label={t('channel')}>
             <Select value={form.canal ?? ''} onChange={set('canal')}>
-              {CANAUX.map(c => <option key={c} value={c}>{c || '— aucun —'}</option>)}
+              {CANAUX.map(c => <option key={c} value={c}>{c || t('noneOption')}</option>)}
             </Select>
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Contact">
-            <Input value={form.contact ?? ''} onChange={set('contact')} placeholder="Prénom Nom" />
+          <Field label={t('contactPerson')}>
+            <Input value={form.contact ?? ''} onChange={set('contact')} placeholder={t('namePlaceholder')} />
           </Field>
-          <Field label="Ville">
+          <Field label={t('crmVille')}>
             <Input value={form.ville ?? ''} onChange={set('ville')} placeholder="Lyon" />
           </Field>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Email">
+          <Field label={t('email')}>
             <Input type="email" value={form.email ?? ''} onChange={set('email')} placeholder="contact@enseigne.fr" />
           </Field>
-          <Field label="Téléphone">
+          <Field label={t('crmPhone')}>
             <Input type="tel" value={form.phone ?? ''} onChange={set('phone')} placeholder="06 12 34 56 78" />
           </Field>
         </div>
@@ -107,30 +109,30 @@ export function CRMModal({ isOpen, onClose, entry, defaultStatus, onSaved }: Pro
           return (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field label="Dernier contact">
+                <Field label={t('crmLastContact')}>
                   <Input type="date" value={form.lastContact ?? ''} onChange={set('lastContact')} />
                 </Field>
-                <Field label="Prochain suivi">
+                <Field label={t('nextFollowUp')}>
                   <Input type="date" value={form.nextFollowup ?? ''} onChange={set('nextFollowup')}
                     style={{ borderColor: dateError ? 'var(--red)' : undefined }} />
                 </Field>
               </div>
-              {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>Le suivi doit être après le dernier contact.</p>}
+              {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>{t('crmFollowupError')}</p>}
             </>
           )
         })()}
-        <Field label="Notes">
-          <Textarea value={form.notes ?? ''} onChange={set('notes')} placeholder="Notes libres…" />
+        <Field label={t('crmNotes')}>
+          <Textarea value={form.notes ?? ''} onChange={set('notes')} placeholder={t('crmNotesPlaceholder')} />
         </Field>
-        <Field label="Assigné à">
+        <Field label={t('crmAssignee')}>
           <UserPicker
             value={form.assignedTo ?? ''}
             onChange={name => setForm(p => ({ ...p, assignedTo: name }))}
             users={users}
-            placeholder="Personne"
+            placeholder={t('nobody')}
           />
         </Field>
-        <FormActions onCancel={onClose} loading={loading} label={entry ? 'Mettre à jour' : 'Créer'} />
+        <FormActions onCancel={onClose} loading={loading} label={entry ? t('update') : t('create')} />
       </form>
     </Modal>
   )

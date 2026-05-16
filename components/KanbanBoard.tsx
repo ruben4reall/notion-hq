@@ -5,6 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { TaskModal } from './TaskModal'
 import { UserAvatar, useUsers } from './UserPicker'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Task } from '@/lib/types'
 
 const COLUMNS: { id: Task['status']; color: string }[] = [
@@ -37,6 +38,7 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
   task: Task; onEdit: () => void; onDelete: () => void; isDragging: boolean
   users: { name: string; color: string }[]
 }) {
+  const { t } = useLanguage()
   const [menu, setMenu] = useState(false)
   const p = P_COLOR[task.priority] || null
   const mc = M_COLOR[task.module] || '#6b7280'
@@ -58,10 +60,10 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
           {(task.priority || task.module || isOverdue || isDueToday) && (
             <div style={{ display: 'flex', gap: 5, marginBottom: 6, flexWrap: 'wrap' }}>
               {isOverdue && (
-                <span className="badge" style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.12)' }}>En retard</span>
+                <span className="badge" style={{ color: '#f43f5e', background: 'rgba(244,63,94,0.12)' }}>{t('overdue')}</span>
               )}
               {isDueToday && (
-                <span className="badge" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}>Aujourd'hui</span>
+                <span className="badge" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.12)' }}>{t('dueToday')}</span>
               )}
               {task.priority && p && (
                 <span className="badge" style={{ color: p.c, background: p.bg }}>{task.priority}</span>
@@ -72,7 +74,7 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
             </div>
           )}
           <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', lineHeight: 1.4 }}>
-            {task.title || 'Sans titre'}
+            {task.title || t('noTitle')}
           </p>
           {task.description && (
             <p style={{ fontSize: 11, color: 'var(--t1)', lineHeight: 1.5, marginTop: 4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
@@ -91,8 +93,8 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenu(false)} />
               <div style={{ position: 'absolute', top: 26, right: 0, zIndex: 20, background: 'var(--bg-3)', border: '1px solid var(--border-m)', borderRadius: 8, padding: 4, minWidth: 120, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                <button onClick={e => { e.stopPropagation(); setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ Modifier</button>
-                <button onClick={e => { e.stopPropagation(); setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 Supprimer</button>
+                <button onClick={e => { e.stopPropagation(); setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ {t('edit')}</button>
+                <button onClick={e => { e.stopPropagation(); setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 {t('delete')}</button>
               </div>
             </>
           )}
@@ -131,6 +133,7 @@ function Skeleton() {
 }
 
 export default function KanbanBoard() {
+  const { t } = useLanguage()
   const { data: fetchedTasks, loading, refresh } = useCache<Task[]>('/api/tasks')
   const [tasks, setTasks] = useState<Task[]>(fetchedTasks ?? [])
   const [modal, setModal] = useState<{ open: boolean; task?: Task | null; defaultStatus?: Task['status'] }>({ open: false })
@@ -157,7 +160,7 @@ export default function KanbanBoard() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette tâche ?')) return
+    if (!confirm(t('deleteTaskConfirm'))) return
     setTasks(prev => prev.filter(t => t.id !== id))
     await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
   }
@@ -181,7 +184,7 @@ export default function KanbanBoard() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
             <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
-          <input placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
+          <input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)}
             style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 150 }} />
           {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
         </div>
@@ -212,7 +215,7 @@ export default function KanbanBoard() {
         {activeFilters > 0 && (
           <button onClick={() => { setSearch(''); setFilterUser(''); setFilterPriority('') }}
             style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer', marginLeft: 'auto' }}>
-            Effacer ({activeFilters})
+            {t('clearFiltersN', { n: activeFilters })}
           </button>
         )}
       </div>
@@ -231,7 +234,7 @@ export default function KanbanBoard() {
                   <button
                     onClick={() => setModal({ open: true, task: null, defaultStatus: col.id })}
                     style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--bg-2)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                    title="Ajouter une tâche"
+                    title={t('addTask')}
                   >+</button>
                 </div>
 
@@ -258,7 +261,7 @@ export default function KanbanBoard() {
                       ))}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snap.isDraggingOver && (
-                        <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--t2)', fontSize: 12 }}>Vide</div>
+                        <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--t2)', fontSize: 12 }}>{t('emptyCol')}</div>
                       )}
                     </div>
                   )}

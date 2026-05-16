@@ -2,71 +2,73 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-
-const items = [
-  {
-    href: '/',
-    label: 'Dashboard',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-      </svg>
-    ),
-  },
-  {
-    href: '/todo',
-    label: 'Todo',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/time',
-    label: 'Temps',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/notes',
-    label: 'Notes',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/crm',
-    label: 'Plus',
-    isMore: true,
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="5" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
-        <circle cx="12" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
-        <circle cx="19" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
-      </svg>
-    ),
-  },
-]
+import { useLanguage } from '@/context/LanguageContext'
 
 const MORE_PAGES = ['/crm', '/calendar', '/roadmap', '/ideas', '/kanban', '/settings']
 
 export function BottomNav() {
   const path = usePathname()
+  const { t } = useLanguage()
   const isMoreActive = MORE_PAGES.includes(path)
 
   if (path === '/login' || path.startsWith('/auth') || path.startsWith('/org')) return null
+
+  const items = [
+    {
+      href: '/',
+      label: t('dashboard'),
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+          <rect x="13" y="3" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+          <rect x="3" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+          <rect x="13" y="13" width="8" height="8" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+        </svg>
+      ),
+    },
+    {
+      href: '/todo',
+      label: t('navTodo'),
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/time',
+      label: t('time'),
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+          <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/notes',
+      label: t('notes'),
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/crm',
+      label: t('navMore'),
+      isMore: true,
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="5" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
+          <circle cx="19" cy="12" r="1.5" fill="currentColor" opacity={active ? 1 : 0.7}/>
+        </svg>
+      ),
+    },
+  ]
 
   return (
     <nav
@@ -99,7 +101,6 @@ export function BottomNav() {
                 transition: 'color 0.2s',
               }}
             >
-              {/* Active background pill — spans full item width */}
               <div style={{
                 position: 'absolute',
                 top: 4, left: 6, right: 6, height: 42,

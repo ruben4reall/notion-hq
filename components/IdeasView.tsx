@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { IdeaModal } from './IdeaModal'
 import { useCache } from '@/lib/useCache'
 import { UserAvatar, useUsers } from './UserPicker'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Idea } from '@/lib/types'
 
 const STATUS_TABS = ['Toutes', 'Brute', 'À explorer', 'Validée', 'Rejetée'] as const
@@ -32,6 +33,7 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
   idea: Idea; onEdit: () => void; onDelete: () => void; onVote: (delta: number) => void
   users: { name: string; color: string }[]
 }) {
+  const { t } = useLanguage()
   const [menu, setMenu] = useState(false)
   const sc = STATUS_CFG[idea.status] || STATUS_CFG.Brute
   const ec = EFFORT_CFG[idea.effort]
@@ -54,15 +56,15 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setMenu(false)} />
               <div style={{ position: 'absolute', top: 26, right: 0, zIndex: 20, background: 'var(--bg-3)', border: '1px solid var(--border-m)', borderRadius: 8, padding: 4, minWidth: 120, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-                <button onClick={() => { setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ Modifier</button>
-                <button onClick={() => { setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 Supprimer</button>
+                <button onClick={() => { setMenu(false); onEdit() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--t0)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>✏️ {t('edit')}</button>
+                <button onClick={() => { setMenu(false); onDelete() }} style={{ width: '100%', padding: '7px 10px', background: 'none', border: 'none', color: 'var(--red)', fontSize: 12, cursor: 'pointer', textAlign: 'left', borderRadius: 5 }}>🗑 {t('delete')}</button>
               </div>
             </>
           )}
         </div>
       </div>
 
-      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)', lineHeight: 1.4 }}>{idea.title || 'Sans titre'}</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)', lineHeight: 1.4 }}>{idea.title || t('noTitle')}</h3>
       {idea.description && (
         <p style={{ fontSize: 12, color: 'var(--t1)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>
           {idea.description}
@@ -91,6 +93,7 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
 
 export default function IdeasView() {
   const { user: session } = useAuth()
+  const { t } = useLanguage()
   const { data: fetchedIdeas, loading, refresh } = useCache<Idea[]>('/api/ideas')
   const [ideas, setIdeas] = useState<Idea[]>(fetchedIdeas ?? [])
   const [filter, setFilter] = useState<Filter>('Toutes')
@@ -117,7 +120,7 @@ export default function IdeasView() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette idée ?')) return
+    if (!confirm(t('deleteIdeaConfirm'))) return
     setIdeas(prev => prev.filter(i => i.id !== id))
     await fetch(`/api/ideas/${id}`, { method: 'DELETE' })
   }
@@ -159,7 +162,7 @@ export default function IdeasView() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
               <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
-            <input placeholder="Rechercher…" value={search} onChange={e => setSearch(e.target.value)}
+            <input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 28, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 140 }} />
             {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
           </div>
@@ -187,13 +190,13 @@ export default function IdeasView() {
           ))}
 
           <button onClick={() => setModal({ open: true, idea: null })} className="btn btn-primary" style={{ padding: '7px 16px', fontSize: 12, marginLeft: 'auto' }}>
-            + Nouvelle idée
+            + {t('newIdea')}
           </button>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t2)' }}>Aucune idée dans cette catégorie</div>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t2)' }}>{t('noIdeas')}</div>
       ) : (
         <div data-tour="ideas-board" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filtered.map(idea => (

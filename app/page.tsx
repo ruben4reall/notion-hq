@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 import type { KPIData, Task } from '@/lib/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -17,6 +18,8 @@ const STATUS_COLORS: Record<string, string> = {
 const PRIORITY_COLOR: Record<string, string> = {
   P0: 'var(--red)', P1: 'var(--amber)', P2: 'var(--t2)',
 }
+
+const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
 
 function fmtDate(d: string) {
   if (!d) return ''
@@ -68,7 +71,7 @@ function KPICard({
   )
 }
 
-function TaskRow({ task, highlight }: { task: Task; highlight?: 'overdue' | 'today' }) {
+function TaskRow({ task, highlight, noTitle }: { task: Task; highlight?: 'overdue' | 'today'; noTitle: string }) {
   const sc = STATUS_COLORS[task.status] || '#6b7280'
   const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
   const dateColor = highlight === 'overdue' ? '#f43f5e' : highlight === 'today' ? '#f59e0b' : 'var(--t2)'
@@ -80,7 +83,7 @@ function TaskRow({ task, highlight }: { task: Task; highlight?: 'overdue' | 'tod
       <div style={{ width: 6, height: 6, borderRadius: '50%', background: highlight === 'overdue' ? '#f43f5e' : sc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {task.title || 'Sans titre'}
+          {task.title || noTitle}
         </p>
         <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
           {task.module}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
@@ -146,6 +149,7 @@ function saveLayout(v: { kpiOrder: KpiId[]; sidebarLeft: boolean }) {
 
 export default function DashboardPage() {
   const { user: session } = useAuth()
+  const { t, lang } = useLanguage()
   const { data, loading } = useCache<KPIData>('/api/kpis', { ttl: 30_000 })
   const [editMode, setEditMode] = useState(false)
   const [kpiOrder, setKpiOrder] = useState<KpiId[]>(() => loadLayout().kpiOrder)
@@ -154,7 +158,8 @@ export default function DashboardPage() {
   useEffect(() => { saveLayout({ kpiOrder, sidebarLeft }) }, [kpiOrder, sidebarLeft])
 
   const firstName = session?.name?.split(' ')[0] ?? ''
-  const today = new Intl.DateTimeFormat('fr-FR', {
+  const locale = LOCALE_MAP[lang] || 'fr-FR'
+  const todayLabel = new Intl.DateTimeFormat(locale, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }).format(new Date())
 
@@ -174,9 +179,9 @@ export default function DashboardPage() {
   const kpiDefs: Record<KpiId, React.ReactNode> = {
     tasks: (
       <KPICard
-        label="Tâches en cours"
+        label={t('kpiTasksLabel')}
         value={data.tasksInProgress}
-        sub={`${data.completionRate}% complétées · ${data.tasksLast24h > 0 ? `+${data.tasksLast24h} aujourd'hui` : `sur ${data.totalTasks} total`}`}
+        sub={`${data.completionRate}% · ${data.tasksLast24h > 0 ? `+${data.tasksLast24h} ${t('today')}` : `/ ${data.totalTasks}`}`}
         color="#7c6af5"
         badge={data.tasksDelta !== 0 ? { text: `${Math.abs(data.tasksDelta)}%`, positive: data.tasksDelta > 0 } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
@@ -184,19 +189,19 @@ export default function DashboardPage() {
     ),
     prospects: (
       <KPICard
-        label="Prospects actifs"
+        label={t('kpiProspectsLabel')}
         value={data.activeProspects}
         sub="Contacté → Offre envoyée"
         color="#4f8ef7"
-        badge={data.crmConversionRate > 0 ? { text: `${data.crmConversionRate}% conv.`, positive: data.crmConversionRate >= 20 } : undefined}
+        badge={data.crmConversionRate > 0 ? { text: `${data.crmConversionRate}%`, positive: data.crmConversionRate >= 20 } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>}
       />
     ),
     clients: (
       <KPICard
-        label="Clients signés"
+        label={t('kpiClientsLabel')}
         value={data.signedClients}
-        sub={`sur ${data.totalCRM} prospects`}
+        sub={`/ ${data.totalCRM}`}
         color="#0ec98c"
         badge={data.completedLast24h > 0 ? { text: `+${data.completedLast24h} 24h`, positive: true } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -204,9 +209,9 @@ export default function DashboardPage() {
     ),
     ideas: (
       <KPICard
-        label="Idées validées"
+        label={t('kpiIdeasLabel')}
         value={data.validatedIdeas}
-        sub={`vélocité ${data.taskVelocity} tâche/j`}
+        sub={`${data.taskVelocity} task/j`}
         color="#f59e0b"
         badge={data.totalIdeas > 0 ? { text: `${Math.round((data.validatedIdeas/data.totalIdeas)*100)}%`, positive: data.validatedIdeas > 0 } : undefined}
         icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.686 2 6 4.686 6 8c0 2.21 1.118 4.156 2.83 5.315C9.517 13.867 10 14.612 10 15.5V16h4v-.5c0-.888.483-1.633 1.17-2.185C16.882 12.156 18 10.21 18 8c0-3.314-2.686-6-6-6z" stroke="currentColor" strokeWidth="1.5"/><path d="M10 19h4M9.5 22h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
@@ -218,7 +223,7 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <p className="section-title" style={{ margin: 0 }}>Pipeline tâches</p>
+          <p className="section-title" style={{ margin: 0 }}>{t('pipelineTasks')}</p>
           <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>→</Link>
         </div>
         <ProgressBar label="Backlog"  value={tasksByStatus['Backlog'] || 0}  total={data.totalTasks} color="#6b7280" />
@@ -229,15 +234,15 @@ export default function DashboardPage() {
       </div>
       <div className="card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <p className="section-title" style={{ margin: 0 }}>Top idées</p>
+          <p className="section-title" style={{ margin: 0 }}>{t('topIdeas')}</p>
           <Link href="/ideas" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>→</Link>
         </div>
         {data.topIdeas.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '10px 0' }}>Aucune idée</p>
+          <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '10px 0' }}>{t('noIdeasShort')}</p>
         ) : data.topIdeas.map(idea => (
           <div key={idea.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border-s)' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', minWidth: 24, textAlign: 'center' }}>{idea.votes}</span>
-            <p style={{ fontSize: 12, color: 'var(--t0)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{idea.title || 'Sans titre'}</p>
+            <p style={{ fontSize: 12, color: 'var(--t0)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{idea.title || t('noTitle')}</p>
           </div>
         ))}
       </div>
@@ -247,12 +252,12 @@ export default function DashboardPage() {
   const recentTasks = (
     <div data-tour="recent-tasks" className="card lg:col-span-2" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <p className="section-title" style={{ margin: 0 }}>Tâches récentes</p>
-        <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>Voir Kanban →</Link>
+        <p className="section-title" style={{ margin: 0 }}>{t('recentTasksLabel')}</p>
+        <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>{t('viewKanban')}</Link>
       </div>
       {data.recentTasks.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>Aucune tâche</p>
-      ) : data.recentTasks.map(t => <TaskRow key={t.id} task={t} />)}
+        <p style={{ fontSize: 13, color: 'var(--t2)', textAlign: 'center', padding: '20px 0' }}>{t('noTasks')}</p>
+      ) : data.recentTasks.map(tk => <TaskRow key={tk.id} task={tk} noTitle={t('noTitle')} />)}
     </div>
   )
 
@@ -261,8 +266,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
-          <h1 className="page-title">Bonjour{firstName ? `, ${firstName}` : ''} 👋</h1>
-          <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{today}</p>
+          <h1 className="page-title">{t('greeting')}{firstName ? `, ${firstName}` : ''} 👋</h1>
+          <p className="page-subtitle" style={{ textTransform: 'capitalize' }}>{todayLabel}</p>
         </div>
         <button
           onClick={() => setEditMode(e => !e)}
@@ -274,23 +279,21 @@ export default function DashboardPage() {
             flexShrink: 0, marginTop: 4,
           }}
         >
-          {editMode ? '✓ Terminer' : '⚙ Personnaliser'}
+          {editMode ? t('doneBtn') : t('customizeBtn')}
         </button>
       </div>
 
-      {/* Edit mode hint */}
       {editMode && (
         <div style={{ background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: 'var(--t1)' }}>
-          Utilise les flèches ← → pour réorganiser les cartes. Clique sur ⇄ pour inverser les colonnes du bas.
+          {t('customizeHint')}
         </div>
       )}
 
-      {/* Urgent tasks banner */}
       {data.overdueCount > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 20 }}>
           <span style={{ fontSize: 16 }}>⚠️</span>
-          <p style={{ fontSize: 13, color: '#f43f5e', fontWeight: 500 }}>{data.overdueCount} tâche{data.overdueCount > 1 ? 's' : ''} en retard</p>
-          <a href="/kanban" style={{ marginLeft: 'auto', fontSize: 12, color: '#f43f5e', textDecoration: 'none', opacity: 0.8 }}>Voir Kanban →</a>
+          <p style={{ fontSize: 13, color: '#f43f5e', fontWeight: 500 }}>{data.overdueCount} {t('overdueLabel').toLowerCase()}</p>
+          <a href="/kanban" style={{ marginLeft: 'auto', fontSize: 12, color: '#f43f5e', textDecoration: 'none', opacity: 0.8 }}>{t('viewKanban')}</a>
         </div>
       )}
 
@@ -309,32 +312,31 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* My urgent tasks */}
+      {/* Urgent tasks */}
       {(() => {
-        const myUrgent = data.urgentTasks.filter(t => !session?.name || t.assignedTo === session.name || t.assignedTo === '')
+        const myUrgent = data.urgentTasks.filter(tk => !session?.name || tk.assignedTo === session.name || tk.assignedTo === '')
         if (myUrgent.length === 0) return null
         const todayStr = new Date().toISOString().slice(0, 10)
         return (
           <div className="card" style={{ padding: '20px', marginBottom: 20, borderColor: 'rgba(244,63,94,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <p className="section-title" style={{ margin: 0, color: '#f43f5e' }}>Urgentes / Aujourd'hui</p>
+              <p className="section-title" style={{ margin: 0, color: '#f43f5e' }}>{t('urgentToday')}</p>
               <a href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>Kanban →</a>
             </div>
-            {myUrgent.map(t => (
-              <TaskRow key={t.id} task={t} highlight={t.dateEnd < todayStr ? 'overdue' : 'today'} />
+            {myUrgent.map(tk => (
+              <TaskRow key={tk.id} task={tk} highlight={tk.dateEnd < todayStr ? 'overdue' : 'today'} noTitle={t('noTitle')} />
             ))}
           </div>
         )
       })()}
 
-      {/* Bottom grid — swappable columns */}
       {editMode && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button
             onClick={() => setSidebarLeft(v => !v)}
             style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: 'var(--bg-2)', color: 'var(--accent)', border: '1px solid rgba(var(--accent-rgb),0.3)' }}
           >
-            ⇄ Inverser colonnes
+            {t('invertColumns')}
           </button>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useCache } from '@/lib/useCache'
+import { useLanguage } from '@/context/LanguageContext'
 import type { Task } from '@/lib/types'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -50,7 +51,7 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-function TaskPill({ task }: { task: Task }) {
+function TaskPill({ task, overdueBadge, noTitle }: { task: Task; overdueBadge: string; noTitle: string }) {
   const sc = STATUS_COLOR[task.status] || '#6b7280'
   const mc = MODULE_COLOR[task.module] || '#6b7280'
   const overdue = task.status !== 'Done' && isOverdue(task.dateEnd)
@@ -78,7 +79,7 @@ function TaskPill({ task }: { task: Task }) {
           background: 'rgba(244,63,94,0.15)', padding: '2px 6px', borderRadius: 100,
           border: '1px solid rgba(244,63,94,0.3)',
         }}>
-          EN RETARD
+          {overdueBadge}
         </span>
       )}
 
@@ -99,7 +100,7 @@ function TaskPill({ task }: { task: Task }) {
       </div>
 
       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {task.title || 'Sans titre'}
+        {task.title || noTitle}
       </p>
 
       {(task.dateStart || task.dateEnd) && (
@@ -123,24 +124,26 @@ const ALL_STATUSES = ['Backlog', 'À faire', 'En cours', 'Review', 'Done'] as co
 
 export default function RoadmapPage() {
   const { data, loading } = useCache<Task[]>('/api/tasks')
+  const { t } = useLanguage()
   const tasks = data ?? []
-  const [moduleFilter, setModuleFilter] = useState<string>('Tous')
-  const [statusFilter, setStatusFilter] = useState<string>('Tous')
+  const [moduleFilter, setModuleFilter] = useState<string>(t('allMasc'))
+  const [statusFilter, setStatusFilter] = useState<string>(t('allMasc'))
   const [priorityFilter, setPriorityFilter] = useState<string>('')
   const [search, setSearch] = useState('')
 
-  const filtered = tasks.filter(t => {
-    if (moduleFilter !== 'Tous' && t.module !== moduleFilter) return false
-    if (statusFilter !== 'Tous' && t.status !== statusFilter) return false
-    if (priorityFilter && t.priority !== priorityFilter) return false
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
+  const allLabel = t('allMasc')
+
+  const filtered = tasks.filter(tk => {
+    if (moduleFilter !== allLabel && tk.module !== moduleFilter) return false
+    if (statusFilter !== allLabel && tk.status !== statusFilter) return false
+    if (priorityFilter && tk.priority !== priorityFilter) return false
+    if (search && !tk.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
-  const withDates = filtered.filter(t => t.dateStart || t.dateEnd)
-  const withoutDates = filtered.filter(t => !t.dateStart && !t.dateEnd)
+  const withDates = filtered.filter(tk => tk.dateStart || tk.dateEnd)
+  const withoutDates = filtered.filter(tk => !tk.dateStart && !tk.dateEnd)
 
-  // Group by week (using dateEnd, fallback dateStart)
   const weekMap: Map<string, { label: string; tasks: Task[]; weekStart: Date }> = new Map()
 
   for (const task of withDates) {
@@ -155,12 +158,11 @@ export default function RoadmapPage() {
   const weeks = Array.from(weekMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
 
-  const today = new Date().toISOString().split('T')[0]
   const todayWeekKey = getWeekKey(new Date())
 
   const totalWithDates = withDates.length
-  const done = withDates.filter(t => t.status === 'Done').length
-  const overdueTasks = withDates.filter(t => t.status !== 'Done' && isOverdue(t.dateEnd)).length
+  const done = withDates.filter(tk => tk.status === 'Done').length
+  const overdueTasks = withDates.filter(tk => tk.status !== 'Done' && isOverdue(tk.dateEnd)).length
   const completionPct = totalWithDates > 0 ? Math.round((done / totalWithDates) * 100) : 0
 
   if (loading) return (
@@ -173,29 +175,27 @@ export default function RoadmapPage() {
 
   return (
     <div className="page-container animate-in">
-      {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 className="page-title">Roadmap</h1>
-            <p className="page-subtitle">Vue chronologique de toutes les tâches planifiées</p>
+            <p className="page-subtitle">{t('roadmapSubtitle')}</p>
           </div>
           <Link href="/kanban" style={{
             padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600,
             background: 'var(--accent-bg)', color: 'var(--accent)',
             border: '1px solid rgba(124,106,245,0.2)', textDecoration: 'none',
           }}>
-            + Ajouter dans Kanban →
+            {t('addToKanban')}
           </Link>
         </div>
 
-        {/* Stats rapides */}
         <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
           {[
-            { label: 'Tâches planifiées', value: totalWithDates, color: '#7c6af5' },
-            { label: 'Terminées', value: `${done} (${completionPct}%)`, color: '#0ec98c' },
-            { label: 'En retard', value: overdueTasks, color: overdueTasks > 0 ? '#f43f5e' : '#6b7280' },
-            { label: 'Non planifiées', value: withoutDates.length, color: '#6b7280' },
+            { label: t('scheduledTasks'), value: totalWithDates, color: '#7c6af5' },
+            { label: t('completedLabel'), value: `${done} (${completionPct}%)`, color: '#0ec98c' },
+            { label: t('overdueLabel'), value: overdueTasks, color: overdueTasks > 0 ? '#f43f5e' : '#6b7280' },
+            { label: t('unscheduledTasks'), value: withoutDates.length, color: '#6b7280' },
           ].map(s => (
             <div key={s.label} className="card" style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'center', flex: '1 1 120px' }}>
               <span style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</span>
@@ -204,10 +204,9 @@ export default function RoadmapPage() {
           ))}
         </div>
 
-        {/* Barre de progression globale */}
         <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-            <span style={{ fontSize: 12, color: 'var(--t1)', fontWeight: 500 }}>Progression globale</span>
+            <span style={{ fontSize: 12, color: 'var(--t1)', fontWeight: 500 }}>{t('overallProgress')}</span>
             <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{completionPct}%</span>
           </div>
           <div style={{ height: 6, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
@@ -216,15 +215,13 @@ export default function RoadmapPage() {
         </div>
       </div>
 
-      {/* Filtres */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexDirection: 'column' }}>
-        {/* Row 1: search + priority + clear */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)', pointerEvents: 'none' }}>
               <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.8"/><path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
-            <input placeholder="Rechercher une tâche…" value={search} onChange={e => setSearch(e.target.value)}
+            <input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft: 26, paddingRight: search ? 24 : 8, height: 32, borderRadius: 8, background: 'var(--bg-2)', border: '1px solid var(--border-s)', fontSize: 12, color: 'var(--t0)', outline: 'none', width: 200 }} />
             {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1 }}>×</button>}
           </div>
@@ -240,13 +237,12 @@ export default function RoadmapPage() {
           {(priorityFilter || search) && (
             <button onClick={() => { setPriorityFilter(''); setSearch('') }}
               style={{ padding: '5px 10px', borderRadius: 100, fontSize: 11, background: 'rgba(244,63,94,0.1)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer' }}>
-              Effacer
+              {t('clear')}
             </button>
           )}
         </div>
-        {/* Row 2: module */}
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
-          {['Tous', ...ALL_MODULES].map(m => (
+          {[allLabel, ...ALL_MODULES].map(m => (
             <button key={m} onClick={() => setModuleFilter(m)} style={{
               padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: moduleFilter === m ? 700 : 400,
               background: moduleFilter === m ? 'var(--accent)' : 'transparent',
@@ -255,9 +251,8 @@ export default function RoadmapPage() {
             }}>{m}</button>
           ))}
         </div>
-        {/* Row 3: status */}
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-2)', padding: 4, borderRadius: 10, overflowX: 'auto' }}>
-          {['Tous', ...ALL_STATUSES].map(s => (
+          {[allLabel, ...ALL_STATUSES].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)} style={{
               padding: '7px 14px', borderRadius: 7, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400,
               background: statusFilter === s ? (STATUS_COLOR[s] ?? 'var(--accent)') : 'transparent',
@@ -268,10 +263,9 @@ export default function RoadmapPage() {
         </div>
       </div>
 
-      {/* Timeline par semaine */}
       {weeks.length === 0 && withoutDates.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t2)' }}>
-          Aucune tâche trouvée avec ces filtres
+          {t('noTasksFiltered')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -280,7 +274,6 @@ export default function RoadmapPage() {
             const isCurrent = key === todayWeekKey
             return (
               <div key={key}>
-                {/* Entête semaine */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <div style={{
                     width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
@@ -293,42 +286,39 @@ export default function RoadmapPage() {
                     letterSpacing: '0.03em',
                   }}>
                     {week.label}
-                    {isCurrent && <span style={{ marginLeft: 8, fontSize: 10, background: 'var(--accent)', color: 'white', padding: '2px 7px', borderRadius: 100 }}>CETTE SEMAINE</span>}
+                    {isCurrent && <span style={{ marginLeft: 8, fontSize: 10, background: 'var(--accent)', color: 'white', padding: '2px 7px', borderRadius: 100 }}>{t('thisWeekBadge')}</span>}
                   </span>
                   <div style={{ flex: 1, height: 1, background: 'var(--border-s)' }} />
-                  <span style={{ fontSize: 11, color: 'var(--t2)' }}>{week.tasks.length} tâche{week.tasks.length > 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 11, color: 'var(--t2)' }}>{week.tasks.length}</span>
                 </div>
 
-                {/* Cards horizontales scrollables */}
                 <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, paddingLeft: 20 }}>
-                  {week.tasks.map(task => <TaskPill key={task.id} task={task} />)}
+                  {week.tasks.map(task => <TaskPill key={task.id} task={task} overdueBadge={t('overdueBadge')} noTitle={t('noTitle')} />)}
                 </div>
               </div>
             )
           })}
 
-          {/* Non planifiées */}
           {withoutDates.length > 0 && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--border-m)', flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.03em' }}>
-                  NON PLANIFIÉES
+                  {t('unscheduledSection')}
                 </span>
                 <div style={{ flex: 1, height: 1, background: 'var(--border-s)' }} />
-                <span style={{ fontSize: 11, color: 'var(--t2)' }}>{withoutDates.length} tâche{withoutDates.length > 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 11, color: 'var(--t2)' }}>{withoutDates.length}</span>
               </div>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingLeft: 20 }}>
-                {withoutDates.map(task => <TaskPill key={task.id} task={task} />)}
+                {withoutDates.map(task => <TaskPill key={task.id} task={task} overdueBadge={t('overdueBadge')} noTitle={t('noTitle')} />)}
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Légende */}
       <div style={{ marginTop: 32, padding: '16px', background: 'var(--bg-2)', borderRadius: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>LÉGENDE :</span>
+        <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>{t('legendLabel')}</span>
         {Object.entries(STATUS_COLOR).map(([s, c]) => (
           <span key={s} style={{ fontSize: 11, color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: c, display: 'inline-block' }} />
@@ -337,7 +327,7 @@ export default function RoadmapPage() {
         ))}
         <span style={{ fontSize: 11, color: '#f43f5e', display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f43f5e', display: 'inline-block' }} />
-          En retard
+          {t('overdueLabel')}
         </span>
       </div>
     </div>
