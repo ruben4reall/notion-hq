@@ -88,10 +88,10 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().slice(0, 10)
   let rowHistory: { date: string; value: number }[] = []
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const mt = db.from('_infra_metrics' as any) as any
     await mt.upsert({ metric: 'total_rows', value: totalRows, captured_at: today }, { onConflict: 'metric,captured_at' })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const { data } = await (db.from('_infra_metrics' as any) as any)
       .select('captured_at, value').eq('metric', 'total_rows')
       .order('captured_at', { ascending: true }).limit(14)
@@ -110,32 +110,29 @@ export async function GET(req: NextRequest) {
   let avgSessionSec = 0
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pa = (sql: string) => (db.from('_page_analytics' as any) as any).select(sql)
-    void pa // type guard
 
     const [pagesRes, hourlyRes, usersRes, globalRes] = await Promise.all([
       // Top pages by visits (last 30 days)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
       (db.from('_page_analytics' as any) as any)
         .select('page, duration_sec')
         .gte('visited_at', new Date(Date.now() - 30 * 86400000).toISOString()),
 
       // Hourly activity pattern (last 7 days)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
       (db.from('_page_analytics' as any) as any)
         .select('visited_at')
         .gte('visited_at', new Date(Date.now() - 7 * 86400000).toISOString()),
 
       // Top users by activity
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
       (db.from('_page_analytics' as any) as any)
         .select('username, duration_sec')
         .gte('visited_at', new Date(Date.now() - 30 * 86400000).toISOString())
         .not('username', 'is', null),
 
       // Global stats
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
       (db.from('_page_analytics' as any) as any)
         .select('duration_sec')
         .gte('visited_at', new Date(Date.now() - 30 * 86400000).toISOString()),

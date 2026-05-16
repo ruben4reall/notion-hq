@@ -246,7 +246,7 @@ export default function TimePage() {
               {byCategory.map(cat => (
                 <div key={cat.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, color: 'var(--t1)', fontWeight: 500 }}>{cat.emoji} {cat.id}</span>
+                    <span style={{ fontSize: 12, color: 'var(--t1)', fontWeight: 500 }}>{cat.emoji} {t(cat.key)}</span>
                     <span style={{ fontSize: 12, color: 'var(--t0)', fontWeight: 700 }}>{fmt(cat.min)}</span>
                   </div>
                   <div style={{ height: 5, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>

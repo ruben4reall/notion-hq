@@ -16,6 +16,10 @@ const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
   Design: '#a855f7', Prospection: '#f59e0b', Pause: '#6b7280',
 }
+const CAT_KEY: Record<string, string> = {
+  Travail: 'timeCatWork', Meeting: 'timeCatMeeting', Code: 'timeCatCode',
+  Design: 'timeCatDesign', Prospection: 'timeCatSales', Pause: 'timeCatBreak',
+}
 
 function fmt(min: number) {
   const h = Math.floor(min / 60)
@@ -108,7 +112,7 @@ export function Leaderboard() {
                           background: `${CAT_COLORS[cat] || '#888'}18`,
                           padding: '2px 7px', borderRadius: 100,
                         }}>
-                          {cat} {fmt(min)}
+                          {CAT_KEY[cat] ? t(CAT_KEY[cat]) : cat} {fmt(min)}
                         </span>
                       ))}
                   </div>

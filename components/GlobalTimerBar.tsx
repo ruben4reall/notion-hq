@@ -8,6 +8,10 @@ const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
   Design: '#a855f7', Prospection: '#f59e0b', Pause: '#6b7280',
 }
+const CAT_KEY: Record<string, string> = {
+  Travail: 'timeCatWork', Meeting: 'timeCatMeeting', Code: 'timeCatCode',
+  Design: 'timeCatDesign', Prospection: 'timeCatSales', Pause: 'timeCatBreak',
+}
 
 function fmt(sec: number) {
   const h = Math.floor(sec / 3600)
@@ -53,7 +57,7 @@ export function GlobalTimerBar() {
       }} />
 
       <span style={{ fontSize: 11, fontWeight: 600, color, letterSpacing: '0.02em' }}>
-        {active.categorie}
+        {CAT_KEY[active.categorie] ? t(CAT_KEY[active.categorie]) : active.categorie}
       </span>
 
       <span style={{

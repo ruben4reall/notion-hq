@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
 
   const db = getClient()
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db.from('_page_analytics' as any) as any).insert({
       page: page.slice(0, 100),
       username: user?.name ?? null,

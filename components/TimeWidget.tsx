@@ -9,6 +9,10 @@ const CAT_COLORS: Record<string, string> = {
   Travail: '#7c6af5', Meeting: '#4f8ef7', Code: '#0ec98c',
   Design: '#a855f7', Prospection: '#f59e0b', Pause: '#6b7280',
 }
+const CAT_KEY: Record<string, string> = {
+  Travail: 'timeCatWork', Meeting: 'timeCatMeeting', Code: 'timeCatCode',
+  Design: 'timeCatDesign', Prospection: 'timeCatSales', Pause: 'timeCatBreak',
+}
 
 function fmtShort(sec: number) {
   const h = Math.floor(sec / 3600)
@@ -44,7 +48,7 @@ export function TimeWidget() {
         textDecoration: 'none', cursor: 'pointer',
         transition: 'all 0.2s',
       }}
-      title={`Session en cours : ${active.categorie}`}
+      title={`${t('activeTimer')} · ${CAT_KEY[active.categorie] ? t(CAT_KEY[active.categorie]) : active.categorie}`}
     >
       <div style={{
         width: 6, height: 6, borderRadius: '50%', background: color,

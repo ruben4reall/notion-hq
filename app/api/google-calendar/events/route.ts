@@ -54,7 +54,6 @@ export async function GET(_req: NextRequest) {
     }
 
     const data = await res.json()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const events = (data.items ?? []).map((e: any) => ({
       id: e.id,
       title: e.summary || '(Sans titre)',

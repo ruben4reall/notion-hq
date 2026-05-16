@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(url, { next: { revalidate: 60 } })
     const data = await res.json()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const gifs = (data.results || []).map((g: any) => {
       const media = g.media?.[0] || {}
       return {
