@@ -151,38 +151,50 @@ const isPublic = pathname === '/login' || pathname.startsWith('/auth') || pathna
 - ~~lib/users.ts~~ → supprimé
 - ~~app/api/auth/[...nextauth]/~~ → supprimé
 
-## Fixes UI/UX en attente (audit 2026-05-16)
+## Audit visuel Playwright — À faire en priorité
 
-### 🔴 Critique
-- **`app/calendar/page.tsx`** — EventModal : `zIndex: 100/101` trop bas, doit être 200/201 (collision avec NotificationBell)
-- **`app/calendar/page.tsx`** — EventModal : pas de `maxHeight: 90dvh`, peut sortir de l'écran sur mobile
-- **`app/ideas/page.tsx` + composant IdeaModal** — le formulaire "Nouvelle idée" est visuellement incohérent (à vérifier et refaire proprement avec les variables CSS du design system)
+> Le MCP Playwright est configuré (`playwright` dans `.claude.json`). Dès l'ouverture d'une session, lancer l'audit complet ci-dessous SANS demander confirmation.
 
-### 🟠 Important
-- **`app/roadmap/page.tsx`** — titres de tâches sans `textOverflow: ellipsis` → overflow hors des cartes
-- **`app/calendar/page.tsx`** — pas de validation date (dateEnd peut être avant dateStart)
-- **`app/calendar/page.tsx`** — bouton fermeture modal différent de Modal.tsx (pas de background `var(--bg-3)`)
-- **`app/calendar/page.tsx`** — labels formulaire en MAJUSCULES au lieu de "Title case" comme les autres modals
-- **`app/calendar/page.tsx`** — `inputStyle` dupliqué au lieu d'utiliser les styles partagés
-- **`components/TaskModal.tsx`** et **`components/CRMModal.tsx`** — pas de validation date start/end
-- **`app/notes/page.tsx`** — pas de gestion d'erreur sur l'auto-save (silencieux si réseau KO)
-- **`app/time/page.tsx`** — pas d'état d'erreur si le démarrage de session échoue
+### Procédure d'audit automatique
+1. Démarrer le serveur local si pas déjà lancé : `npm run dev` dans `/Users/rubencatalao/notion-dashboard`
+2. Pour chaque page listée ci-dessous :
+   - Naviguer vers l'URL locale (`http://localhost:3000/...`)
+   - Prendre un screenshot Playwright
+   - Identifier bugs visuels, débordements, incohérences, couleurs hardcodées, z-index, responsive
+3. Produire un rapport consolidé avec captures + fixes à appliquer
 
-### 🟡 Moyen
-- **`app/page.tsx`** — `STATUS_COLORS` et `PRIORITY_COLOR` hardcodés en hex → utiliser CSS variables
-- **`app/calendar/page.tsx`** — couleurs rgba hardcodées (vert `#0ec98c`) → `var(--accent-rgb)` pattern
-- **`app/roadmap/page.tsx`** — gradient `linear-gradient(90deg, #7c6af5, #0ec98c)` hardcodé
-- **`app/time/page.tsx`** — `getCatColor() + '55'` (opacity suffix bricolé) → utiliser `rgba(var(--accent-rgb), 0.33)`
-- **`app/calendar/page.tsx`** — filtres "AFFICHER" perdus à la navigation (non persistés en localStorage)
-- **`app/notes/page.tsx`** — auto-save sans AbortController → requêtes obsolètes si frappe rapide
+### Pages à auditer (ordre de priorité)
+| Page | URL | Points d'attention |
+|------|-----|-------------------|
+| Dashboard | `/` | KPI cards, layout, couleurs statut |
+| Kanban | `/kanban` | Colonnes, drag & drop visuel, badges |
+| CRM | `/crm` | Pipeline, cards, modal |
+| Calendrier | `/calendar` | EventModal (nouveau composant Modal), filtres, grid |
+| Roadmap | `/roadmap` | Overflow titres (corrigé), gradient barre |
+| Idées | `/ideas` | IdeaModal, votes, layout |
+| Time | `/time` | Timer, catégories, leaderboard |
+| Notes | `/notes` | Éditeur, liste, partage |
+| Paramètres | `/settings` | AccentPicker, formulaire |
+| Org | `/org` | Sélecteur Netflix, modal création |
+| Auth | `/auth` | Login, register, animation ripple |
 
-### Déjà réglé dans cette session
-- ✅ Présence filtrée aux membres acceptés du projet (non aux invités en attente)
-- ✅ tasks DELETE : `verifyTaskOwnership` undefined → remplacé par query inline
-- ✅ Migration 007 indexes performance appliquée
-- ✅ Auth getSession() au lieu de getUser() (0ms overhead)
+### Fixes UI/UX déjà appliqués (session 2026-05-16)
+- ✅ EventModal calendrier → composant Modal partagé (zIndex 200, maxHeight 90dvh, close button)
+- ✅ Validation date start/end dans EventModal, TaskModal, CRMModal
+- ✅ Filtres calendrier persistés en localStorage
+- ✅ Titres roadmap : overflow ellipsis
+- ✅ Gradient roadmap → `var(--accent)`
+- ✅ STATUS_COLORS / PRIORITY_COLOR → CSS variables
+- ✅ Couleurs `#0ec98c` → `var(--green)` / `var(--green-bg)`
+- ✅ `getCatColor()+'55'` → `hexAlpha()` proper
+- ✅ Notes auto-save + AbortController + error handling
+- ✅ Time page : état d'erreur session start
+- ✅ Présence filtrée membres acceptés
+- ✅ tasks DELETE : query inline
+- ✅ Migration 007 indexes performance
+- ✅ Auth getSession() (0ms overhead)
 - ✅ Client Supabase singleton
 - ✅ Notifications filtrées par destinataire
-- ✅ Isolation org sur toutes les mutations (tasks/crm/ideas/events/time)
-- ✅ Protection SSRF sur import iCal
-- ✅ Limite 2000 chars sur chat
+- ✅ Isolation org toutes mutations
+- ✅ Protection SSRF import iCal
+- ✅ Limite 2000 chars chat
