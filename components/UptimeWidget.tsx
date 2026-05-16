@@ -398,16 +398,31 @@ export default function UptimeWidget() {
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/monitors')
-      if (!res.ok) return
-      const data = await res.json()
-      setMonitors(Array.isArray(data) ? data : [])
-      setLastRefresh(new Date())
+      if (res.ok) {
+        const data = await res.json()
+        setMonitors(Array.isArray(data) ? data : [])
+        setLastRefresh(new Date())
+      }
     } catch {}
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    load()
+    load().then(async () => {
+      // Auto-check if no ping in the last 5 min (replaces Vercel cron on Hobby plan)
+      setMonitors(prev => {
+        const stale = prev.some(m => {
+          if (!m.enabled) return false
+          if (!m.latestPing) return true
+          return Date.now() - new Date(m.latestPing.checked_at).getTime() > 5 * 60_000
+        })
+        if (stale) {
+          fetch('/api/admin/monitors/check-all', { headers: { 'x-admin-check': 'true' } })
+            .then(() => load())
+        }
+        return prev
+      })
+    })
     const interval = setInterval(load, 60_000)
     return () => clearInterval(interval)
   }, [load])
