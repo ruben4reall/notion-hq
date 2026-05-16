@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json([], { status: 500 })
 
-  // Get member counts
   const orgIds = (data || []).map((m: any) => m.organizations?.id).filter(Boolean)
   const counts: Record<string, number> = {}
   if (orgIds.length > 0) {
@@ -49,8 +48,19 @@ export async function POST(req: NextRequest) {
   if (!name?.trim()) return NextResponse.json({ error: 'Nom requis' }, { status: 400 })
 
   const db = getClient()
-  const slug = slugify(name)
 
+  // Max 5 projects
+  const { count } = await db
+    .from('org_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+
+  if ((count ?? 0) >= 5) {
+    return NextResponse.json({ error: 'Maximum 5 projets atteint' }, { status: 403 })
+  }
+
+  const slug = slugify(name)
   const { data: org, error } = await db
     .from('organizations')
     .insert({ name: name.trim(), slug, created_by: user.id })

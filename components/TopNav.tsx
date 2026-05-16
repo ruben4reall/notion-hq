@@ -171,7 +171,7 @@ export function TopNav() {
                         <path d="M16 3H8a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.8"/>
                         <path d="M12 3v4M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                       </svg>
-                      Changer de projet
+                      Mes projets
                     </Link>
                     <Link
                       href="/settings"

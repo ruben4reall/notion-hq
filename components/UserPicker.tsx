@@ -133,11 +133,13 @@ export function UserPicker({ value, onChange, users, placeholder = 'Assigner', s
   )
 }
 
-// Hook to fetch users from API
+// Hook to fetch project members (for notes sharing — restricted to current project)
 export function useUsers() {
   const [users, setUsers] = useState<AppUser[]>([])
   useEffect(() => {
-    fetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {})
+    fetch('/api/project-members').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setUsers(data)
+    }).catch(() => {})
   }, [])
   return users
 }
