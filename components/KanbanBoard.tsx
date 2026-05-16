@@ -205,7 +205,7 @@ export default function KanbanBoard() {
       )}
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="kanban-scroll" style={{ minHeight: '60vh' }}>
+        <div data-tour="kanban-board" className="kanban-scroll" style={{ minHeight: '60vh' }}>
           {COLUMNS.map(col => {
             const colTasks = visibleTasks.filter(t => t.status === col.id)
             return (

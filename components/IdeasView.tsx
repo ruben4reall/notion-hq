@@ -168,7 +168,7 @@ export default function IdeasView() {
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--t2)' }}>Aucune idée dans cette catégorie</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+        <div data-tour="ideas-board" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
           {filtered.map(idea => (
             <IdeaCard
               key={idea.id} idea={idea}

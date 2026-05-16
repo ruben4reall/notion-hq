@@ -134,7 +134,7 @@ export default function NotesPage() {
   )
 
   return (
-    <div style={{ height: 'calc(100dvh - 56px)', display: 'flex', overflow: 'hidden' }}>
+    <div data-tour="notes-workspace" style={{ height: 'calc(100dvh - 56px)', display: 'flex', overflow: 'hidden' }}>
 
       {/* ── Sidebar ── */}
       <div style={{

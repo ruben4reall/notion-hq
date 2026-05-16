@@ -23,18 +23,31 @@ const STATUS_COLOR: Record<string, string> = {
 }
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const DAYS_FR   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']
+const DAYS_FULL = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche']
+
+type CalView = 'month' | 'week' | 'day'
 
 function isoDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
+function getWeekStart(d: Date): Date {
+  const dow = (d.getDay() + 6) % 7
+  const start = new Date(d)
+  start.setDate(d.getDate() - dow)
+  return start
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d)
+  r.setDate(r.getDate() + n)
+  return r
+}
+
 type ModalState = { open: boolean; date?: string; event?: CalendarEvent | null }
 
 function EventModal({ state, onClose, onSaved, currentUser }: {
-  state: ModalState
-  onClose: () => void
-  onSaved: () => void
-  currentUser: string
+  state: ModalState; onClose: () => void; onSaved: () => void; currentUser: string
 }) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<CalendarEvent['type']>('RDV')
@@ -60,10 +73,11 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
   }, [state])
 
   const isEdit = !!state.event
+  const dateError = dateEnd && dateStart && dateEnd < dateStart
 
   const handleSave = async () => {
     if (!title.trim()) return
-    if (dateEnd && dateStart && dateEnd < dateStart) return
+    if (dateError) return
     setSaving(true)
     const body = { title, type, dateStart, dateEnd, description, modifiedBy: currentUser }
     if (isEdit) {
@@ -83,14 +97,11 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
     onClose()
   }
 
-  const dateError = dateEnd && dateStart && dateEnd < dateStart
-
   return (
     <Modal isOpen={state.open} onClose={onClose} title={isEdit ? "Modifier l'évènement" : 'Nouvel évènement'} maxWidth={440}>
       <Field label="Titre">
         <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nom de l'évènement" autoFocus />
       </Field>
-
       <Field label="Type">
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {(['RDV','Réunion','Appel','Deadline','Autre'] as const).map(t => (
@@ -104,7 +115,6 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
           ))}
         </div>
       </Field>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="Début">
           <Input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} />
@@ -115,11 +125,9 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
         </Field>
       </div>
       {dateError && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: -8, marginBottom: 10 }}>La date de fin doit être après le début.</p>}
-
       <Field label="Description">
         <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Notes…" rows={3} />
       </Field>
-
       <div style={{ display: 'flex', gap: 8, paddingTop: 16, borderTop: '1px solid var(--border-s)', justifyContent: 'space-between' }}>
         {isEdit && (
           <button type="button" onClick={handleDelete} className="btn" style={{ background: 'rgba(244,63,94,0.12)', color: '#f43f5e', border: '1px solid rgba(244,63,94,0.2)' }}>
@@ -137,9 +145,248 @@ function EventModal({ state, onClose, onSaved, currentUser }: {
   )
 }
 
+type DayItems = {
+  dayTasks: Task[]
+  dayEvents: CalendarEvent[]
+  dayExternal: CalendarEvent[]
+}
+
+type ItemChip = { title: string; color: string; isTask: boolean; isExternal: boolean; event?: CalendarEvent }
+
+function buildChips(items: DayItems): ItemChip[] {
+  return [
+    ...items.dayEvents.map(e => ({
+      title: e.title || 'Sans titre',
+      color: TYPE_COLOR[e.type] || '#6b7280',
+      isTask: false, isExternal: false, event: e,
+    })),
+    ...items.dayTasks.map(t => ({
+      title: t.title || 'Sans titre',
+      color: STATUS_COLOR[t.status] || '#6b7280',
+      isTask: true, isExternal: false,
+    })),
+    ...items.dayExternal.map(e => ({
+      title: e.title || 'Sans titre',
+      color: '#12c98a',
+      isTask: false, isExternal: true,
+    })),
+  ]
+}
+
+function EventChip({ chip, onClick, small }: { chip: ItemChip; onClick?: () => void; small?: boolean }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        fontSize: small ? 9 : 11, padding: small ? '2px 4px' : '3px 7px', borderRadius: small ? 3 : 5,
+        background: `${chip.color}22`, color: chip.color,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        borderLeft: `2px solid ${chip.color}`,
+        cursor: (!chip.isTask && !chip.isExternal && onClick) ? 'pointer' : 'default',
+      }}
+    >
+      {chip.isExternal ? '◆ ' : ''}{chip.title}
+    </div>
+  )
+}
+
+function MonthView({ year, month, items, todayStr, setModal }: {
+  year: number; month: number
+  items: (dateStr: string) => DayItems
+  todayStr: string
+  setModal: (s: ModalState) => void
+}) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startDow = (firstDay.getDay() + 6) % 7
+  const cells: (number | null)[] = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: lastDay.getDate() }, (_, i) => i + 1),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-s)' }}>
+        {DAYS_FR.map(d => (
+          <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>
+            {d}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+        {cells.map((dayNum, idx) => {
+          if (!dayNum) return (
+            <div key={`e-${idx}`} style={{ minHeight: 90, borderRight: '1px solid var(--border-s)', borderBottom: '1px solid var(--border-s)', background: 'var(--bg-0)', opacity: 0.3 }} />
+          )
+          const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`
+          const isToday = dateStr === todayStr
+          const isWeekend = (idx % 7) >= 5
+          const chips = buildChips(items(dateStr))
+
+          return (
+            <div
+              key={dayNum}
+              onClick={() => setModal({ open: true, date: dateStr })}
+              style={{
+                minHeight: 90, padding: '6px 4px',
+                borderRight: '1px solid var(--border-s)', borderBottom: '1px solid var(--border-s)',
+                background: isToday ? 'rgba(124,106,245,0.05)' : isWeekend ? 'rgba(0,0,0,0.08)' : 'transparent',
+                cursor: 'pointer', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isToday ? 'rgba(124,106,245,0.1)' : 'var(--bg-2)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isToday ? 'rgba(124,106,245,0.05)' : isWeekend ? 'rgba(0,0,0,0.08)' : 'transparent' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+                <span style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: isToday ? 700 : 400,
+                  background: isToday ? 'var(--accent)' : 'transparent',
+                  color: isToday ? 'white' : isWeekend ? 'var(--t2)' : 'var(--t1)',
+                }}>
+                  {dayNum}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', maxHeight: 60 }}>
+                {chips.slice(0, 3).map((chip, i) => (
+                  <EventChip key={i} chip={chip} small onClick={!chip.isTask && !chip.isExternal ? () => setModal({ open: true, event: chip.event }) : undefined} />
+                ))}
+                {chips.length > 3 && <span style={{ fontSize: 9, color: 'var(--t2)', paddingLeft: 4 }}>+{chips.length - 3} autres</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function WeekView({ weekStart, items, todayStr, setModal }: {
+  weekStart: Date
+  items: (dateStr: string) => DayItems
+  todayStr: string
+  setModal: (s: ModalState) => void
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      {days.map((d, i) => {
+        const dateStr = isoDate(d)
+        const isToday = dateStr === todayStr
+        const isWeekend = i >= 5
+        const chips = buildChips(items(dateStr))
+
+        return (
+          <div key={dateStr} style={{ borderRight: i < 6 ? '1px solid var(--border-s)' : 'none', minHeight: 160 }}>
+            <div
+              onClick={() => setModal({ open: true, date: dateStr })}
+              style={{
+                padding: '10px 8px', borderBottom: '1px solid var(--border-s)',
+                background: isToday ? 'rgba(124,106,245,0.06)' : isWeekend ? 'rgba(0,0,0,0.04)' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.04em', marginBottom: 4 }}>
+                {DAYS_FR[i]}
+              </p>
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isToday ? 'var(--accent)' : 'transparent',
+                fontSize: 14, fontWeight: isToday ? 700 : 500,
+                color: isToday ? 'white' : isWeekend ? 'var(--t2)' : 'var(--t0)',
+              }}>
+                {d.getDate()}
+              </div>
+            </div>
+
+            <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {chips.map((chip, ci) => (
+                <EventChip
+                  key={ci} chip={chip}
+                  onClick={!chip.isTask && !chip.isExternal ? () => setModal({ open: true, event: chip.event }) : undefined}
+                />
+              ))}
+              {chips.length === 0 && (
+                <div
+                  onClick={() => setModal({ open: true, date: dateStr })}
+                  style={{ height: 48, cursor: 'pointer', borderRadius: 6, border: '1px dashed var(--border-s)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <span style={{ fontSize: 16, color: 'var(--t2)', opacity: 0.5 }}>+</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function DayView({ date, items, setModal }: {
+  date: Date
+  items: (dateStr: string) => DayItems
+  setModal: (s: ModalState) => void
+}) {
+  const dateStr = isoDate(date)
+  const { dayTasks, dayEvents, dayExternal } = items(dateStr)
+
+  const allItems: { title: string; color: string; label: string; event?: CalendarEvent }[] = [
+    ...dayEvents.map(e => ({ title: e.title || 'Sans titre', color: TYPE_COLOR[e.type] || '#6b7280', label: e.type, event: e })),
+    ...dayTasks.map(t => ({ title: t.title || 'Sans titre', color: STATUS_COLOR[t.status] || '#6b7280', label: t.status })),
+    ...dayExternal.map(e => ({ title: e.title || 'Sans titre', color: '#12c98a', label: 'iCal' })),
+  ]
+
+  return (
+    <div style={{ padding: '20px' }}>
+      {allItems.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <p style={{ fontSize: 24, marginBottom: 8 }}>📭</p>
+          <p style={{ fontSize: 14, color: 'var(--t2)' }}>Aucun évènement ce jour</p>
+          <button
+            onClick={() => setModal({ open: true, date: dateStr })}
+            style={{ marginTop: 16, padding: '9px 20px', borderRadius: 10, background: 'var(--accent)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            + Ajouter un évènement
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {allItems.map((item, i) => (
+            <div
+              key={i}
+              onClick={() => item.event && setModal({ open: true, event: item.event })}
+              style={{
+                padding: '14px 16px', borderRadius: 12,
+                background: `${item.color}0d`, border: `1px solid ${item.color}25`,
+                borderLeft: `3px solid ${item.color}`,
+                cursor: item.event ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', gap: 12,
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--t0)' }}>{item.title}</p>
+                <p style={{ fontSize: 11, color: item.color, marginTop: 2, fontWeight: 500 }}>{item.label}</p>
+              </div>
+              {item.event && <span style={{ fontSize: 12, color: 'var(--t2)' }}>›</span>}
+            </div>
+          ))}
+          <button
+            onClick={() => setModal({ open: true, date: dateStr })}
+            style={{ padding: '9px', borderRadius: 10, border: '1px dashed var(--border-m)', background: 'transparent', color: 'var(--t2)', fontSize: 13, cursor: 'pointer', marginTop: 4 }}
+          >
+            + Ajouter un évènement
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CalendarContent() {
   const { user: session } = useAuth()
-
   const { data: fetchedTasks, loading: tasksLoading, refresh: refreshTasks } = useCache<Task[]>('/api/tasks')
   const { data: fetchedEvents, loading: eventsLoading, refresh: refreshEvents } = useCache<CalendarEvent[]>('/api/events')
   const [tasks, setTasks] = useState<Task[]>(fetchedTasks ?? [])
@@ -148,6 +395,10 @@ function CalendarContent() {
   const [externalConnected, setExternalConnected] = useState(false)
   const loading = tasksLoading || eventsLoading
   const [modal, setModal] = useState<ModalState>({ open: false })
+  const [view, setView] = useState<CalView>(() => {
+    if (typeof window === 'undefined') return 'month'
+    return (localStorage.getItem('cal_view') as CalView) || 'month'
+  })
   const [showExternal, setShowExternal] = useState(() => {
     if (typeof window === 'undefined') return true
     return localStorage.getItem('cal_showExternal') !== 'false'
@@ -160,14 +411,10 @@ function CalendarContent() {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
+  const [selectedDate, setSelectedDate] = useState(today)
 
-  useEffect(() => {
-    if (fetchedTasks) setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : [])
-  }, [fetchedTasks])
-
-  useEffect(() => {
-    if (fetchedEvents) setEvents(Array.isArray(fetchedEvents) ? fetchedEvents : [])
-  }, [fetchedEvents])
+  useEffect(() => { if (fetchedTasks) setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []) }, [fetchedTasks])
+  useEffect(() => { if (fetchedEvents) setEvents(Array.isArray(fetchedEvents) ? fetchedEvents : []) }, [fetchedEvents])
 
   const load = useCallback(async () => {
     refreshTasks()
@@ -184,57 +431,67 @@ function CalendarContent() {
     })
   }, [])
 
-  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y-1) } else setMonth(m => m-1) }
-  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y+1) } else setMonth(m => m+1) }
-
-  // Build calendar grid
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startDow = (firstDay.getDay() + 6) % 7 // Monday = 0
-  const totalDays = lastDay.getDate()
-
-  const cells: (number | null)[] = [
-    ...Array(startDow).fill(null),
-    ...Array.from({ length: totalDays }, (_, i) => i + 1),
-  ]
-  while (cells.length % 7 !== 0) cells.push(null)
-
-  function getItemsForDay(dayNum: number) {
-    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`
-
-    const dayTasks = showTasks
-      ? tasks.filter(t => {
-          if (!t.dateStart && !t.dateEnd) return false
-          const start = t.dateStart || t.dateEnd
-          const end = t.dateEnd || t.dateStart
-          return dateStr >= start && dateStr <= end
-        })
-      : []
-
+  const getItemsForDay = useCallback((dateStr: string): DayItems => {
+    const dayTasks = showTasks ? tasks.filter(t => {
+      if (!t.dateStart && !t.dateEnd) return false
+      const start = t.dateStart || t.dateEnd
+      const end = t.dateEnd || t.dateStart
+      return dateStr >= start && dateStr <= end
+    }) : []
     const dayEvents = events.filter(e => {
       if (!e.dateStart) return false
       const start = e.dateStart
       const end = e.dateEnd || e.dateStart
       return dateStr >= start && dateStr <= end
     })
-
-    const dayExternal = showExternal
-      ? externalEvents.filter(e => {
-          if (!e.dateStart) return false
-          const start = e.dateStart
-          const end = e.dateEnd || e.dateStart
-          return dateStr >= start && dateStr <= end
-        })
-      : []
-
+    const dayExternal = showExternal ? externalEvents.filter(e => {
+      if (!e.dateStart) return false
+      const start = e.dateStart
+      const end = e.dateEnd || e.dateStart
+      return dateStr >= start && dateStr <= end
+    }) : []
     return { dayTasks, dayEvents, dayExternal }
+  }, [tasks, events, externalEvents, showTasks, showExternal])
+
+  // Navigation
+  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y-1) } else setMonth(m => m-1) }
+  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y+1) } else setMonth(m => m+1) }
+  const weekStart = getWeekStart(selectedDate)
+
+  const navigatePrev = () => {
+    if (view === 'month') prevMonth()
+    else if (view === 'week') setSelectedDate(d => addDays(d, -7))
+    else setSelectedDate(d => addDays(d, -1))
+  }
+  const navigateNext = () => {
+    if (view === 'month') nextMonth()
+    else if (view === 'week') setSelectedDate(d => addDays(d, 7))
+    else setSelectedDate(d => addDays(d, 1))
+  }
+  const goToday = () => {
+    const t = new Date()
+    setYear(t.getFullYear()); setMonth(t.getMonth()); setSelectedDate(t)
+  }
+
+  const setViewPersisted = (v: CalView) => {
+    setView(v)
+    try { localStorage.setItem('cal_view', v) } catch {}
   }
 
   const todayStr = isoDate(today)
+  const icalUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/calendar.ics` : '/api/calendar.ics'
 
-  const icalUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/api/calendar.ics`
-    : '/api/calendar.ics'
+  function getHeaderLabel() {
+    if (view === 'month') return `${MONTHS_FR[month]} ${year}`
+    if (view === 'week') {
+      const ws = getWeekStart(selectedDate)
+      const we = addDays(ws, 6)
+      if (ws.getMonth() === we.getMonth()) return `${ws.getDate()}–${we.getDate()} ${MONTHS_FR[ws.getMonth()]} ${ws.getFullYear()}`
+      return `${ws.getDate()} ${MONTHS_FR[ws.getMonth()]} – ${we.getDate()} ${MONTHS_FR[we.getMonth()]} ${we.getFullYear()}`
+    }
+    const dow = (selectedDate.getDay() + 6) % 7
+    return `${DAYS_FULL[dow]} ${selectedDate.getDate()} ${MONTHS_FR[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`
+  }
 
   if (loading) return (
     <div className="page-container">
@@ -253,18 +510,17 @@ function CalendarContent() {
           </div>
           <button onClick={() => setModal({ open: true, date: todayStr })} style={{
             padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-            background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer',
-            flexShrink: 0,
+            background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', flexShrink: 0,
           }}>
             + Évènement
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <a href={icalUrl} target="_blank" rel="noreferrer" style={{
             padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-            background: 'var(--bg-2)', color: 'var(--t1)',
-            border: '1px solid var(--border-m)', textDecoration: 'none',
-            display: 'flex', alignItems: 'center', gap: 5,
+            background: 'var(--bg-2)', color: 'var(--t1)', border: '1px solid var(--border-m)',
+            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,
           }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
@@ -275,8 +531,7 @@ function CalendarContent() {
           {externalConnected ? (
             <div style={{
               padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-              background: 'var(--green-bg)', color: 'var(--green)',
-              border: '1px solid rgba(18,201,138,0.3)',
+              background: 'var(--green-bg)', color: 'var(--green)', border: '1px solid rgba(18,201,138,0.3)',
               display: 'flex', alignItems: 'center', gap: 5,
             }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
@@ -285,9 +540,8 @@ function CalendarContent() {
           ) : (
             <a href="/settings" style={{
               padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-              background: 'var(--bg-2)', color: 'var(--t1)',
-              border: '1px solid var(--border-m)', textDecoration: 'none',
-              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'var(--bg-2)', color: 'var(--t1)', border: '1px solid var(--border-m)',
+              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5,
             }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
@@ -299,158 +553,90 @@ function CalendarContent() {
         </div>
       </div>
 
-      {/* Filtres légende */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>AFFICHER :</span>
-        <button onClick={() => setShowTasks(v => { localStorage.setItem('cal_showTasks', String(!v)); return !v })} style={{
-          padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showTasks ? 700 : 400,
-          background: showTasks ? 'rgba(124,106,245,0.15)' : 'var(--bg-2)',
-          color: showTasks ? 'var(--accent)' : 'var(--t2)',
-          border: `1px solid ${showTasks ? 'rgba(124,106,245,0.3)' : 'var(--border-s)'}`,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-        }}>
-          <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
-          Tâches
-        </button>
-        {externalConnected && (
-          <button onClick={() => setShowExternal(v => { localStorage.setItem('cal_showExternal', String(!v)); return !v })} style={{
-            padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showExternal ? 700 : 400,
-            background: showExternal ? 'var(--green-bg)' : 'var(--bg-2)',
-            color: showExternal ? 'var(--green)' : 'var(--t2)',
-            border: `1px solid ${showExternal ? 'rgba(18,201,138,0.3)' : 'var(--border-s)'}`,
+      {/* Filter + view switcher row */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>AFFICHER :</span>
+          <button onClick={() => setShowTasks(v => { localStorage.setItem('cal_showTasks', String(!v)); return !v })} style={{
+            padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showTasks ? 700 : 400,
+            background: showTasks ? 'rgba(124,106,245,0.15)' : 'var(--bg-2)',
+            color: showTasks ? 'var(--accent)' : 'var(--t2)',
+            border: `1px solid ${showTasks ? 'rgba(124,106,245,0.3)' : 'var(--border-s)'}`,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
-            Calendrier externe
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
+            Tâches
           </button>
-        )}
-        {Object.entries(TYPE_COLOR).slice(0,4).map(([type, color]) => (
-          <span key={type} style={{ fontSize: 11, color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
-            {type}
-          </span>
-        ))}
-      </div>
-
-      {/* Navigation mois */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-s)' }}>
-          <button onClick={prevMonth} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16 }}>‹</button>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)' }}>{MONTHS_FR[month]} {year}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()) }} style={{ padding: '4px 10px', borderRadius: 8, background: 'var(--accent-bg)', border: '1px solid rgba(124,106,245,0.2)', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
-              Aujourd'hui
+          {externalConnected && (
+            <button onClick={() => setShowExternal(v => { localStorage.setItem('cal_showExternal', String(!v)); return !v })} style={{
+              padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: showExternal ? 700 : 400,
+              background: showExternal ? 'var(--green-bg)' : 'var(--bg-2)',
+              color: showExternal ? 'var(--green)' : 'var(--t2)',
+              border: `1px solid ${showExternal ? 'rgba(18,201,138,0.3)' : 'var(--border-s)'}`,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+              Calendrier externe
             </button>
-            <button onClick={nextMonth} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16 }}>›</button>
-          </div>
+          )}
         </div>
 
-        {/* Jours de la semaine */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border-s)' }}>
-          {DAYS_FR.map(d => (
-            <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.05em' }}>
-              {d}
-            </div>
+        {/* View switcher */}
+        <div style={{ display: 'flex', background: 'var(--bg-2)', borderRadius: 9, padding: 3, gap: 2 }}>
+          {(['month','week','day'] as CalView[]).map(v => (
+            <button
+              key={v}
+              onClick={() => setViewPersisted(v)}
+              style={{
+                padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                background: view === v ? 'var(--bg-0)' : 'transparent',
+                color: view === v ? 'var(--t0)' : 'var(--t2)',
+                border: view === v ? '1px solid var(--border-s)' : '1px solid transparent',
+                boxShadow: view === v ? '0 1px 4px rgba(0,0,0,0.15)' : 'none',
+                transition: 'all 0.15s',
+              }}
+            >
+              {v === 'month' ? 'Mois' : v === 'week' ? 'Semaine' : 'Jour'}
+            </button>
           ))}
         </div>
-
-        {/* Grille */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {cells.map((dayNum, idx) => {
-            if (!dayNum) return (
-              <div key={`empty-${idx}`} style={{ minHeight: 90, borderRight: '1px solid var(--border-s)', borderBottom: '1px solid var(--border-s)', background: 'var(--bg-0)', opacity: 0.3 }} />
-            )
-
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`
-            const isToday = dateStr === todayStr
-            const isWeekend = (idx % 7) >= 5
-            const { dayTasks, dayEvents, dayExternal } = getItemsForDay(dayNum)
-            const allItems = [...dayEvents, ...dayTasks.map(t => ({ ...t, source: 'task' })), ...dayExternal.map(g => ({ ...g, source: 'external' as const }))]
-
-            return (
-              <div
-                key={dayNum}
-                onClick={() => setModal({ open: true, date: dateStr })}
-                style={{
-                  minHeight: 90, padding: '6px 4px',
-                  borderRight: '1px solid var(--border-s)',
-                  borderBottom: '1px solid var(--border-s)',
-                  background: isToday ? 'rgba(124,106,245,0.05)' : isWeekend ? 'rgba(0,0,0,0.1)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                  position: 'relative',
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isToday ? 'rgba(124,106,245,0.1)' : 'var(--bg-2)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isToday ? 'rgba(124,106,245,0.05)' : isWeekend ? 'rgba(0,0,0,0.1)' : 'transparent' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-                  <span style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: isToday ? 700 : 400,
-                    background: isToday ? 'var(--accent)' : 'transparent',
-                    color: isToday ? 'white' : isWeekend ? 'var(--t2)' : 'var(--t1)',
-                  }}>
-                    {dayNum}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', maxHeight: 60 }}>
-                  {allItems.slice(0, 3).map((item, i) => {
-                    const isGoogleItem = item.source === 'external'
-                    const isTaskItem = 'status' in item && item.source !== 'external'
-                    const color = isGoogleItem
-                      ? '#12c98a'
-                      : isTaskItem
-                        ? STATUS_COLOR[(item as Task).status] || '#6b7280'
-                        : TYPE_COLOR[(item as CalendarEvent).type] || '#6b7280'
-
-                    return (
-                      <div
-                        key={i}
-                        onClick={e => {
-                          e.stopPropagation()
-                          if (!isTaskItem && !isGoogleItem) {
-                            setModal({ open: true, event: item as CalendarEvent })
-                          }
-                        }}
-                        style={{
-                          fontSize: 9, padding: '2px 4px', borderRadius: 3,
-                          background: `${color}22`, color,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          borderLeft: `2px solid ${color}`,
-                          cursor: isTaskItem || isGoogleItem ? 'default' : 'pointer',
-                        }}
-                      >
-                        {isGoogleItem ? '◆ ' : ''}{(item as { title?: string }).title || 'Sans titre'}
-                      </div>
-                    )
-                  })}
-                  {allItems.length > 3 && (
-                    <span style={{ fontSize: 9, color: 'var(--t2)', paddingLeft: 4 }}>+{allItems.length - 3} autres</span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
       </div>
 
-      {/* Section iCal abonnement */}
+      {/* Calendar card */}
+      <div data-tour="calendar-grid" className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Nav bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-s)', gap: 12 }}>
+          <button onClick={navigatePrev} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16 }}>‹</button>
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--t0)' }}>{getHeaderLabel()}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button onClick={goToday} style={{ padding: '4px 10px', borderRadius: 8, background: 'var(--accent-bg)', border: '1px solid rgba(124,106,245,0.2)', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+              Aujourd'hui
+            </button>
+            <button onClick={navigateNext} style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-3)', border: '1px solid var(--border-s)', color: 'var(--t1)', cursor: 'pointer', fontSize: 16 }}>›</button>
+          </div>
+        </div>
+
+        {view === 'month' && (
+          <MonthView year={year} month={month} items={getItemsForDay} todayStr={todayStr} setModal={setModal} />
+        )}
+        {view === 'week' && (
+          <WeekView weekStart={weekStart} items={getItemsForDay} todayStr={todayStr} setModal={setModal} />
+        )}
+        {view === 'day' && (
+          <DayView date={selectedDate} items={getItemsForDay} setModal={setModal} />
+        )}
+      </div>
+
+      {/* iCal subscription */}
       <div className="card" style={{ marginTop: 20, padding: '16px 20px' }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 10 }}>
-          Abonnement Calendrier
-        </p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', marginBottom: 10 }}>Abonnement Calendrier</p>
         <p style={{ fontSize: 12, color: 'var(--t1)', marginBottom: 12, lineHeight: 1.6 }}>
           Copiez cette URL dans Google Calendar → "Autres agendas" → "Via une URL" ou dans Apple Calendar → Fichier → Nouvel abonnement.
-          Le calendrier se mettra à jour automatiquement avec vos tâches et évènements.
         </p>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-3)', borderRadius: 8, padding: '8px 12px', border: '1px solid var(--border-s)' }}>
-          <code style={{ fontSize: 11, color: 'var(--accent)', flex: 1, wordBreak: 'break-all' }}>
-            {icalUrl}
-          </code>
+          <code style={{ fontSize: 11, color: 'var(--accent)', flex: 1, wordBreak: 'break-all' }}>{icalUrl}</code>
           <button
             onClick={() => navigator.clipboard.writeText(icalUrl)}
             style={{ padding: '4px 10px', borderRadius: 6, background: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid rgba(124,106,245,0.2)', cursor: 'pointer', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
@@ -460,12 +646,7 @@ function CalendarContent() {
         </div>
       </div>
 
-      <EventModal
-        state={modal}
-        onClose={() => setModal({ open: false })}
-        onSaved={load}
-        currentUser={session?.name ?? ''}
-      />
+      <EventModal state={modal} onClose={() => setModal({ open: false })} onSaved={load} currentUser={session?.name ?? ''} />
     </div>
   )
 }

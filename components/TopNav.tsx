@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 
 const links = [
   { href: '/', label: 'Dashboard' },
+  { href: '/todo', label: 'Todo' },
   { href: '/kanban', label: 'Kanban' },
   { href: '/crm', label: 'CRM' },
   { href: '/calendar', label: 'Calendrier' },

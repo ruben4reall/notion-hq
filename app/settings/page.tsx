@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useOnboarding, OnboardingModal } from '@/components/Onboarding'
+import { useOnboarding, SECTIONS } from '@/components/Onboarding'
 import { ACCENTS, saveAccent, getCurrentAccentId } from '@/lib/accent-color'
 
 interface UserSettings {
@@ -396,30 +396,47 @@ function AccentPicker() {
 }
 
 function OnboardingSettings() {
-  const { show, reset, complete } = useOnboarding()
-  const [open, setOpen] = useState(false)
+  const { reset, resetSection } = useOnboarding()
 
   return (
-    <>
-      <Section title="Guide de l'application">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: 13, color: 'var(--t1)' }}>Revoir le guide de démarrage</p>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>S'affiche automatiquement à la première connexion</p>
-          </div>
-          <button
-            onClick={() => { reset(); setOpen(true) }}
-            style={{
-              padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-              background: 'var(--accent-bg)', color: 'var(--accent)',
-              border: '1px solid rgba(124,106,245,0.2)', cursor: 'pointer',
-            }}
-          >
-            Revoir le guide
-          </button>
+    <Section title="Guide de l'application">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-s)' }}>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>Revoir tout le guide</p>
+          <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 3 }}>Recommence le tour interactif complet depuis le début</p>
         </div>
-      </Section>
-      {open && <OnboardingModal onClose={() => { complete(); setOpen(false) }} />}
-    </>
+        <button
+          onClick={reset}
+          style={{
+            padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'var(--accent-bg)', color: 'var(--accent)',
+            border: '1px solid rgba(var(--accent-rgb),0.25)', cursor: 'pointer', whiteSpace: 'nowrap',
+          }}
+        >
+          Revoir tout
+        </button>
+      </div>
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+        Revoir par section
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {SECTIONS.map(s => (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: 'var(--bg-2)', border: '1px solid var(--border-s)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 9, background: `${s.color}18`, border: `1px solid ${s.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                {s.emoji}
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>{s.label}</p>
+            </div>
+            <button
+              onClick={() => resetSection(s.id)}
+              style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: `${s.color}14`, color: s.color, border: `1px solid ${s.color}25`, cursor: 'pointer' }}
+            >
+              Revoir
+            </button>
+          </div>
+        ))}
+      </div>
+    </Section>
   )
 }

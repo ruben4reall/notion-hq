@@ -145,7 +145,7 @@ export default function CRMPipeline() {
         </div>
       )}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
+        <div data-tour="crm-pipeline" style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16, minHeight: '60vh' }}>
           {STAGES.map(stage => {
             const stageEntries = visibleEntries.filter(e => e.status === stage.id)
             return (

@@ -1,13 +1,13 @@
 'use client'
 
 import { useAuth } from '@/context/AuthContext'
-import { useOnboarding, OnboardingModal } from './Onboarding'
+import { useOnboarding, TourOverlay } from './Onboarding'
 
 export function OnboardingWatcher() {
   const { status } = useAuth()
-  const { show, complete } = useOnboarding()
+  const { show, complete, startSection } = useOnboarding()
 
   if (status !== 'authenticated' || !show) return null
 
-  return <OnboardingModal onClose={complete} />
+  return <TourOverlay onComplete={complete} startSectionId={startSection} />
 }

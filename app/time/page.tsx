@@ -158,7 +158,7 @@ export default function TimePage() {
       </div>
 
       {/* ── Timer widget ── */}
-      <div className="card" style={{ padding: 28, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+      <div data-tour="time-tracker" className="card" style={{ padding: 28, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
         {/* Live display */}
         <div style={{ textAlign: 'center' }}>
           <div style={{

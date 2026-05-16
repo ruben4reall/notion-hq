@@ -17,13 +17,12 @@ const items = [
     ),
   },
   {
-    href: '/kanban',
-    label: 'Kanban',
+    href: '/todo',
+    label: 'Todo',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="4" width="5" height="16" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <rect x="9.5" y="4" width="5" height="11" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
-        <rect x="16" y="4" width="5" height="7" rx="2" stroke="currentColor" strokeWidth={active ? 2 : 1.5}/>
+        <path d="M9 11l3 3L22 4" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth={active ? 2 : 1.5} strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
   },
@@ -61,7 +60,7 @@ const items = [
   },
 ]
 
-const MORE_PAGES = ['/crm', '/calendar', '/roadmap', '/ideas', '/settings']
+const MORE_PAGES = ['/crm', '/calendar', '/roadmap', '/ideas', '/kanban', '/settings']
 
 export function BottomNav() {
   const path = usePathname()

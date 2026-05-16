@@ -245,7 +245,7 @@ export default function DashboardPage() {
   )
 
   const recentTasks = (
-    <div className="card lg:col-span-2" style={{ padding: '20px' }}>
+    <div data-tour="recent-tasks" className="card lg:col-span-2" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <p className="section-title" style={{ margin: 0 }}>Tâches récentes</p>
         <Link href="/kanban" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>Voir Kanban →</Link>
@@ -295,7 +295,7 @@ export default function DashboardPage() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+      <div data-tour="kpi-grid" className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
         {kpiOrder.map((id, idx) => (
           <div key={id} style={{ position: 'relative' }}>
             {editMode && (
