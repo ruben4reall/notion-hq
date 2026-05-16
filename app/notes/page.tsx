@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useUsers, UserAvatar } from '@/components/UserPicker'
 import { useCache } from '@/lib/useCache'
