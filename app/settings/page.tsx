@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useOnboarding, OnboardingModal } from '@/components/Onboarding'
@@ -57,7 +58,9 @@ function Alert({ type, message }: { type: 'error' | 'success'; message: string }
 
 export default function SettingsPage() {
   const { user: session, signOut } = useAuth()
+  const router = useRouter()
   const [settings, setSettings] = useState<UserSettings | null>(null)
+  const [superAdmin, setSuperAdmin] = useState(false)
 
   const [displayName, setDisplayName] = useState('')
   const [savingName, setSavingName] = useState(false)
@@ -81,6 +84,10 @@ export default function SettingsPage() {
         setDisplayName(data.displayName || '')
         setIcalUrl(data.icalFeedUrl || '')
       })
+    fetch('/api/admin/check')
+      .then(r => r.json())
+      .then(d => setSuperAdmin(!!d.isSuperAdmin))
+      .catch(() => {})
   }, [])
 
   const saveName = async () => {
@@ -149,6 +156,30 @@ export default function SettingsPage() {
         <h1 className="page-title">Paramètres</h1>
         <p className="page-subtitle">Gérez votre profil et vos préférences</p>
       </div>
+
+      {/* SuperAdmin */}
+      {superAdmin && (
+        <div className="card" style={{ padding: '16px 20px', marginBottom: 16, border: '1px solid rgba(244,63,94,0.25)', background: 'rgba(244,63,94,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(244,63,94,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Dashboard SuperAdmin</p>
+                <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 2 }}>Métriques, utilisateurs et activité de la plateforme</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/admin')}
+              style={{ padding: '8px 16px', background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.25)', borderRadius: 9, color: '#f43f5e', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              Ouvrir
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Profile */}
       <Section title="Profil">

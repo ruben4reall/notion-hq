@@ -1,8 +1,17 @@
 import { NextRequest } from 'next/server'
 import { createRouteClient } from './supabase/server'
+import { getClient } from './db'
 
 export function getOrgId(req: NextRequest): string | null {
   return req.cookies.get('current_org_id')?.value || null
+}
+
+export async function isSuperAdmin(req: NextRequest): Promise<boolean> {
+  const user = await getUser(req)
+  if (!user) return false
+  const db = getClient()
+  const { data } = await db.from('platform_admins').select('user_id').eq('user_id', user.id).single()
+  return !!data
 }
 
 export interface AuthUser {

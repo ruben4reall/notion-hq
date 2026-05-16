@@ -183,70 +183,62 @@ export default function NotesPage() {
             filtered.map(note => (
               <div
                 key={note.id}
-                style={{ position: 'relative', borderBottom: '1px solid var(--border-s)' }}
+                onClick={() => { setActive(note); setPreview(false) }}
                 onMouseEnter={() => setHoveredNote(note.id)}
                 onMouseLeave={() => setHoveredNote(null)}
+                style={{
+                  padding: '12px 16px', cursor: 'pointer',
+                  background: active?.id === note.id ? 'var(--accent-bg)' : hoveredNote === note.id ? 'var(--bg-2)' : 'none',
+                  borderBottom: '1px solid var(--border-s)', transition: 'background 0.15s',
+                }}
               >
-                <button
-                  onClick={() => { setActive(note); setPreview(false) }}
-                  style={{
-                    width: '100%', textAlign: 'left',
-                    background: active?.id === note.id ? 'var(--accent-bg)' : hoveredNote === note.id ? 'var(--bg-2)' : 'none',
-                    border: 'none', padding: '12px 16px', cursor: 'pointer', transition: 'background 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <p style={{
-                      fontSize: 13, fontWeight: active?.id === note.id ? 600 : 500,
-                      color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                    }}>
-                      {note.titre || 'Sans titre'}
-                    </p>
-                    <span style={{ fontSize: 10, color: 'var(--t2)', flexShrink: 0 }}>{relTime(note.updatedAt)}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                    <p style={{ fontSize: 11, color: 'var(--t2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {note.contenu.replace(/[#*`_~\[\]()]/g, '').slice(0, 50) || 'Vide'}
-                    </p>
-                    {note.utilisateur !== myName && (
-                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Partagée</span>
-                    )}
-                    {note.utilisateur === myName && note.sharedWith.length > 0 && (
-                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-3)', color: 'var(--t2)', fontWeight: 600, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {note.sharedWith.length} partage{note.sharedWith.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                </button>
-
-                {/* Actions on hover (owner only) */}
-                {note.utilisateur === myName && hoveredNote === note.id && (
-                  <div style={{
-                    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                    display: 'flex', gap: 4, zIndex: 5,
-                    background: active?.id === note.id ? 'var(--accent-bg)' : 'var(--bg-2)',
-                    borderRadius: 6, padding: '2px 4px',
+                {/* Row 1: title + date or action buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <p style={{
+                    fontSize: 13, fontWeight: active?.id === note.id ? 600 : 500,
+                    color: 'var(--t0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
                   }}>
-                    <button
-                      onClick={e => { e.stopPropagation(); setActive(note); setPreview(false); setTimeout(() => setShowSharePicker(true), 50) }}
-                      title="Partager"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.sharedWith.length > 0 ? 'var(--accent)' : 'var(--t2)', padding: '3px 4px', borderRadius: 4, display: 'flex' }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); remove(note.id) }}
-                      title="Supprimer"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: '3px 4px', borderRadius: 4, display: 'flex' }}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                    {note.titre || 'Sans titre'}
+                  </p>
+                  {note.utilisateur === myName && hoveredNote === note.id ? (
+                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={e => { e.stopPropagation(); setActive(note); setPreview(false); setTimeout(() => setShowSharePicker(true), 50) }}
+                        title="Partager"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: note.sharedWith.length > 0 ? 'var(--accent)' : 'var(--t2)', padding: '3px 4px', borderRadius: 4, display: 'flex' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); remove(note.id) }}
+                        title="Supprimer"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: '3px 4px', borderRadius: 4, display: 'flex' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 10, color: 'var(--t2)', flexShrink: 0 }}>{relTime(note.updatedAt)}</span>
+                  )}
+                </div>
+                {/* Row 2: excerpt + badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <p style={{ fontSize: 11, color: 'var(--t2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {note.contenu.replace(/[#*`_~\[\]()]/g, '').slice(0, 50) || 'Vide'}
+                  </p>
+                  {note.utilisateur !== myName && (
+                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'var(--accent-bg)', color: 'var(--accent)', fontWeight: 700, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Partagée</span>
+                  )}
+                  {note.utilisateur === myName && note.sharedWith.length > 0 && (
+                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-3)', color: 'var(--t2)', fontWeight: 600, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {note.sharedWith.length} partage{note.sharedWith.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             ))
           )}

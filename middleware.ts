@@ -31,8 +31,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect to org picker if no org selected (except for org page and API)
-  if (!pathname.startsWith('/api/') && pathname !== '/org' && pathname !== '/auth') {
+  // Redirect to org picker if no org selected (except for org page, admin and API)
+  if (!pathname.startsWith('/api/') && pathname !== '/org' && pathname !== '/auth' && !pathname.startsWith('/admin')) {
     const orgId = req.cookies.get('current_org_id')?.value
     if (!orgId) {
       return NextResponse.redirect(new URL('/org', req.url))
