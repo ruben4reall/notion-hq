@@ -32,7 +32,8 @@ async function migrate() {
     connectionString: ipv4ConnString,
     ssl: {
       rejectUnauthorized: false,
-      servername: parsed.hostname, // keep original hostname for SNI/SSL
+      checkServerIdentity: () => undefined,
+      servername: parsed.hostname,
     },
   })
 
