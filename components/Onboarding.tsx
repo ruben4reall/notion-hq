@@ -379,12 +379,13 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
   const pollRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const step = STEPS[stepIndex]
-  const isLast = stepIndex === STEPS.length - 1
   const isFirst = stepIndex === 0
   const isNavigating = step && pathname !== step.page
 
   const sectionStepsArr = step ? STEPS.filter(s => s.section === step.section) : []
   const sectionIdx = step ? sectionStepsArr.indexOf(step) : 0
+  const isLastInSection = sectionIdx === sectionStepsArr.length - 1
+  const isLast = stepIndex === STEPS.length - 1 || (!!startSectionId && isLastInSection)
 
   useEffect(() => {
     if (!step || isNavigating) {
@@ -443,9 +444,12 @@ export function TourOverlay({ onComplete, startSectionId }: { onComplete: () => 
       return
     }
     const nextStep = STEPS[stepIndex + 1]
-    if (nextStep.section !== step.section) markCurrentSectionDone(step)
+    if (nextStep.section !== step.section) {
+      markCurrentSectionDone(step)
+      if (startSectionId) { onComplete(); return }
+    }
     setStepIndex(s => s + 1)
-  }, [step, isLast, stepIndex, onComplete, markCurrentSectionDone])
+  }, [step, isLast, stepIndex, onComplete, markCurrentSectionDone, startSectionId])
 
   const prev = useCallback(() => {
     if (!isFirst) setStepIndex(s => s - 1)
