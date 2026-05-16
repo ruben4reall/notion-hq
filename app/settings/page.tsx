@@ -185,6 +185,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (avatarTab === 'gif') searchGifs(gifSearch)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avatarTab])
@@ -593,9 +594,7 @@ export default function SettingsPage() {
 
 function AccentPicker() {
   const { t } = useLanguage()
-  const [activeId, setActiveId] = useState('violet')
-
-  useEffect(() => { setActiveId(getCurrentAccentId()) }, [])
+  const [activeId, setActiveId] = useState(() => getCurrentAccentId())
 
   const pick = (id: string) => {
     setActiveId(id)

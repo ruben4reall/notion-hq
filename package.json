@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "node scripts/migrate.js && next build",
     "start": "next start",
-    "test": "node tests/smoke.js"
+    "test": "node tests/smoke.js",
+    "lint": "next lint",
+    "check-i18n": "node scripts/check-i18n.js"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -25,6 +27,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
     "pg": "^8.20.0",
     "playwright": "^1.60.0",
     "postcss": "^8",

@@ -209,6 +209,71 @@ const isPublic = pathname === '/login' || pathname.startsWith('/auth') || pathna
 - Sélection à l'inscription : step dédié dans `app/auth/page.tsx` (3 cartes visuelles)
 - Changeable dans Paramètres → section Langue
 
+### Règle ABSOLUE — Zéro string hardcodée dans l'UI
+
+**Toute chaîne visible par l'utilisateur DOIT passer par `t('cle')`.**  
+Ne jamais écrire de texte en dur dans le JSX ou dans les props visibles. Pas d'exceptions.
+
+#### Pattern à suivre dans chaque composant
+
+```tsx
+// 1. Importer le hook
+import { useLanguage } from '@/context/LanguageContext'
+
+// 2. Destructurer dans le composant
+const { t, lang } = useLanguage()
+
+// 3. Pour les dates/heures localisées
+const LOCALE_MAP: Record<string, string> = { fr: 'fr-FR', en: 'en-US', zh: 'zh-CN' }
+const locale = LOCALE_MAP[lang] || 'fr-FR'
+// → utiliser locale dans Intl.DateTimeFormat, toLocaleDateString, toLocaleTimeString
+
+// 4. Utiliser t() pour chaque string visible
+<p>{t('maClé')}</p>
+<input placeholder={t('maClé')} />
+<Field label={t('maClé')} hint={t('autreClé')} />
+{condition ? t('oui') : t('non')}
+```
+
+#### Ajouter une traduction
+
+1. Ouvrir `lib/i18n.ts`
+2. Ajouter la clé dans les **3 blocs** (`fr`, `en`, `zh`) — toujours les 3 en même temps
+3. Utiliser `t('nouvelle_cle')` dans le composant
+
+```ts
+// Dans lib/i18n.ts — ajouter dans fr:, en:, zh:
+maNouvelleCle: 'Ma valeur française',   // fr
+maNouvelleCle: 'My English value',      // en
+maNouvelleCle: '我的中文值',             // zh
+```
+
+#### Ajouter une nouvelle langue
+
+1. Dans `lib/i18n.ts` → ajouter `es: { ...toutes les clés... }` dans `translations`
+2. Dans `lib/i18n.ts` → ajouter dans `LANG_LABELS`: `es: { label: 'Español', flag: '🇪🇸', native: 'Español' }`
+3. Dans `lib/i18n.ts` → mettre à jour le type : `export type Lang = 'fr' | 'en' | 'zh' | 'es'`
+4. Dans `app/settings/page.tsx` → ajouter `'es'` dans le tableau `LANGS`
+5. Dans `context/LanguageContext.tsx` → vérifier que le CHECK constraint Supabase accepte la nouvelle valeur
+
+#### Ce qui ne se traduit PAS (valeurs DB)
+Les valeurs stockées en base et utilisées comme clés de requête **ne doivent pas être traduites** :
+- Statuts CRM : `'À contacter'`, `'Offre envoyée'`, etc. → stockés dans DB
+- Statuts idées : `'Brute'`, `'À explorer'`, `'Validée'`, `'Rejetée'` → stockés dans DB
+- Types d'événements : `'RDV'`, `'Réunion'`, etc. → stockés dans DB
+
+#### Outils de vérification
+
+```bash
+# Détecte les chaînes françaises hardcodées (accents) dans app/ et components/
+npm run check-i18n
+
+# ESLint — détecte les textes accentués entre balises JSX
+npm run lint
+```
+
+Avant chaque commit touchant un fichier TSX, lancer `npm run check-i18n` et corriger les occurrences signalées.
+
 ### Fixes UI/UX déjà appliqués (session 2026-05-16)
 - ✅ EventModal calendrier → composant Modal partagé (zIndex 200, maxHeight 90dvh, close button)
 - ✅ Validation date start/end dans EventModal, TaskModal, CRMModal
