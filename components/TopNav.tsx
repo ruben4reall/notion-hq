@@ -3,23 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useLanguage } from '@/context/LanguageContext'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 import { PresenceIndicator } from './PresenceIndicator'
 import { TimeWidget } from './TimeWidget'
 import { useEffect, useState } from 'react'
-
-const links = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/todo', label: 'Todo' },
-  { href: '/kanban', label: 'Kanban' },
-  { href: '/crm', label: 'CRM' },
-  { href: '/calendar', label: 'Calendrier' },
-  { href: '/roadmap', label: 'Roadmap' },
-  { href: '/ideas', label: 'Idées' },
-  { href: '/time', label: 'Temps' },
-  { href: '/notes', label: 'Notes' },
-]
 
 function useStreak() {
   const [streak, setStreak] = useState(0)
@@ -41,9 +30,22 @@ function streakEmoji(n: number) {
 export function TopNav() {
   const path = usePathname()
   const { user: session, signOut } = useAuth()
+  const { t } = useLanguage()
   const [showMenu, setShowMenu] = useState(false)
   const streak = useStreak()
   const initials = session?.name?.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2) ?? '?'
+
+  const links = [
+    { href: '/', label: t('dashboard') },
+    { href: '/todo', label: 'Todo' },
+    { href: '/kanban', label: t('kanban') },
+    { href: '/crm', label: t('crm') },
+    { href: '/calendar', label: t('calendar') },
+    { href: '/roadmap', label: t('roadmap') },
+    { href: '/ideas', label: t('ideas') },
+    { href: '/time', label: t('time') },
+    { href: '/notes', label: t('notes') },
+  ]
 
   if (path === '/login' || path.startsWith('/auth') || path.startsWith('/org')) return null
 
@@ -151,9 +153,9 @@ export function TopNav() {
                         <span style={{ fontSize: 18 }}>{streakEmoji(streak)}</span>
                         <div>
                           <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', lineHeight: 1.2 }}>
-                            {streak} jour{streak > 1 ? 's' : ''} de streak
+                            {streak} jour{streak > 1 ? 's' : ''}
                           </p>
-                          <p style={{ fontSize: 11, color: 'var(--t2)' }}>Connecté {streak} jour{streak > 1 ? 's' : ''} d'affilée</p>
+                          <p style={{ fontSize: 11, color: 'var(--t2)' }}>streak 🔥</p>
                         </div>
                       </div>
                     )}
@@ -172,7 +174,7 @@ export function TopNav() {
                         <path d="M16 3H8a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.8"/>
                         <path d="M12 3v4M8 12h8M8 16h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
                       </svg>
-                      Mes projets
+                      {t('switchProject')}
                     </Link>
                     <Link
                       href="/settings"
@@ -188,7 +190,7 @@ export function TopNav() {
                         <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
                         <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.8"/>
                       </svg>
-                      Paramètres
+                      {t('settings')}
                     </Link>
                     <button
                       onClick={() => signOut()}
@@ -203,7 +205,7 @@ export function TopNav() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      Déconnexion
+                      {t('logout')}
                     </button>
                   </div>
                 </>

@@ -6,6 +6,10 @@ import { useAuth } from '@/context/AuthContext'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useOnboarding, SECTIONS } from '@/components/Onboarding'
 import { ACCENTS, saveAccent, getCurrentAccentId } from '@/lib/accent-color'
+import { useLanguage } from '@/context/LanguageContext'
+import { LANG_LABELS, type Lang } from '@/lib/i18n'
+
+const LANGS: Lang[] = ['en', 'fr', 'zh']
 
 interface UserSettings {
   name: string
@@ -59,6 +63,7 @@ function Alert({ type, message }: { type: 'error' | 'success'; message: string }
 
 export default function SettingsPage() {
   const { user: session, signOut } = useAuth()
+  const { t, lang, setLang } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -235,8 +240,8 @@ export default function SettingsPage() {
   return (
     <div className="page-container animate-in">
       <div style={{ marginBottom: 28 }}>
-        <h1 className="page-title">Paramètres</h1>
-        <p className="page-subtitle">Gérez votre profil et vos préférences</p>
+        <h1 className="page-title">{t('settingsTitle')}</h1>
+        <p className="page-subtitle">{t('settingsSubtitle')}</p>
       </div>
 
       {/* SuperAdmin */}
@@ -264,7 +269,7 @@ export default function SettingsPage() {
       )}
 
       {/* Profile */}
-      <Section title="Profil">
+      <Section title={t('profileSection')}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-s)' }}>
           {/* Clickable avatar */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -427,7 +432,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Security */}
-      <Section title="Sécurité">
+      <Section title={t('securitySection')}>
         <Field label="Nouveau mot de passe">
           <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)}
             placeholder="Minimum 8 caractères" style={inputStyle}
@@ -455,7 +460,7 @@ export default function SettingsPage() {
       </Section>
 
       {/* Calendar */}
-      <Section title="Calendrier" id="calendar">
+      <Section title={t('calendarSection')} id="calendar">
         <Field
           label="Importer un calendrier externe"
           hint="Collez l'URL iCal de votre Apple Calendar ou Google Calendar. Vos évènements apparaîtront dans l'app."
@@ -518,8 +523,41 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      {/* Language */}
+      <Section title={t('languageSection')}>
+        <p style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 14 }}>{t('languageHint')}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {LANGS.map(l => {
+            const info = LANG_LABELS[l]
+            const active = lang === l
+            return (
+              <button
+                key={l}
+                onClick={async () => { await setLang(l) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '12px 14px', borderRadius: 10,
+                  border: `2px solid ${active ? 'var(--accent)' : 'var(--border-m)'}`,
+                  background: active ? 'var(--accent-bg)' : 'var(--bg-3)',
+                  cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{info.flag}</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--t0)' }}>{info.native}</p>
+                  {info.native !== info.label && <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>{info.label}</p>}
+                </div>
+                {active && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
       {/* Preferences */}
-      <Section title="Préférences">
+      <Section title={t('preferencesSection')}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border-s)' }}>
           <div>
             <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--t0)' }}>Thème de l&apos;interface</p>
@@ -534,9 +572,9 @@ export default function SettingsPage() {
       <OnboardingSettings />
 
       {/* Session */}
-      <Section title="Session">
+      <Section title={t('sessionSection')}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ fontSize: 13, color: 'var(--t1)' }}>Se déconnecter de la session en cours</p>
+          <p style={{ fontSize: 13, color: 'var(--t1)' }}>{t('signOutSession')}</p>
           <button
             onClick={() => signOut()}
             style={{
@@ -545,7 +583,7 @@ export default function SettingsPage() {
               border: '1px solid rgba(244,63,94,0.2)', cursor: 'pointer',
             }}
           >
-            Déconnexion
+            {t('signOutBtn')}
           </button>
         </div>
       </Section>

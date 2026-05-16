@@ -383,12 +383,13 @@ export interface UserSettings {
   passwordOverride: string | null
   icalFeedUrl: string | null
   avatarUrl: string | null
+  language: string | null
 }
 
 export async function getUserSettings(name: string): Promise<UserSettings | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (getClient().from('presence') as any)
-    .select('display_name, password_override, ical_feed_url, avatar_url')
+    .select('display_name, password_override, ical_feed_url, avatar_url, language')
     .eq('username', name)
     .maybeSingle()
   if (!data) return null
@@ -399,6 +400,7 @@ export async function getUserSettings(name: string): Promise<UserSettings | null
     passwordOverride: d.password_override ?? null,
     icalFeedUrl: d.ical_feed_url ?? null,
     avatarUrl: d.avatar_url ?? null,
+    language: d.language ?? null,
   }
 }
 
@@ -408,6 +410,7 @@ export async function updateUserSettings(name: string, settings: Partial<UserSet
   if (settings.passwordOverride !== undefined) u.password_override = settings.passwordOverride
   if (settings.icalFeedUrl !== undefined)      u.ical_feed_url = settings.icalFeedUrl
   if (settings.avatarUrl !== undefined)        (u as any).avatar_url = settings.avatarUrl
+  if (settings.language !== undefined)         (u as any).language = settings.language
   const { error } = await getClient()
     .from('presence')
     .upsert({ username: name, last_seen: new Date().toISOString(), ...u }, { onConflict: 'username' })

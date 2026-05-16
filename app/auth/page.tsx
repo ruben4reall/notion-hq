@@ -4,8 +4,10 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { playLoginSound } from '@/lib/sounds'
+import { LANG_LABELS, type Lang } from '@/lib/i18n'
 
 const COLORS = ['#7c6af5', '#4f8ef7', '#0ec98c', '#f59e0b', '#ef4444', '#ec4899']
+const LANGS: Lang[] = ['en', 'fr', 'zh']
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '11px 14px',
@@ -28,6 +30,8 @@ function AuthForm() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
+  const [selectedLang, setSelectedLang] = useState<Lang>('fr')
+  const [registerStep, setRegisterStep] = useState<'form' | 'language'>('form')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [celebrating, setCelebrating] = useState(false)
@@ -57,15 +61,19 @@ function AuthForm() {
     setTimeout(() => router.push(redirect), 1300)
   }
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegisterFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError('')
     if (password.length < 8) {
       setError('Mot de passe trop court (minimum 8 caractères)')
-      setLoading(false)
       return
     }
+    setError('')
+    setRegisterStep('language')
+  }
+
+  const handleRegister = async () => {
+    setLoading(true)
+    setError('')
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -76,11 +84,18 @@ function AuthForm() {
     if (error) {
       setError(error.message)
       setLoading(false)
+      setRegisterStep('form')
       return
     }
+    // Save language preference immediately after signup
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'language', value: selectedLang }),
+    }).catch(() => {})
     playLoginSound()
     setLoading(false)
-    setCelebText('Compte créé !')
+    setCelebText(LANG_LABELS[selectedLang].label === 'English' ? 'Account created!' : selectedLang === 'zh' ? '账户已创建！' : 'Compte créé !')
     setCelebrating(true)
     router.refresh()
     setTimeout(() => router.push(redirect), 1300)
@@ -229,9 +244,9 @@ function AuthForm() {
           </form>
         )}
 
-        {/* Register form */}
-        {tab === 'register' && (
-          <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Register form — step 1: info */}
+        {tab === 'register' && registerStep === 'form' && (
+          <form onSubmit={handleRegisterFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--t2)', display: 'block', marginBottom: 7, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                 Nom complet
@@ -290,24 +305,106 @@ function AuthForm() {
               </div>
             )}
             <button
-              type="submit" disabled={loading}
+              type="submit"
               style={{
                 marginTop: 4, height: 44, width: '100%',
-                background: loading ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
+                background: 'var(--accent)',
                 color: 'white', border: 'none', borderRadius: 10,
-                fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              {loading ? (
-                <>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
-                  Création…
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                </>
-              ) : 'Créer mon compte'}
+              Continuer
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </form>
+        )}
+
+        {/* Register form — step 2: language */}
+        {tab === 'register' && registerStep === 'language' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ textAlign: 'center', marginBottom: 4 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--t0)', marginBottom: 4 }}>Choisissez votre langue</p>
+              <p style={{ fontSize: 12, color: 'var(--t2)' }}>Vous pourrez changer ça dans les paramètres</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {LANGS.map(l => {
+                const info = LANG_LABELS[l]
+                const active = selectedLang === l
+                return (
+                  <button
+                    key={l}
+                    onClick={() => setSelectedLang(l)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '14px 16px', borderRadius: 12,
+                      border: `2px solid ${active ? 'var(--accent)' : 'var(--border-m)'}`,
+                      background: active ? 'var(--accent-bg)' : 'var(--bg-2)',
+                      cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{info.flag}</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--t0)' }}>{info.native}</p>
+                      {info.native !== info.label && (
+                        <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>{info.label}</p>
+                      )}
+                    </div>
+                    {active && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 12l5 5L20 7" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {error && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                background: 'var(--red-bg)', border: '1px solid rgba(244,63,94,0.2)',
+                fontSize: 13, color: 'var(--red)', textAlign: 'center',
+              }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setRegisterStep('form')}
+                style={{
+                  height: 44, padding: '0 16px',
+                  background: 'var(--bg-2)', color: 'var(--t1)',
+                  border: '1px solid var(--border-m)', borderRadius: 10,
+                  fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Retour
+              </button>
+              <button
+                onClick={handleRegister}
+                disabled={loading}
+                style={{
+                  flex: 1, height: 44,
+                  background: loading ? 'rgba(124,106,245,0.5)' : 'var(--accent)',
+                  color: 'white', border: 'none', borderRadius: 10,
+                  fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                {loading ? (
+                  <>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', animation: 'spin 0.7s linear infinite' }} />
+                    Création…
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                  </>
+                ) : 'Créer mon compte'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

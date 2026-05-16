@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     displayName: settings?.displayName ?? null,
     icalFeedUrl: settings?.icalFeedUrl ?? null,
     avatarUrl: settings?.avatarUrl ?? null,
+    language: settings?.language ?? 'fr',
   })
 }
 
@@ -43,6 +44,15 @@ export async function PATCH(req: NextRequest) {
 
   if (body.type === 'ical') {
     await updateUserSettings(user.name, { icalFeedUrl: body.url || null })
+    return NextResponse.json({ ok: true })
+  }
+
+  if (body.type === 'language') {
+    const lang = String(body.value || '').trim()
+    if (!['en', 'fr', 'zh'].includes(lang)) {
+      return NextResponse.json({ error: 'Langue invalide' }, { status: 400 })
+    }
+    await updateUserSettings(user.name, { language: lang })
     return NextResponse.json({ ok: true })
   }
 

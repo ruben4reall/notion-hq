@@ -1,7 +1,20 @@
 # Manager Dashboard — Context for Claude
 
-## Règle absolue
+## Règles absolues
 Exécute directement sans demander confirmation. Pas de "est-ce que je peux ?", pas de "veux-tu que je…". Tu fais.
+
+## Migrations SQL — Règle obligatoire
+**Toujours exécuter les migrations automatiquement** après les avoir créées, via l'API Supabase Management :
+```bash
+PROJ_REF="yehrlfuonctonjsneawh"
+ACCESS_TOKEN="$(grep SUPABASE_ACCESS_TOKEN .env.local | cut -d= -f2)"
+curl -s -X POST "https://api.supabase.com/v1/projects/${PROJ_REF}/database/query" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"query\": \"<SQL>\"}"
+```
+Ne jamais créer un fichier de migration sans l'exécuter aussitôt. Réponse `[]` = succès.
+Le token est dans `.env.local` → `SUPABASE_ACCESS_TOKEN`.
 
 ## Projet
 Dashboard de gestion d'équipe full-stack (remplacement de Notion). Propriétaire : Ruben Catalao + Alexandre Thomas.
@@ -185,6 +198,16 @@ const isPublic = pathname === '/login' || pathname.startsWith('/auth') || pathna
 - ✅ Empty states corrects sur toutes les pages
 - ✅ Modaux ouverture/fermeture testés (Kanban, CRM, Calendrier, Idées, Notes)
 - ℹ️ Kanban/CRM : overflow horizontal volontaire (scroll colonnes), pas un bug
+
+## Système i18n (multi-langue)
+
+3 langues supportées : `fr` (Français, défaut), `en` (English), `zh` (Mandarin 中文)
+- Stocké dans `presence.language` (colonne TEXT avec CHECK constraint)
+- Contexte : `context/LanguageContext.tsx` — `useLanguage()` → `{ lang, setLang, t }`
+- Traductions : `lib/i18n.ts` — clés plates organisées par section
+- Chargement : au mount depuis `/api/settings`, sauvegarde via PATCH `type: 'language'`
+- Sélection à l'inscription : step dédié dans `app/auth/page.tsx` (3 cartes visuelles)
+- Changeable dans Paramètres → section Langue
 
 ### Fixes UI/UX déjà appliqués (session 2026-05-16)
 - ✅ EventModal calendrier → composant Modal partagé (zIndex 200, maxHeight 90dvh, close button)

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Notification } from '@/lib/db'
 import { playNotifSound } from '@/lib/sounds'
+import { useLanguage } from '@/context/LanguageContext'
 
 function getNotifLink(n: Notification): string | null {
   const m = n.message.toLowerCase()
@@ -41,6 +42,7 @@ function relTime(iso: string) {
 
 export function NotificationBell() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -129,7 +131,7 @@ export function NotificationBell() {
           <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
             {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
             <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
-            {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>Voir →</span>}
+            {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>{t('seeArrow')}</span>}
           </div>
         </div>
         <button
@@ -180,16 +182,16 @@ export function NotificationBell() {
           overflow: 'hidden',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border-s)' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Notifications</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>{t('notifications')}</span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {notifs.some(n => !n.lu) && (
                 <button onClick={markAllRead} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                  Tout lire
+                  {t('markAllRead')}
                 </button>
               )}
               {notifs.length > 0 && (
-                <button onClick={() => deleteNotifs(notifs.map(n => n.id))} style={{ fontSize: 11, color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer' }} title="Tout supprimer">
-                  Effacer tout
+                <button onClick={() => deleteNotifs(notifs.map(n => n.id))} style={{ fontSize: 11, color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  {t('clearAll')}
                 </button>
               )}
             </div>
@@ -198,14 +200,14 @@ export function NotificationBell() {
           <div style={{ maxHeight: 420, overflowY: 'auto' }}>
             {notifs.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--t2)', fontSize: 13 }}>
-                Aucune notification
+                {t('noNotifications')}
               </div>
             ) : (
               <>
                 {newNotifs.length > 0 && (
                   <>
                     <div style={{ padding: '6px 16px 4px', fontSize: 10, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-                      Nouvelles
+                      {t('newNotifs')}
                     </div>
                     {newNotifs.map(n => <NotifRow key={n.id} n={n} />)}
                   </>
@@ -214,9 +216,9 @@ export function NotificationBell() {
                 {oldNotifs.length > 0 && (
                   <>
                     <div style={{ padding: '10px 16px 4px', fontSize: 10, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Anciennes</span>
+                      <span>{t('oldNotifs')}</span>
                       <button onClick={() => deleteNotifs(oldNotifs.map(n => n.id))} style={{ fontSize: 10, color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
-                        Nettoyer
+                        {t('cleanOld')}
                       </button>
                     </div>
                     {oldNotifs.map(n => <NotifRow key={n.id} n={n} />)}
