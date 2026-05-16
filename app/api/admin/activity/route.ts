@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
   const orgMap: Record<string, string> = {}
   if (orgsRes.status === 'fulfilled') {
-    for (const o of orgsRes.value.data || []) orgMap[o.id] = o.name
+    for (const o of (orgsRes.value.data as Array<{ id: string; name: string }> || [])) orgMap[o.id] = o.name
   }
 
   const entries: any[] = []
