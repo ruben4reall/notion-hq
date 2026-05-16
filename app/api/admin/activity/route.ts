@@ -24,31 +24,31 @@ export async function GET(req: NextRequest) {
   const entries: any[] = []
 
   if (tasksRes.status === 'fulfilled') {
-    for (const t of tasksRes.value.data || []) entries.push({
+    for (const t of (tasksRes.value.data as any[]) || []) entries.push({
       type: 'task', title: t.title, author: t.assigned_to || '—',
       project: t.org_id ? orgMap[t.org_id] : undefined, created_at: t.created_at,
     })
   }
   if (notesRes.status === 'fulfilled') {
-    for (const n of notesRes.value.data || []) entries.push({
+    for (const n of (notesRes.value.data as any[]) || []) entries.push({
       type: 'note', title: n.titre, author: n.utilisateur,
       project: n.org_id ? orgMap[n.org_id] : undefined, created_at: n.created_at,
     })
   }
   if (chatRes.status === 'fulfilled') {
-    for (const c of chatRes.value.data || []) entries.push({
+    for (const c of (chatRes.value.data as any[]) || []) entries.push({
       type: 'chat', title: c.message?.slice(0, 60) || '', author: c.author,
       project: undefined, created_at: c.created_at,
     })
   }
   if (crmRes.status === 'fulfilled') {
-    for (const c of crmRes.value.data || []) entries.push({
+    for (const c of (crmRes.value.data as any[]) || []) entries.push({
       type: 'crm', title: c.enseigne, author: '—',
       project: c.org_id ? orgMap[c.org_id] : undefined, created_at: c.created_at,
     })
   }
   if (ideasRes.status === 'fulfilled') {
-    for (const i of ideasRes.value.data || []) entries.push({
+    for (const i of (ideasRes.value.data as any[]) || []) entries.push({
       type: 'idea', title: i.title, author: '—',
       project: i.org_id ? orgMap[i.org_id] : undefined, created_at: i.created_at,
     })
