@@ -6,6 +6,11 @@ const PUBLIC = ['/auth', '/api/calendar.ics']
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
+  // Maintenance mode — set MAINTENANCE=1 in Vercel env vars to activate
+  if (process.env.MAINTENANCE === '1' && pathname !== '/maintenance') {
+    return NextResponse.rewrite(new URL('/maintenance', req.url))
+  }
+
   if (PUBLIC.some(p => pathname.startsWith(p))) return NextResponse.next()
 
   const res = NextResponse.next()
