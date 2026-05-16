@@ -283,6 +283,8 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
 // ── Manage project modal ──────────────────────────────────────────────────────
 
+interface AppUser { id: string; name: string; email: string; color: string }
+
 function ManageModal({ project, onClose, onDeleted }: { project: Project; onClose: () => void; onDeleted: () => void }) {
   const [members, setMembers] = useState<Member[]>([])
   const [pendingInvites, setPendingInvites] = useState<{ id: string; invited_email: string }[]>([])
@@ -292,6 +294,42 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
   const [inviteSuccess, setInviteSuccess] = useState('')
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [searchResults, setSearchResults] = useState<AppUser[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<AppUser | null>(null)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const inviteRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showDropdown) return
+    const handler = (e: MouseEvent) => {
+      if (inviteRef.current && !inviteRef.current.contains(e.target as Node)) setShowDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showDropdown])
+
+  const onInviteInput = (val: string) => {
+    setInviteEmail(val)
+    setSelectedUser(null)
+    setInviteError('')
+    setInviteSuccess('')
+    clearTimeout(searchTimer.current)
+    if (!val.trim()) { setSearchResults([]); setShowDropdown(false); return }
+    searchTimer.current = setTimeout(async () => {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(val)}`)
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) { setSearchResults(data); setShowDropdown(true) }
+      else { setSearchResults([]); setShowDropdown(false) }
+    }, 220)
+  }
+
+  const pickUser = (u: AppUser) => {
+    setSelectedUser(u)
+    setInviteEmail(u.email)
+    setSearchResults([])
+    setShowDropdown(false)
+  }
 
   useEffect(() => {
     fetch(`/api/orgs/${project.id}`)
@@ -403,20 +441,55 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
           {project.role === 'admin' && (
             <>
               <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Inviter un membre</p>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input
-                  value={inviteEmail}
-                  onChange={e => { setInviteEmail(e.target.value); setInviteError(''); setInviteSuccess('') }}
-                  onKeyDown={e => e.key === 'Enter' && invite()}
-                  placeholder="email@exemple.com"
-                  style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 10, color: 'var(--t0)', fontSize: 13, outline: 'none' }}
-                />
-                <button
-                  onClick={invite} disabled={inviting || !inviteEmail.trim()}
-                  style={{ padding: '10px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: inviting ? 'not-allowed' : 'pointer', opacity: inviting ? 0.6 : 1, whiteSpace: 'nowrap' }}
-                >
-                  {inviting ? '…' : 'Inviter'}
-                </button>
+              <div ref={inviteRef} style={{ position: 'relative', marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {selectedUser ? (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-2)', border: '1px solid var(--accent)', borderRadius: 10 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: selectedUser.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                        {selectedUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <span style={{ fontSize: 13, color: 'var(--t0)', fontWeight: 500, flex: 1 }}>{selectedUser.name}</span>
+                      <button onClick={() => { setSelectedUser(null); setInviteEmail('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--t2)', lineHeight: 1, padding: 2, fontSize: 14 }}>×</button>
+                    </div>
+                  ) : (
+                    <input
+                      value={inviteEmail}
+                      onChange={e => onInviteInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && invite()}
+                      placeholder="Nom ou email…"
+                      style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 10, color: 'var(--t0)', fontSize: 13, outline: 'none' }}
+                    />
+                  )}
+                  <button
+                    onClick={invite} disabled={inviting || !inviteEmail.trim()}
+                    style={{ padding: '10px 16px', background: 'var(--accent)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 600, cursor: inviting ? 'not-allowed' : 'pointer', opacity: (inviting || !inviteEmail.trim()) ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                  >
+                    {inviting ? '…' : 'Inviter'}
+                  </button>
+                </div>
+
+                {showDropdown && searchResults.length > 0 && (
+                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--bg-2)', border: '1px solid var(--border-m)', borderRadius: 10, padding: 4, zIndex: 50, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', animation: 'slideDown 0.15s ease both' }}>
+                    {searchResults.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); pickUser(u) }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'none', border: 'none', borderRadius: 7, cursor: 'pointer', textAlign: 'left' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-3)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: u.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                          {u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--t0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.name}</p>
+                          <p style={{ fontSize: 11, color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               {inviteError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 8 }}>{inviteError}</p>}
               {inviteSuccess && <p style={{ fontSize: 12, color: '#0d9488', marginBottom: 8 }}>{inviteSuccess}</p>}
