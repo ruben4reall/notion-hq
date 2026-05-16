@@ -40,7 +40,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!orgId) return NextResponse.json({ error: 'No project' }, { status: 400 })
   try {
     const { id } = await params
-    if (!await verifyTaskOwnership(id, orgId)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const { data } = await getClient().from('tasks').select('id').eq('id', id).eq('org_id', orgId).maybeSingle()
+    if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await deleteTask(id)
     return NextResponse.json({ ok: true })
   } catch (err) {

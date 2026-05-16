@@ -330,11 +330,15 @@ export interface PresenceEntry {
   online: boolean
 }
 
-export async function getPresence(): Promise<PresenceEntry[]> {
-  const { data, error } = await getClient()
+export async function getPresence(filterUsernames?: string[]): Promise<PresenceEntry[]> {
+  let query = getClient()
     .from('presence')
     .select('id, username, last_seen, connected_at')
-    .limit(10)
+    .limit(20)
+  if (filterUsernames && filterUsernames.length > 0) {
+    query = query.in('username', filterUsernames)
+  }
+  const { data, error } = await query
   if (error) throw error
   return (data || []).map(r => {
     const online = Date.now() - new Date(r.last_seen).getTime() < 2 * 60 * 1000
