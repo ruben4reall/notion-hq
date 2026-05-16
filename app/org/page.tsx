@@ -522,10 +522,21 @@ function ManageModal({ project, onClose, onDeleted }: { project: Project; onClos
   )
 }
 
-// ── Invitation banner ─────────────────────────────────────────────────────────
+// ── Invitation button (top-right) ─────────────────────────────────────────────
 
-function InvitationBanner({ invitations, onHandled }: { invitations: Invitation[]; onHandled: () => void }) {
+function InvitationButton({ invitations, onHandled }: { invitations: Invitation[]; onHandled: () => void }) {
+  const [open, setOpen] = useState(false)
   const [handling, setHandling] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement | undefined>(undefined)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
   const handle = async (id: string, action: 'accept' | 'decline') => {
     setHandling(id)
@@ -534,40 +545,109 @@ function InvitationBanner({ invitations, onHandled }: { invitations: Invitation[
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     })
+    setHandling(null)
     onHandled()
   }
 
-  if (!invitations.length) return null
+  const count = invitations.length
 
   return (
-    <div style={{ width: '100%', maxWidth: 600, marginBottom: 32 }}>
-      {invitations.map(inv => (
-        <div key={inv.id} style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-          background: 'rgba(var(--accent-rgb),0.1)', border: '1px solid rgba(var(--accent-rgb),0.25)',
-          borderRadius: 12, marginBottom: 8, animation: 'cardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both',
+    <div ref={ref as React.RefObject<HTMLDivElement>} style={{ position: 'fixed', top: 20, right: 20, zIndex: 200 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: 44, height: 44, borderRadius: 12,
+          background: open ? 'var(--bg-2)' : 'var(--bg-1)',
+          border: `1px solid ${count > 0 ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border-s)'}`,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative', boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+          transition: 'all 0.15s ease',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: count > 0 ? 'var(--accent)' : 'var(--t2)', transition: 'color 0.2s', flexShrink: 0 }}>
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="1.8"/>
+          <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.8"/>
+        </svg>
+        {count > 0 && (
+          <div style={{
+            position: 'absolute', top: -5, right: -5,
+            minWidth: 18, height: 18, borderRadius: 9,
+            background: 'var(--accent)', border: '2px solid var(--bg-0)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 700, color: 'white', padding: '0 3px',
+          }}>
+            {count}
+          </div>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+          width: 320, background: 'var(--bg-1)', borderRadius: 16,
+          border: '1px solid var(--border-m)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+          overflow: 'hidden', animation: 'slideDown 0.18s ease both',
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accent)', flexShrink: 0 }}>
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="1.8"/>
-            <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.8"/>
-          </svg>
-          <p style={{ flex: 1, fontSize: 13, color: 'var(--t0)', fontWeight: 500 }}>
-            Invitation au projet <strong>{inv.project_name}</strong>
-          </p>
-          <button
-            onClick={() => handle(inv.id, 'decline')} disabled={handling === inv.id}
-            style={{ padding: '5px 12px', background: 'transparent', border: '1px solid var(--border-m)', borderRadius: 8, color: 'var(--t2)', fontSize: 12, cursor: 'pointer' }}
-          >
-            Refuser
-          </button>
-          <button
-            onClick={() => handle(inv.id, 'accept')} disabled={handling === inv.id}
-            style={{ padding: '5px 12px', background: 'var(--accent)', border: 'none', borderRadius: 8, color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-          >
-            Rejoindre
-          </button>
+          <div style={{ padding: '13px 16px 10px', borderBottom: '1px solid var(--border-s)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--t2)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Invitations</p>
+            {count > 0 && (
+              <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--accent)', padding: '2px 8px', borderRadius: 20 }}>
+                {count} en attente
+              </span>
+            )}
+          </div>
+
+          {count === 0 ? (
+            <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--border-m)', margin: '0 auto 10px', display: 'block' }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="1.5"/>
+                <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              <p style={{ fontSize: 13, color: 'var(--t2)' }}>Aucune invitation en attente</p>
+            </div>
+          ) : (
+            <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
+              {invitations.map(inv => {
+                const color = projectColor(inv.org_id)
+                return (
+                  <div key={inv.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 10px 10px 8px', borderRadius: 10,
+                    background: 'var(--bg-2)',
+                    borderLeft: `3px solid ${color}`,
+                    animation: 'cardIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both',
+                  }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 8, background: color, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800, color: 'white',
+                      boxShadow: `0 2px 8px ${color}44`,
+                    }}>
+                      {initials(inv.project_name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inv.project_name}</p>
+                      <p style={{ fontSize: 11, color: 'var(--t2)' }}>Invitation en attente</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handle(inv.id, 'decline')} disabled={handling === inv.id}
+                        style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-3)', border: '1px solid var(--border-m)', borderRadius: 7, color: 'var(--t2)', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}
+                      >✕</button>
+                      <button
+                        onClick={() => handle(inv.id, 'accept')} disabled={handling === inv.id}
+                        style={{ padding: '0 10px', height: 28, background: color, border: 'none', borderRadius: 7, color: 'white', fontSize: 11, cursor: handling === inv.id ? 'not-allowed' : 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
+                      >
+                        {handling === inv.id ? '…' : 'Rejoindre'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
-      ))}
+      )}
     </div>
   )
 }
@@ -632,8 +712,7 @@ export default function OrgPage() {
         </p>
       </div>
 
-      {/* Pending invitations */}
-      <InvitationBanner invitations={invitations} onHandled={load} />
+      <InvitationButton invitations={invitations} onHandled={load} />
 
       {/* Project grid */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'center', maxWidth: 640 }}>
