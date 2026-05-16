@@ -1,8 +1,21 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Notification } from '@/lib/db'
 import { playNotifSound } from '@/lib/sounds'
+
+function getNotifLink(n: Notification): string | null {
+  const m = n.message.toLowerCase()
+  if (m.includes('💬') || m.includes('message')) return '/?chat=1'
+  if (m.includes('tâche') || m.includes('assigné')) return '/kanban'
+  if (m.includes('prospect') || m.includes('client signé')) return '/crm'
+  if (m.includes('idée')) return '/ideas'
+  if (m.includes('invitation') || m.includes('rejoint')) return '/org'
+  if (m.includes('note')) return '/notes'
+  if (m.includes('calendrier') || m.includes('événement')) return '/calendar'
+  return null
+}
 
 const TYPE_COLOR: Record<string, string> = {
   info:    '#4f8ef7',
@@ -27,6 +40,7 @@ function relTime(iso: string) {
 }
 
 export function NotificationBell() {
+  const router = useRouter()
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -129,26 +143,40 @@ export function NotificationBell() {
                 Aucune notification
               </div>
             ) : (
-              notifs.map(n => (
-                <div key={n.id} style={{
-                  padding: '10px 16px', borderBottom: '1px solid var(--border-s)',
-                  background: n.lu ? 'transparent' : `${TYPE_BG[n.type]}`,
-                  display: 'flex', gap: 10, alignItems: 'flex-start',
-                }}>
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: n.lu ? 'var(--border-m)' : TYPE_COLOR[n.type],
-                    flexShrink: 0, marginTop: 5,
-                  }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 12, color: n.lu ? 'var(--t1)' : 'var(--t0)', lineHeight: 1.5 }}>{n.message}</p>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                      {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
-                      <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
+              notifs.map(n => {
+                const link = getNotifLink(n)
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => {
+                      if (link) { setOpen(false); router.push(link) }
+                    }}
+                    style={{
+                      padding: '10px 16px', borderBottom: '1px solid var(--border-s)',
+                      background: n.lu ? 'transparent' : `${TYPE_BG[n.type]}`,
+                      display: 'flex', gap: 10, alignItems: 'flex-start',
+                      cursor: link ? 'pointer' : 'default',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { if (link) (e.currentTarget as HTMLElement).style.background = 'var(--bg-2)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = n.lu ? 'transparent' : `${TYPE_BG[n.type]}` }}
+                  >
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: n.lu ? 'var(--border-m)' : TYPE_COLOR[n.type],
+                      flexShrink: 0, marginTop: 5,
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 12, color: n.lu ? 'var(--t1)' : 'var(--t0)', lineHeight: 1.5 }}>{n.message}</p>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 3, alignItems: 'center' }}>
+                        {n.de && <span style={{ fontSize: 10, color: 'var(--t2)' }}>{n.de}</span>}
+                        <span style={{ fontSize: 10, color: 'var(--t2)' }}>{relTime(n.createdAt)}</span>
+                        {link && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 'auto' }}>Voir →</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>

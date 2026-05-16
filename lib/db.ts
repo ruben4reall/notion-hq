@@ -289,7 +289,8 @@ export async function getNotifications(userName: string, userEmail: string): Pro
   const { data, error } = await getClient()
     .from('notifications')
     .select('*')
-    .or(`pour.eq.Tous,pour.eq.${userName},pour.eq.${userEmail}`)
+    // Broadcast (Tous) only if NOT sent by this user; direct (pour=me) always shown
+    .or(`and(pour.eq.Tous,de.neq.${userName}),pour.eq.${userName},pour.eq.${userEmail}`)
     .order('created_at', { ascending: false })
     .limit(30)
   if (error) throw error
