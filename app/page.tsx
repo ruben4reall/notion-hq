@@ -71,8 +71,10 @@ function KPICard({
   )
 }
 
+const MODULE_KEY: Record<string, string> = { Produit: 'moduleProduct', Marketing: 'moduleMarketing', Prospection: 'moduleSales', Ops: 'moduleOps' }
+
 function TaskRow({ task, highlight, noTitle }: { task: Task; highlight?: 'overdue' | 'today'; noTitle: string }) {
-  const { lang } = useLanguage()
+  const { lang, t } = useLanguage()
   const locale = LOCALE_MAP[lang] || 'fr-FR'
   const sc = STATUS_COLORS[task.status] || '#6b7280'
   const pc = PRIORITY_COLOR[task.priority] || '#6b7280'
@@ -88,7 +90,7 @@ function TaskRow({ task, highlight, noTitle }: { task: Task; highlight?: 'overdu
           {task.title || noTitle}
         </p>
         <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
-          {task.module}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
+          {task.module ? (MODULE_KEY[task.module] ? t(MODULE_KEY[task.module]) : task.module) : ''}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
         </p>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>

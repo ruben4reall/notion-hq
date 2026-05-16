@@ -38,9 +38,9 @@ function IdeaCard({ idea, onEdit, onDelete, onVote, users }: {
     <div className="card animate-in" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flex: 1 }}>
-          <span className="badge" style={{ color: sc.c, background: sc.bg }}>{idea.status}</span>
-          {idea.category && <span className="badge" style={{ color: cc, background: `${cc}18` }}>{idea.category}</span>}
-          {idea.effort && ec && <span className="badge" style={{ color: ec, background: `${ec}18` }}>{idea.effort}</span>}
+          <span className="badge" style={{ color: sc.c, background: sc.bg }}>{STATUS_KEY[idea.status] ? t(STATUS_KEY[idea.status]) : idea.status}</span>
+          {idea.category && <span className="badge" style={{ color: cc, background: `${cc}18` }}>{CAT_KEY[idea.category] ? t(CAT_KEY[idea.category]) : idea.category}</span>}
+          {idea.effort && ec && <span className="badge" style={{ color: ec, background: `${ec}18` }}>{t({ Faible: 'effortLow', Moyen: 'effortMedium', Élevé: 'effortHigh' }[idea.effort] ?? idea.effort)}</span>}
         </div>
 
         {/* Actions */}

@@ -59,6 +59,8 @@ function parseNotionDbId(input: string): string {
   return match ? match[1].replace(/-/g, '') : input.trim()
 }
 
+const MODULE_KEY: Record<string, string> = { Produit: 'moduleProduct', Marketing: 'moduleMarketing', Prospection: 'moduleSales', Ops: 'moduleOps' }
+
 function TaskRow({
   task, onToggle, onEdit,
 }: {
@@ -100,7 +102,7 @@ function TaskRow({
         </p>
         {(task.module || task.assignedTo) && (
           <p style={{ fontSize: 11, color: 'var(--t2)', marginTop: 1 }}>
-            {task.module}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
+            {task.module ? (MODULE_KEY[task.module] ? t(MODULE_KEY[task.module]) : task.module) : ''}{task.module && task.assignedTo ? ' · ' : ''}{task.assignedTo ? task.assignedTo.split(' ')[0] : ''}
           </p>
         )}
       </div>

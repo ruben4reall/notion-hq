@@ -24,6 +24,7 @@ const P_COLOR: Record<string, { c: string; bg: string }> = {
 const M_COLOR: Record<string, string> = {
   Produit:'#7c6af5', Marketing:'#f59e0b', Prospection:'#4f8ef7', Ops:'#0ec98c',
 }
+const MODULE_KEY: Record<string, string> = { Produit: 'moduleProduct', Marketing: 'moduleMarketing', Prospection: 'moduleSales', Ops: 'moduleOps' }
 
 
 function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
@@ -63,7 +64,7 @@ function TaskCard({ task, onEdit, onDelete, isDragging, users }: {
                 <span className="badge" style={{ color: p.c, background: p.bg }}>{task.priority}</span>
               )}
               {task.module && (
-                <span className="badge" style={{ color: mc, background: `${mc}18` }}>{task.module}</span>
+                <span className="badge" style={{ color: mc, background: `${mc}18` }}>{MODULE_KEY[task.module] ? t(MODULE_KEY[task.module]) : task.module}</span>
               )}
             </div>
           )}
