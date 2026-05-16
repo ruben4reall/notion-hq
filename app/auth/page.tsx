@@ -1,90 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { playLoginSound } from '@/lib/sounds'
-
-const ORBS = [
-  { x: 20,  y: 15,  size: 560, color: '#7c6af5', depth: 0.022, opacity: 0.28 },
-  { x: 75,  y: 10,  size: 420, color: '#4f8ef7', depth: 0.035, opacity: 0.22 },
-  { x: 80,  y: 72,  size: 500, color: '#ec4899', depth: 0.018, opacity: 0.18 },
-  { x: 12,  y: 78,  size: 460, color: '#0ec98c', depth: 0.028, opacity: 0.16 },
-  { x: 50,  y: 48,  size: 380, color: '#7c6af5', depth: 0.042, opacity: 0.12 },
-]
-
-function GlowBackground() {
-  const mouseRef = useRef({ x: 0, y: 0 })
-  const rafRef = useRef<number | undefined>(undefined)
-  const orbsRef = useRef<(HTMLDivElement | null)[]>([])
-  const smoothRef = useRef({ x: 0, y: 0 })
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      mouseRef.current = {
-        x: (e.clientX / window.innerWidth  - 0.5) * 2,
-        y: (e.clientY / window.innerHeight - 0.5) * 2,
-      }
-    }
-    window.addEventListener('mousemove', onMove, { passive: true })
-
-    const animate = () => {
-      // Smooth lerp toward mouse
-      smoothRef.current.x += (mouseRef.current.x - smoothRef.current.x) * 0.06
-      smoothRef.current.y += (mouseRef.current.y - smoothRef.current.y) * 0.06
-      const { x, y } = smoothRef.current
-
-      orbsRef.current.forEach((el, i) => {
-        if (!el) return
-        const orb = ORBS[i]
-        const tx = x * orb.depth * window.innerWidth
-        const ty = y * orb.depth * window.innerHeight
-        const scale = 1 + Math.abs(x * y) * orb.depth * 0.6
-        el.style.transform = `translate3d(calc(-50% + ${tx}px), calc(-50% + ${ty}px), 0) scale(${scale})`
-      })
-
-      rafRef.current = requestAnimationFrame(animate)
-    }
-    rafRef.current = requestAnimationFrame(animate)
-
-    return () => {
-      window.removeEventListener('mousemove', onMove)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-      {ORBS.map((orb, i) => (
-        <div
-          key={i}
-          ref={el => { orbsRef.current[i] = el }}
-          style={{
-            position: 'absolute',
-            left: `${orb.x}%`,
-            top:  `${orb.y}%`,
-            width:  orb.size,
-            height: orb.size,
-            borderRadius: '50%',
-            background: orb.color,
-            opacity: orb.opacity,
-            filter: `blur(${orb.size * 0.28}px)`,
-            willChange: 'transform',
-            transform: 'translate3d(-50%, -50%, 0)',
-          }}
-        />
-      ))}
-      {/* Subtle noise grain overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-        backgroundSize: '256px 256px',
-        opacity: 0.35,
-        mixBlendMode: 'overlay',
-      }} />
-    </div>
-  )
-}
 
 const COLORS = ['#7c6af5', '#4f8ef7', '#0ec98c', '#f59e0b', '#ef4444', '#ec4899']
 
@@ -167,7 +86,6 @@ function AuthForm() {
 
   return (
     <>
-    <GlowBackground />
     {celebrating && (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 9999,
@@ -208,21 +126,11 @@ function AuthForm() {
     )}
     <div style={{
       minHeight: '100dvh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'var(--bg-0)', padding: '20px 16px',
-      position: 'relative', zIndex: 1,
+      justifyContent: 'center', background: 'var(--bg-0)', padding: 20,
     }}>
-      <div style={{
-        width: '100%', maxWidth: 400,
-        background: 'rgba(var(--bg-0-rgb, 10,10,15), 0.55)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderRadius: 24,
-        border: '1px solid rgba(255,255,255,0.06)',
-        padding: '36px 32px',
-        boxShadow: '0 32px 80px rgba(0,0,0,0.45)',
-      }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{
             width: 52, height: 52, borderRadius: 16, background: 'var(--accent)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
