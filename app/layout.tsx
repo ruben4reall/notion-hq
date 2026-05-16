@@ -10,6 +10,7 @@ import { OnboardingWatcher } from '@/components/OnboardingWatcher'
 import { StreakWatcher } from '@/components/StreakWatcher'
 import { Providers } from '@/components/Providers'
 import { PageTransition } from '@/components/PageTransition'
+import PageTracker from '@/components/PageTracker'
 
 export const metadata: Metadata = {
   title: 'Manager Dashboard',
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Chat />
           <OnboardingWatcher />
           <StreakWatcher />
+          <PageTracker />
         </Providers>
       </body>
     </html>

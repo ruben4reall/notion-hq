@@ -2,435 +2,386 @@
 
 import { useState, useEffect } from 'react'
 
+interface OnlineUser { display_name: string; username: string; last_seen: string; connected_at: string }
+interface PageStat   { page: string; visits: number; avg_sec: number; total_sec: number }
+interface HourStat   { hour: number; visits: number }
+interface UserStat   { username: string; visits: number; total_sec: number }
+interface SbMetrics  {
+  db_bytes: number; auth_users: number; active_sessions: number
+  pg_version: string; storage_bytes: number; storage_objects: number
+  table_sizes: { tablename: string; bytes: number }[]
+  db_history: number[]
+}
 interface InfraData {
   ping: number
   tableCounts: Record<string, number>
   totalRows: number
   rowHistory: { date: string; value: number }[]
-  sbUsage: Record<string, { used: number; limit: number }> | null
-  sbApiSpark: number[]
+  onlineUsers: OnlineUser[]
+  pageStats: PageStat[]
+  hourlyActivity: HourStat[]
+  topUsers: UserStat[]
+  totalVisits: number
+  avgSessionSec: number
+  sbMetrics: SbMetrics | null
   sbLimits: Record<string, number>
-  vercelDeployments: {
-    uid: string
-    state: string
-    created: number
-    url: string
-    meta?: { githubCommitMessage?: string }
-  }[]
+  vercelDeployments: { uid: string; state: string; created: number; url: string; meta?: { githubCommitMessage?: string } }[]
   vercelLimits: Record<string, number>
   hasSupabaseToken: boolean
   hasVercelToken: boolean
 }
 
-function fmt(bytes: number): string {
+// ── Utils ──────────────────────────────────────────────────────
+function fmt(bytes: number) {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
   if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
   if (bytes >= 1024)      return `${(bytes / 1024).toFixed(0)} KB`
   return `${bytes} B`
 }
-
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`
+function fmtDuration(sec: number) {
+  if (sec >= 3600) return `${(sec / 3600).toFixed(1)}h`
+  if (sec >= 60)   return `${Math.round(sec / 60)}min`
+  return `${sec}s`
+}
+function fmtNum(n: number) {
+  if (n >= 1_000_000) return `${(n/1_000_000).toFixed(1)}M`
+  if (n >= 1_000)     return `${(n/1_000).toFixed(0)}K`
   return String(n)
 }
-
-function relTime(ts: number): string {
-  const diff = Date.now() - ts
+function relTime(ts: string | number) {
+  const diff = Date.now() - new Date(ts).getTime()
   const m = Math.floor(diff / 60_000)
-  if (m < 1)   return "à l'instant"
-  if (m < 60)  return `il y a ${m}m`
-  const h = Math.floor(m / 60)
-  if (h < 24)  return `il y a ${h}h`
-  return `il y a ${Math.floor(h / 24)}j`
+  if (m < 1) return "à l'instant"
+  if (m < 60) return `il y a ${m}m`
+  return `il y a ${Math.floor(m/60)}h`
+}
+function pageName(path: string) {
+  const map: Record<string, string> = {
+    '/': 'Dashboard', '/kanban': 'Kanban', '/crm': 'CRM',
+    '/calendar': 'Calendrier', '/roadmap': 'Roadmap', '/ideas': 'Idées',
+    '/time': 'Time', '/notes': 'Notes', '/settings': 'Paramètres',
+  }
+  return map[path] ?? path
 }
 
-// ── Sparkline SVG ─────────────────────────────────────────────
+// ── Sparkline ─────────────────────────────────────────────────
 function Sparkline({ data, color, height = 44 }: { data: number[]; color: string; height?: number }) {
-  if (data.length < 2) return (
-    <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ fontSize: 11, color: 'var(--t2)' }}>Données insuffisantes</span>
-    </div>
-  )
-  const max = Math.max(...data, 1)
-  const min = Math.min(...data, 0)
-  const range = max - min || 1
-  const W = 200
-  const H = height
-  const pts = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * W,
-    y: H - ((v - min) / range) * (H - 4) - 2,
-  }))
-
-  // Smooth bezier path
-  const linePath = pts.reduce((acc, pt, i) => {
-    if (i === 0) return `M ${pt.x} ${pt.y}`
-    const prev = pts[i - 1]
-    const cp1x = prev.x + (pt.x - prev.x) / 3
-    const cp2x = pt.x - (pt.x - prev.x) / 3
-    return `${acc} C ${cp1x} ${prev.y}, ${cp2x} ${pt.y}, ${pt.x} ${pt.y}`
+  if (data.length < 2) return <div style={{ height, display:'flex', alignItems:'center', justifyContent:'center' }}><span style={{ fontSize:11, color:'var(--t2)' }}>—</span></div>
+  const max = Math.max(...data, 1); const min = Math.min(...data, 0); const range = max - min || 1
+  const W = 200; const H = height
+  const pts = data.map((v, i) => ({ x: (i/(data.length-1))*W, y: H - ((v-min)/range)*(H-4)-2 }))
+  const line = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M ${p.x} ${p.y}`
+    const prev = pts[i-1]; const cx = (p.x - prev.x)/3
+    return `${acc} C ${prev.x+cx} ${prev.y}, ${p.x-cx} ${p.y}, ${p.x} ${p.y}`
   }, '')
-
-  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${H} L 0 ${H} Z`
-
+  const area = `${line} L ${pts[pts.length-1].x} ${H} L 0 ${H} Z`
+  const gid = `g${color.replace(/[^a-z0-9]/gi,'')}`
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height }} preserveAspectRatio="none">
       <defs>
-        <linearGradient id={`g-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
         </linearGradient>
       </defs>
-      <path d={areaPath} fill={`url(#g-${color.replace('#', '')})`} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Last point dot */}
-      <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="2.5" fill={color} />
+      <path d={area} fill={`url(#${gid})`}/>
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx={pts[pts.length-1].x} cy={pts[pts.length-1].y} r="2.5" fill={color}/>
     </svg>
   )
 }
 
-// ── Usage bar ─────────────────────────────────────────────────
-function UsageBar({ label, used, limit, formatFn = fmt }: {
-  label: string; used: number; limit: number; formatFn?: (n: number) => string
-}) {
-  const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0
+// ── Bar ───────────────────────────────────────────────────────
+function UsageBar({ label, used, limit, fmtFn = fmt, sub }: { label: string; used: number; limit: number; fmtFn?: (n:number)=>string; sub?: string }) {
+  const pct = limit > 0 ? Math.min((used/limit)*100, 100) : 0
   const color = pct > 80 ? '#f43f5e' : pct > 60 ? '#f59e0b' : '#0ec98c'
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, alignItems: 'baseline' }}>
-        <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 500 }}>{label}</span>
-        <span style={{ fontSize: 11, color: 'var(--t0)', fontWeight: 700 }}>
-          {formatFn(used)} <span style={{ color: 'var(--t2)', fontWeight: 400 }}>/ {formatFn(limit)}</span>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4, alignItems:'baseline' }}>
+        <span style={{ fontSize:11, color:'var(--t2)', fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:11, color:'var(--t0)', fontWeight:700 }}>
+          {fmtFn(used)} <span style={{ color:'var(--t2)', fontWeight:400 }}>/ {fmtFn(limit)}</span>
         </span>
       </div>
-      <div style={{ height: 5, background: 'var(--bg-3)', borderRadius: 100, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', width: `${pct}%`,
-          background: color,
-          borderRadius: 100,
-          transition: 'width 0.8s var(--ease-spring)',
-        }} />
+      <div style={{ height:5, background:'var(--bg-3)', borderRadius:100, overflow:'hidden' }}>
+        <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:100, transition:'width 0.8s var(--ease-spring)' }}/>
       </div>
-      <span style={{ fontSize: 10, color: pct > 80 ? '#f43f5e' : 'var(--t2)', marginTop: 2, display: 'block' }}>
-        {pct.toFixed(1)}% utilisé
-      </span>
+      {sub && <span style={{ fontSize:10, color:'var(--t2)', marginTop:2, display:'block' }}>{sub}</span>}
     </div>
   )
 }
 
-// ── Table mini bars ───────────────────────────────────────────
-function TableBars({ counts }: { counts: Record<string, number> }) {
-  const max = Math.max(...Object.values(counts), 1)
-  const LABELS: Record<string, string> = {
-    tasks: 'Tâches', crm: 'CRM', ideas: 'Idées', events: 'Events',
-    notes: 'Notes', time_sessions: 'Sessions', notifications: 'Notifs',
-    presence: 'Présence', chat_messages: 'Chat', organizations: 'Orgs',
-  }
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
-      {Object.entries(counts)
-        .filter(([, v]) => v > 0)
-        .sort(([, a], [, b]) => b - a)
-        .map(([table, count]) => (
-          <div key={table}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-              <span style={{ fontSize: 10, color: 'var(--t2)' }}>{LABELS[table] ?? table}</span>
-              <span style={{ fontSize: 10, color: 'var(--t1)', fontWeight: 600 }}>{count}</span>
-            </div>
-            <div style={{ height: 3, background: 'var(--bg-3)', borderRadius: 100 }}>
-              <div style={{
-                height: '100%', width: `${(count / max) * 100}%`,
-                background: 'var(--accent)', borderRadius: 100,
-              }} />
-            </div>
-          </div>
-        ))}
-    </div>
-  )
-}
-
-// ── Deployment dots ───────────────────────────────────────────
-function DeploySpark({ deployments }: { deployments: InfraData['vercelDeployments'] }) {
-  // Build last-14-days buckets
-  const buckets: Record<string, { ok: number; err: number }> = {}
-  const days = 14
-  for (let i = 0; i < days; i++) {
-    const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
-    buckets[d] = { ok: 0, err: 0 }
-  }
-  for (const dep of deployments) {
-    const d = new Date(dep.created).toISOString().slice(0, 10)
-    if (buckets[d]) {
-      dep.state === 'READY' ? buckets[d].ok++ : buckets[d].err++
-    }
-  }
-  const sorted = Object.entries(buckets).sort(([a], [b]) => a.localeCompare(b))
-  const total = sorted.map(([, v]) => v.ok + v.err)
-
+// ── Hourly heatmap ────────────────────────────────────────────
+function HourlyHeatmap({ data }: { data: HourStat[] }) {
+  const max = Math.max(...data.map(d=>d.visits), 1)
   return (
     <div>
-      <Sparkline data={total} color="#7c6af5" height={40} />
-      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-        {sorted.slice(-7).map(([date, v]) => {
-          const tot = v.ok + v.err
-          const hasErr = v.err > 0
-          return (
-            <div key={date} title={`${date}: ${v.ok} ok, ${v.err} erreur(s)`}
-              style={{
-                width: 24, height: 24, borderRadius: 6, fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: tot === 0 ? 'var(--bg-3)' : hasErr ? 'rgba(244,63,94,0.15)' : 'rgba(14,201,140,0.12)',
-                color: tot === 0 ? 'var(--t2)' : hasErr ? '#f43f5e' : '#0ec98c',
-              }}
-            >
-              {tot > 0 ? tot : '·'}
-            </div>
-          )
-        })}
+      <div style={{ display:'flex', gap:2 }}>
+        {data.map(d => (
+          <div key={d.hour} title={`${d.hour}h — ${d.visits} visite${d.visits>1?'s':''}`}
+            style={{ flex:1, height:28, borderRadius:3, background: d.visits === 0 ? 'var(--bg-3)' : `rgba(var(--accent-rgb),${0.1 + (d.visits/max)*0.85})`, cursor:'default', transition:'background 0.2s' }}/>
+        ))}
       </div>
-      <span style={{ fontSize: 10, color: 'var(--t2)', marginTop: 4, display: 'block' }}>
-        Déploiements sur 7 jours
-      </span>
+      <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+        <span style={{ fontSize:9, color:'var(--t2)' }}>0h</span>
+        <span style={{ fontSize:9, color:'var(--t2)' }}>12h</span>
+        <span style={{ fontSize:9, color:'var(--t2)' }}>23h</span>
+      </div>
     </div>
   )
 }
 
 // ── Status pill ───────────────────────────────────────────────
-function StatusPill({ ok, label }: { ok: boolean; label: string }) {
+function Pill({ ok, label }: { ok: boolean; label: string }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 11, fontWeight: 600,
-      color: ok ? '#0ec98c' : '#f43f5e',
-      background: ok ? 'rgba(14,201,140,0.1)' : 'rgba(244,63,94,0.1)',
-      border: `1px solid ${ok ? 'rgba(14,201,140,0.2)' : 'rgba(244,63,94,0.2)'}`,
-      padding: '3px 8px', borderRadius: 100,
-    }}>
-      <span style={{
-        width: 6, height: 6, borderRadius: '50%',
-        background: ok ? '#0ec98c' : '#f43f5e',
-        boxShadow: ok ? '0 0 6px #0ec98c' : 'none',
-      }} />
+    <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600,
+      color: ok?'#0ec98c':'#f43f5e', background: ok?'rgba(14,201,140,0.1)':'rgba(244,63,94,0.1)',
+      border:`1px solid ${ok?'rgba(14,201,140,0.2)':'rgba(244,63,94,0.2)'}`, padding:'3px 8px', borderRadius:100 }}>
+      <span style={{ width:6, height:6, borderRadius:'50%', background:ok?'#0ec98c':'#f43f5e', boxShadow:ok?'0 0 6px #0ec98c':'none' }}/>
       {label}
     </span>
   )
 }
 
-// ── Config hint ───────────────────────────────────────────────
-function ConfigHint({ text }: { text: string }) {
-  return (
-    <div style={{
-      background: 'rgba(var(--accent-rgb),0.06)', border: '1px dashed rgba(var(--accent-rgb),0.2)',
-      borderRadius: 8, padding: '8px 10px',
-      fontSize: 11, color: 'var(--t2)', lineHeight: 1.5,
-    }}>
-      💡 {text}
-    </div>
-  )
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <p style={{ fontSize:11, color:'var(--t2)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>{children}</p>
 }
 
-// ── Main widget ───────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────
 export default function InfraWidget() {
   const [data, setData] = useState<InfraData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/infra')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setData(d) })
-      .finally(() => setLoading(false))
+    fetch('/api/infra').then(r=>r.ok?r.json():null).then(d=>{if(d)setData(d)}).finally(()=>setLoading(false))
   }, [])
 
   if (loading) return (
-    <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
-      {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 340, borderRadius: 14 }} />)}
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {[1,2,3].map(i=><div key={i} className="skeleton" style={{ height:200, borderRadius:14 }}/>)}
     </div>
   )
   if (!data) return null
 
-  const lastDeploy = data.vercelDeployments[0]
-  const deployOk   = lastDeploy?.state === 'READY'
+  const lastDeploy  = data.vercelDeployments[0]
+  const maxPageVisits = Math.max(...data.pageStats.map(p=>p.visits), 1)
+  const maxTableBytes = Math.max(...(data.sbMetrics?.table_sizes.map(t=>t.bytes)??[]), 1)
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <p className="section-title" style={{ margin: 0 }}>Infrastructure</p>
-        <span style={{ fontSize: 11, color: 'var(--t2)' }}>Temps réel</span>
-      </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
+      {/* ── ROW 1: Live + Stats globaux ──────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap:16 }}>
 
-        {/* ── SUPABASE ─────────────────────────────────── */}
-        <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 15, lineHeight: 1 }}>🗄</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Supabase</span>
-            </div>
-            <StatusPill ok={data.ping < 500} label={`Online · ${data.ping}ms`} />
+        {/* Users en ligne */}
+        <div className="card" style={{ padding:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>Utilisateurs en ligne</span>
+            <span style={{ fontSize:20, fontWeight:800, color: data.onlineUsers.length>0?'#0ec98c':'var(--t2)' }}>
+              {data.onlineUsers.length}
+            </span>
           </div>
-
-          {/* Sparkline — API requests or row growth */}
-          <div>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 6, fontWeight: 500 }}>
-              {data.sbApiSpark.length > 1 ? 'Requêtes API / jour (7j)' : 'Lignes totales (historique)'}
-            </p>
-            <Sparkline
-              data={data.sbApiSpark.length > 1 ? data.sbApiSpark : data.rowHistory.map(r => r.value)}
-              color="#7c6af5"
-              height={48}
-            />
-          </div>
-
-          {/* Usage bars */}
-          {data.sbUsage ? (
-            <div>
-              {data.sbUsage['db_size'] && (
-                <UsageBar label="Base de données" used={data.sbUsage['db_size'].used} limit={data.sbUsage['db_size'].limit} />
-              )}
-              {data.sbUsage['storage'] && (
-                <UsageBar label="Storage" used={data.sbUsage['storage'].used} limit={data.sbUsage['storage'].limit} />
-              )}
-              {data.sbUsage['monthly_active_users'] && (
-                <UsageBar
-                  label="MAU (utilisateurs actifs)"
-                  used={data.sbUsage['monthly_active_users'].used}
-                  limit={data.sbUsage['monthly_active_users'].limit}
-                  formatFn={fmtNum}
-                />
-              )}
-              {data.sbUsage['db_egress'] && (
-                <UsageBar label="Bande passante DB" used={data.sbUsage['db_egress'].used} limit={data.sbUsage['db_egress'].limit} />
-              )}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { label: 'Base de données', limit: 500 * 1024 * 1024 },
-                { label: 'Storage', limit: 1024 * 1024 * 1024 },
-                { label: 'MAU', limit: 50_000, formatFn: fmtNum },
-                { label: 'Bande passante DB', limit: 5 * 1024 * 1024 * 1024 },
-              ].map(bar => (
-                <div key={bar.label} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: 'var(--t2)' }}>{bar.label}</span>
-                    <span style={{ fontSize: 11, color: 'var(--t2)' }}>? / {(bar.formatFn ?? fmt)(bar.limit)}</span>
-                  </div>
-                  <div style={{ height: 5, background: 'var(--bg-3)', borderRadius: 100 }}>
-                    <div style={{ height: '100%', width: '4px', background: 'var(--border-m)', borderRadius: 100 }} />
-                  </div>
+          {data.onlineUsers.length === 0
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'12px 0' }}>Aucun utilisateur actif</p>
+            : data.onlineUsers.map(u => (
+              <div key={u.username} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border-s)' }}>
+                <span style={{ width:8, height:8, borderRadius:'50%', background:'#0ec98c', boxShadow:'0 0 6px #0ec98c', flexShrink:0 }}/>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:12, fontWeight:600, color:'var(--t0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.display_name || u.username}</p>
+                  <p style={{ fontSize:10, color:'var(--t2)' }}>{relTime(u.last_seen)}</p>
                 </div>
-              ))}
-              <ConfigHint text="Ajoute SUPABASE_ACCESS_TOKEN dans .env.local pour voir l'usage réel (supabase.com → Account → Access Tokens)" />
-            </div>
-          )}
+              </div>
+            ))
+          }
+        </div>
 
-          {/* Table breakdown */}
-          <div>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 8, fontWeight: 500 }}>
-              {data.totalRows.toLocaleString('fr-FR')} lignes dans la DB
-            </p>
-            <TableBars counts={data.tableCounts} />
+        {/* Stats globaux analytics */}
+        <div className="card" style={{ padding:20 }}>
+          <p style={{ fontSize:13, fontWeight:700, color:'var(--t0)', marginBottom:14 }}>Analytics 30 jours</p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            {[
+              { label:'Visites totales', value: fmtNum(data.totalVisits), color:'var(--accent)' },
+              { label:'Durée moy.', value: data.avgSessionSec > 0 ? fmtDuration(data.avgSessionSec) : '—', color:'#4f8ef7' },
+              { label:'Lignes en DB', value: fmtNum(data.totalRows), color:'#0ec98c' },
+              { label:'Ping DB', value: `${data.ping}ms`, color: data.ping < 100 ? '#0ec98c' : data.ping < 300 ? '#f59e0b' : '#f43f5e' },
+            ].map(s => (
+              <div key={s.label} style={{ background:'var(--bg-2)', borderRadius:8, padding:'10px 12px' }}>
+                <p style={{ fontSize:10, color:'var(--t2)', fontWeight:500 }}>{s.label}</p>
+                <p style={{ fontSize:22, fontWeight:800, color:s.color, marginTop:2, letterSpacing:'-0.02em' }}>{s.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* ── VERCEL ───────────────────────────────────── */}
-        <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 15, lineHeight: 1 }}>▲</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t0)' }}>Vercel</span>
-            </div>
+        {/* Supabase status */}
+        <div className="card" style={{ padding:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>🗄 Supabase</span>
+            <Pill ok={data.ping < 500} label={`${data.ping}ms`}/>
+          </div>
+          {data.sbMetrics ? (
+            <>
+              <UsageBar label="Base de données" used={data.sbMetrics.db_bytes} limit={data.sbLimits.db_size}/>
+              <UsageBar label="Storage" used={data.sbMetrics.storage_bytes} limit={data.sbLimits.storage}/>
+              <UsageBar label="Auth users" used={data.sbMetrics.auth_users} limit={data.sbLimits.auth_users} fmtFn={fmtNum}/>
+              <div style={{ display:'flex', gap:16, marginTop:8 }}>
+                <span style={{ fontSize:10, color:'var(--t2)' }}>Sessions actives <b style={{ color:'var(--t0)' }}>{data.sbMetrics.active_sessions}</b></span>
+                <span style={{ fontSize:10, color:'var(--t2)' }}>PG <b style={{ color:'var(--t0)' }}>{data.sbMetrics.pg_version}</b></span>
+              </div>
+            </>
+          ) : (
+            <p style={{ fontSize:11, color:'var(--t2)', lineHeight:1.6 }}>
+              💡 Ajoute <code style={{ background:'var(--bg-3)', padding:'1px 5px', borderRadius:4, fontSize:10 }}>SUPABASE_ACCESS_TOKEN</code> pour les métriques réelles
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── ROW 2: Pages + Heatmap + Top users ─────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap:16 }}>
+
+        {/* Top pages */}
+        <div className="card lg:col-span-1" style={{ padding:20 }}>
+          <SectionTitle>Pages les plus visitées (30j)</SectionTitle>
+          {data.pageStats.length === 0
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>Pas encore de données — les visites s'enregistrent en temps réel</p>
+            : data.pageStats.map(p => (
+              <div key={p.page} style={{ marginBottom:10 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                  <span style={{ fontSize:12, color:'var(--t0)', fontWeight:500 }}>{pageName(p.page)}</span>
+                  <span style={{ fontSize:11, color:'var(--t2)' }}>{p.visits}v · {fmtDuration(p.avg_sec)} moy</span>
+                </div>
+                <div style={{ height:4, background:'var(--bg-3)', borderRadius:100, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${(p.visits/maxPageVisits)*100}%`, background:'var(--accent)', borderRadius:100 }}/>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Heatmap horaire + sparkline */}
+        <div className="card" style={{ padding:20 }}>
+          <SectionTitle>Activité horaire (7 derniers jours)</SectionTitle>
+          <HourlyHeatmap data={data.hourlyActivity}/>
+          <div style={{ marginTop:20 }}>
+            <SectionTitle>Croissance lignes DB (14j)</SectionTitle>
+            <Sparkline data={data.sbMetrics?.db_history.length ? data.sbMetrics.db_history : data.rowHistory.map(r=>r.value)} color="var(--accent)" height={48}/>
+          </div>
+        </div>
+
+        {/* Top utilisateurs */}
+        <div className="card" style={{ padding:20 }}>
+          <SectionTitle>Utilisateurs les plus actifs (30j)</SectionTitle>
+          {data.topUsers.length === 0
+            ? <p style={{ fontSize:12, color:'var(--t2)', textAlign:'center', padding:'16px 0' }}>Pas encore de données</p>
+            : data.topUsers.map((u, i) => (
+              <div key={u.username} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'1px solid var(--border-s)' }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'var(--t2)', width:16, textAlign:'center', flexShrink:0 }}>#{i+1}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:12, fontWeight:600, color:'var(--t0)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.username}</p>
+                  <p style={{ fontSize:10, color:'var(--t2)' }}>{u.visits} visites · {fmtDuration(u.total_sec)} total</p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      {/* ── ROW 3: Vercel + Table sizes ──────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:16 }}>
+
+        {/* Vercel */}
+        <div className="card" style={{ padding:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--t0)' }}>▲ Vercel</span>
             {lastDeploy
-              ? <StatusPill ok={deployOk} label={deployOk ? `Déployé · ${relTime(lastDeploy.created)}` : 'Erreur deploy'} />
-              : <StatusPill ok={true} label="Production" />
+              ? <Pill ok={lastDeploy.state==='READY'} label={lastDeploy.state==='READY'?`Déployé · ${relTime(lastDeploy.created)}`:'Erreur'}/>
+              : <Pill ok label="Production"/>
             }
           </div>
 
           {/* Deploy sparkline */}
-          <div>
-            <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 6, fontWeight: 500 }}>
-              Déploiements (14 derniers jours)
-            </p>
-            {data.vercelDeployments.length > 0
-              ? <DeploySpark deployments={data.vercelDeployments} />
-              : (
-                <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 11, color: 'var(--t2)' }}>—</span>
-                </div>
-              )
-            }
+          {data.vercelDeployments.length > 0 && (() => {
+            const buckets: Record<string, number> = {}
+            for (let i=0;i<14;i++) buckets[new Date(Date.now()-i*86400000).toISOString().slice(0,10)] = 0
+            data.vercelDeployments.forEach(d => { const k=new Date(d.created).toISOString().slice(0,10); if(k in buckets) buckets[k]++ })
+            const vals = Object.entries(buckets).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v)
+            return (
+              <div style={{ marginBottom:14 }}>
+                <SectionTitle>Déploiements (14j)</SectionTitle>
+                <Sparkline data={vals} color="#7c6af5" height={36}/>
+              </div>
+            )
+          })()}
+
+          <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+            {data.vercelDeployments.slice(0,6).map(dep => (
+              <div key={dep.uid} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', background:'var(--bg-2)', borderRadius:8 }}>
+                <div style={{ width:7, height:7, borderRadius:'50%', flexShrink:0,
+                  background: dep.state==='READY'?'#0ec98c':dep.state==='BUILDING'?'#f59e0b':'#f43f5e',
+                  boxShadow: dep.state==='READY'?'0 0 5px rgba(14,201,140,0.6)':'none' }}/>
+                <span style={{ fontSize:11, flex:1, color:'var(--t1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {dep.meta?.githubCommitMessage?.split('\n')[0] ?? dep.url}
+                </span>
+                <span style={{ fontSize:10, color:'var(--t2)', flexShrink:0 }}>{relTime(dep.created)}</span>
+              </div>
+            ))}
           </div>
 
-          {/* Last deployments list */}
-          {data.vercelDeployments.length > 0 ? (
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 8, fontWeight: 500 }}>Derniers déploiements</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {data.vercelDeployments.slice(0, 5).map(dep => {
-                  const ok = dep.state === 'READY'
-                  return (
-                    <div key={dep.uid} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', background: 'var(--bg-2)', borderRadius: 8,
-                    }}>
-                      <div style={{
-                        width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                        background: ok ? '#0ec98c' : dep.state === 'BUILDING' ? '#f59e0b' : '#f43f5e',
-                        boxShadow: ok ? '0 0 6px rgba(14,201,140,0.6)' : 'none',
-                      }} />
-                      <span style={{ fontSize: 11, flex: 1, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {dep.meta?.githubCommitMessage?.split('\n')[0] ?? dep.url}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--t2)', flexShrink: 0 }}>{relTime(dep.created)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Static Vercel free tier limits reference */}
-              <div>
-                {[
-                  { label: 'Bandwidth', limit: 100 * 1024 * 1024 * 1024 },
-                  { label: 'Build minutes', limit: 6_000, formatFn: (n: number) => `${n.toLocaleString('fr-FR')} min` },
-                ].map(bar => (
-                  <div key={bar.label} style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: 11, color: 'var(--t2)' }}>{bar.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--t2)' }}>? / {bar.formatFn ? bar.formatFn(bar.limit) : fmt(bar.limit)}</span>
-                    </div>
-                    <div style={{ height: 5, background: 'var(--bg-3)', borderRadius: 100 }}>
-                      <div style={{ height: '100%', width: '4px', background: 'var(--border-m)', borderRadius: 100 }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <ConfigHint text="Ajoute VERCEL_TOKEN dans .env.local pour voir les déploiements et l'usage (vercel.com → Settings → Tokens)" />
-            </div>
+          {!data.hasVercelToken && (
+            <p style={{ fontSize:11, color:'var(--t2)', marginTop:10, lineHeight:1.6 }}>
+              💡 Ajoute <code style={{ background:'var(--bg-3)', padding:'1px 5px', borderRadius:4, fontSize:10 }}>VERCEL_TOKEN</code> pour les déploiements
+            </p>
           )}
 
-          {/* Vercel free tier reminder */}
-          <div style={{
-            padding: '10px 12px', background: 'var(--bg-2)', borderRadius: 8,
-            display: 'flex', flexDirection: 'column', gap: 6,
-          }}>
-            <span style={{ fontSize: 11, color: 'var(--t2)', fontWeight: 600 }}>PLAN HOBBY — LIMITES</span>
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Bandwidth', value: '100 GB/mois' },
-                { label: 'Build', value: '6 000 min/mois' },
-                { label: 'Déploiements', value: '100/jour' },
-                { label: 'Fonctions', value: '100 GB-h' },
-              ].map(item => (
-                <div key={item.label}>
-                  <span style={{ fontSize: 10, color: 'var(--t2)' }}>{item.label} </span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--t1)' }}>{item.value}</span>
-                </div>
+          {/* Limits reminder */}
+          <div style={{ marginTop:14, padding:'10px 12px', background:'var(--bg-2)', borderRadius:8 }}>
+            <span style={{ fontSize:10, color:'var(--t2)', fontWeight:600, display:'block', marginBottom:6 }}>PLAN HOBBY — LIMITES</span>
+            <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
+              {[['Bandwidth','100 GB/mois'],['Build','6 000 min/mois'],['Deploys','100/jour'],['Fonctions','100 GB-h']].map(([l,v])=>(
+                <span key={l} style={{ fontSize:10, color:'var(--t2)' }}>{l} <b style={{ color:'var(--t1)' }}>{v}</b></span>
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Table disk sizes */}
+        <div className="card" style={{ padding:20 }}>
+          <SectionTitle>Taille des tables ({data.sbMetrics ? fmt(data.sbMetrics.db_bytes) : '—'} total)</SectionTitle>
+          {data.sbMetrics?.table_sizes.length
+            ? data.sbMetrics.table_sizes.map(t => (
+              <div key={t.tablename} style={{ marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                  <span style={{ fontSize:11, color:'var(--t1)' }}>{t.tablename}</span>
+                  <span style={{ fontSize:11, color:'var(--t0)', fontWeight:600 }}>{fmt(t.bytes)}</span>
+                </div>
+                <div style={{ height:4, background:'var(--bg-3)', borderRadius:100, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${(t.bytes/maxTableBytes)*100}%`, background:'rgba(var(--accent-rgb),0.6)', borderRadius:100 }}/>
+                </div>
+              </div>
+            ))
+            : (
+              <>
+                <SectionTitle>Lignes par table</SectionTitle>
+                {(() => {
+                  const maxR = Math.max(...Object.values(data.tableCounts), 1)
+                  const LABELS: Record<string,string> = { tasks:'Tâches', crm:'CRM', ideas:'Idées', events:'Events', notes:'Notes', time_sessions:'Sessions', notifications:'Notifs', presence:'Présence', chat_messages:'Chat', organizations:'Orgs', org_members:'Membres' }
+                  return Object.entries(data.tableCounts).filter(([,v])=>v>0).sort(([,a],[,b])=>b-a).map(([t,c])=>(
+                    <div key={t} style={{ marginBottom:8 }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                        <span style={{ fontSize:11, color:'var(--t1)' }}>{LABELS[t]??t}</span>
+                        <span style={{ fontSize:11, color:'var(--t0)', fontWeight:600 }}>{c}</span>
+                      </div>
+                      <div style={{ height:4, background:'var(--bg-3)', borderRadius:100 }}>
+                        <div style={{ height:'100%', width:`${(c/maxR)*100}%`, background:'rgba(var(--accent-rgb),0.6)', borderRadius:100 }}/>
+                      </div>
+                    </div>
+                  ))
+                })()}
+              </>
+            )
+          }
         </div>
       </div>
     </div>
