@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       .select('org_id')
       .in('org_id', orgIds)
     for (const m of memberData || []) {
-      counts[m.org_id] = (counts[m.org_id] || 0) + 1
+      if (m.org_id) counts[m.org_id] = (counts[m.org_id] || 0) + 1
     }
   }
 

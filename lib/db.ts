@@ -1,11 +1,14 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Task, CRMEntry, Idea, CalendarEvent } from './types'
+import type { Database } from './database.types'
 
-let _client: ReturnType<typeof createClient> | null = null
+type DB = Database['public']['Tables']
 
-export function getClient() {
+let _client: SupabaseClient<Database> | null = null
+
+export function getClient(): SupabaseClient<Database> {
   if (!_client) {
-    _client = createClient(
+    _client = createClient<Database>(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false } }
@@ -27,9 +30,9 @@ export async function getTasks(orgId: string): Promise<Task[]> {
   return (data || []).map(r => ({
     id: r.id,
     title: r.title,
-    status: r.status,
-    priority: r.priority,
-    module: r.module,
+    status: r.status as Task['status'],
+    priority: r.priority as Task['priority'],
+    module: r.module as Task['module'],
     description: r.description,
     dateStart: r.date_start || '',
     dateEnd: r.date_end || '',
@@ -57,7 +60,7 @@ export async function createTask(orgId: string, data: Partial<Task> & { modified
 }
 
 export async function updateTask(id: string, data: Partial<Task> & { modifiedBy?: string }): Promise<void> {
-  const u: Record<string, unknown> = {}
+  const u: DB['tasks']['Update'] = {}
   if (data.title !== undefined)       u.title = data.title
   if (data.status !== undefined)      u.status = data.status
   if (data.priority !== undefined)    u.priority = data.priority
@@ -96,10 +99,10 @@ export async function getCRM(orgId: string): Promise<CRMEntry[]> {
     email: r.email || '',
     phone: r.phone || '',
     ville: r.ville,
-    status: r.status,
+    status: r.status as CRMEntry['status'],
     canal: r.canal,
     type: r.type,
-    priority: r.priority,
+    priority: r.priority as CRMEntry['priority'],
     notes: r.notes,
     lastContact: r.last_contact || '',
     nextFollowup: r.next_followup || '',
@@ -131,7 +134,7 @@ export async function createCRM(orgId: string, data: Partial<CRMEntry> & { modif
 }
 
 export async function updateCRM(id: string, data: Partial<CRMEntry> & { modifiedBy?: string }): Promise<void> {
-  const u: Record<string, unknown> = {}
+  const u: DB['crm']['Update'] = {}
   if (data.enseigne !== undefined)     u.enseigne = data.enseigne
   if (data.status !== undefined)       u.status = data.status
   if (data.contact !== undefined)      u.contact = data.contact
@@ -172,9 +175,9 @@ export async function getIdeas(orgId: string): Promise<Idea[]> {
     id: r.id,
     title: r.title,
     description: r.description,
-    status: r.status,
+    status: r.status as Idea['status'],
     category: r.category,
-    effort: r.effort,
+    effort: r.effort as Idea['effort'],
     votes: r.votes,
     assignedTo: r.assigned_to || '',
     modifiedBy: r.modified_by,
@@ -198,7 +201,7 @@ export async function createIdea(orgId: string, data: Partial<Idea> & { modified
 }
 
 export async function updateIdea(id: string, data: Partial<Idea> & { modifiedBy?: string }): Promise<void> {
-  const u: Record<string, unknown> = {}
+  const u: DB['ideas']['Update'] = {}
   if (data.title !== undefined)       u.title = data.title
   if (data.status !== undefined)      u.status = data.status
   if (data.description !== undefined) u.description = data.description
@@ -254,7 +257,7 @@ export async function createEvent(orgId: string, data: Partial<CalendarEvent> & 
 }
 
 export async function updateEvent(id: string, data: Partial<CalendarEvent> & { modifiedBy?: string }): Promise<void> {
-  const u: Record<string, unknown> = {}
+  const u: DB['events']['Update'] = {}
   if (data.title !== undefined)       u.title = data.title
   if (data.type !== undefined)        u.type = data.type
   if (data.dateStart !== undefined)   u.date_start = data.dateStart || null
@@ -392,7 +395,7 @@ export async function getUserSettings(name: string): Promise<UserSettings | null
 }
 
 export async function updateUserSettings(name: string, settings: Partial<UserSettings>): Promise<void> {
-  const u: Record<string, unknown> = {}
+  const u: DB['presence']['Update'] = {}
   if (settings.displayName !== undefined)      u.display_name = settings.displayName
   if (settings.passwordOverride !== undefined) u.password_override = settings.passwordOverride
   if (settings.icalFeedUrl !== undefined)      u.ical_feed_url = settings.icalFeedUrl
@@ -451,15 +454,17 @@ export interface Note {
   updatedAt: string
 }
 
-function mapNote(r: Record<string, unknown>): Note {
+type NoteRow = Pick<DB['notes']['Row'], 'id' | 'titre' | 'contenu' | 'utilisateur' | 'shared_with' | 'created_at' | 'updated_at'>
+
+function mapNote(r: NoteRow): Note {
   return {
-    id: r.id as string,
-    titre: r.titre as string,
-    contenu: r.contenu as string,
-    utilisateur: r.utilisateur as string,
-    sharedWith: (r.shared_with as string[]) || [],
-    createdAt: r.created_at as string,
-    updatedAt: r.updated_at as string,
+    id: r.id,
+    titre: r.titre,
+    contenu: r.contenu,
+    utilisateur: r.utilisateur,
+    sharedWith: r.shared_with || [],
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
   }
 }
 

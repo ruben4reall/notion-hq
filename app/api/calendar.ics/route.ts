@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       .select('org_id')
       .eq('user_id', user.id)
 
-    const orgIds = (memberships || []).map((m: { org_id: string }) => m.org_id)
+    const orgIds = (memberships || []).map(m => m.org_id).filter((id): id is string => !!id)
     if (!orgIds.length) {
       const ical = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Manager Dashboard//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'END:VCALENDAR'].join('\r\n')
       return new NextResponse(ical, { headers: { 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-cache, max-age=0' } })

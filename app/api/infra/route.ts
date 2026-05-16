@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/db'
 import { getUser } from '@/lib/auth'
 import { cachedJson } from '@/lib/api-cache'
+import type { Database } from '@/lib/database.types'
 
 const SB_REF = process.env.SUPABASE_URL?.match(/https:\/\/([^.]+)/)?.[1] ?? ''
 
@@ -12,7 +13,7 @@ const SB_LIMITS = {
 }
 const VERCEL_LIMITS = { bandwidth: 100 * 1024 * 1024 * 1024, build_minutes: 6_000 }
 
-const APP_TABLES = [
+const APP_TABLES: (keyof Database['public']['Tables'])[] = [
   'tasks','crm','ideas','events','notes',
   'time_sessions','notifications','presence',
   'chat_messages','organizations','org_members',
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Users online (presence table, filtered to current org) ─
   const orgId = req.cookies.get('current_org_id')?.value
   const twoMinAgo = new Date(Date.now() - 2 * 60_000).toISOString()
-  let onlineUsers: { display_name: string; username: string; last_seen: string; connected_at: string }[] = []
+  let onlineUsers: { display_name: string | null; username: string; last_seen: string; connected_at: string | null }[] = []
   if (orgId) {
     const { data: members } = await db.from('org_members').select('user_id').eq('org_id', orgId)
     if (members?.length) {
